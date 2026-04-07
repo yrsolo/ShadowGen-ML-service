@@ -1,0 +1,43 @@
+.env
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+coverage.xml
+htmlcov/
+pytest-cache-files-*/
+dist/
+build/
+*.egg-info/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Local virtual environments
+.venv/
+venv/
+
+# Model weights and ML caches
+.models/
+.cache/
+data/models/
+data/cache/
+var/cache/
+var/tmp/
+var/pytest-cache/
+var/pytest-cache-files-*/
+weights/
+checkpoints/
+hf_cache/
+
+# Generated images and artifacts
+data/input/
+data/output/
+data/debug/
+artifacts/
+tmp/
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
