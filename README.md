@@ -28,6 +28,10 @@ Quick start:
 .venv/Scripts/python.exe -m pytest
 ```
 
+Playground UI:
+
+- open `http://127.0.0.1:8000/playground`
+
 ## Current status
 
 This repository now contains the service skeleton, pipeline contracts, deterministic mock implementations, runtime adapter selection, tests, and primary project documentation.

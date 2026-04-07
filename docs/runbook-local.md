@@ -21,6 +21,20 @@
 .venv/Scripts/python.exe -m pytest
 ```
 
+## Browser playground
+
+After the server starts, open:
+
+- `http://127.0.0.1:8000/playground`
+
+The playground supports:
+
+- uploading one source image
+- running the full pipeline or a single stage
+- switching each stage between `mock` and `real`
+- showing stage-local errors and previews
+- adjusting the global preview size
+
 ### Optional ML bootstrap
 
 ```powershell

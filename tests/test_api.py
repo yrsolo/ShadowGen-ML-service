@@ -58,6 +58,11 @@ class ApiTests(unittest.TestCase):
         self.assertIn("components", payload)
         self.assertIn("active_backend_mode", payload)
 
+    def test_playground_page_exists(self) -> None:
+        response = self.client.get("/playground")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("ShadowGen Pipeline Playground", response.text)
+
     def test_render_success_with_debug_artifacts(self) -> None:
         response = self.client.post("/v1/render", json=make_request())
         self.assertEqual(response.status_code, 200)
@@ -102,6 +107,28 @@ class ApiTests(unittest.TestCase):
         response = self.client.post("/v1/render", json=payload)
         self.assertEqual(response.status_code, 422)
         self.assertEqual(response.json()["error"]["code"], "validation_error")
+
+    def test_debug_pipeline_run_all(self) -> None:
+        response = self.client.post(
+            "/v1/dev/pipeline/run-all",
+            json={"render_request": make_request(), "stage_modes": {"shadow_generator": "real", "composer": "real"}},
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["stages"][0]["stage_key"], "decode")
+        self.assertEqual(payload["stages"][-1]["stage_key"], "composer")
+
+    def test_debug_pipeline_stage_real_failure(self) -> None:
+        response = self.client.post(
+            "/v1/dev/pipeline/run-stage/detector",
+            json={"render_request": make_request(), "stage_modes": {"detector": "real"}},
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        detector = payload["stages"][-1]
+        self.assertEqual(detector["stage_key"], "detector")
+        self.assertEqual(detector["status"], "failed")
+        self.assertIn("Real detector", detector["error"])
 
     def test_timeout_error_mapping(self) -> None:
         class FakeService:

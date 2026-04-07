@@ -7,6 +7,7 @@
 - [x] Implement HTTP service and pipeline runtime
 - [x] Add tests and run validation checks
 - [x] Finalize docs and evidence for bootstrap campaign
+- [x] Add mini web UI for pipeline stage testing
 
 ## Notes
 
