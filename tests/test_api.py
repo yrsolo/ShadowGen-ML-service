@@ -13,6 +13,7 @@ from PIL import Image, ImageDraw
 
 from shadowgen_ml_service.app import create_app
 from shadowgen_ml_service.config import Settings
+from shadowgen_ml_service.pipeline.types import DetectionResult, GeometryResult
 from shadowgen_ml_service.pipeline.types import SegmentationResult
 from shadowgen_ml_service.pipeline.service import TimeoutServiceError
 
@@ -173,6 +174,58 @@ class ApiTests(unittest.TestCase):
         preview_names = {preview["name"] for preview in geometry["previews"]}
         self.assertIn("geometry_input", preview_names)
         self.assertIn("geometry_overlay", preview_names)
+
+    def test_debug_pipeline_detector_mock_uses_mock_adapter_even_when_real_is_available(self) -> None:
+        app = create_app(Settings())
+
+        class BombDetector:
+            def detect(self, image, padding_px):
+                raise AssertionError("real detector should not run in mock mode")
+
+        class StubMockDetector:
+            def detect(self, image, padding_px):
+                return DetectionResult(bbox=(1, 2, 30, 40), confidence=0.123)
+
+        app.state.render_service.runtime.real_detector = BombDetector()
+        app.state.render_service.runtime.detector = BombDetector()
+        app.state.render_service.runtime.mock_detector = StubMockDetector()
+        client = TestClient(app)
+
+        response = client.post(
+            "/v1/dev/pipeline/run-stage/detector",
+            json={"render_request": make_request(), "stage_modes": {"detector": "mock"}},
+        )
+        self.assertEqual(response.status_code, 200)
+        detector = response.json()["stages"][-1]
+        self.assertEqual(detector["actual_mode"], "mock")
+        self.assertEqual(detector["details"]["confidence"], 0.123)
+        self.assertEqual(detector["details"]["prompt"], "mock")
+
+    def test_debug_pipeline_geometry_mock_uses_mock_adapter_even_when_real_is_available(self) -> None:
+        app = create_app(Settings())
+
+        class BombGeometry:
+            def estimate(self, image):
+                raise AssertionError("real geometry should not run in mock mode")
+
+        class StubMockGeometry:
+            def estimate(self, image):
+                return GeometryResult(camera_fov=11.0, camera_pitch=22.0, camera_roll=33.0, confidence=0.44)
+
+        app.state.render_service.runtime.real_geometry = BombGeometry()
+        app.state.render_service.runtime.geometry = BombGeometry()
+        app.state.render_service.runtime.mock_geometry = StubMockGeometry()
+        client = TestClient(app)
+
+        response = client.post(
+            "/v1/dev/pipeline/run-stage/geometry_estimator",
+            json={"render_request": make_request(), "stage_modes": {"geometry_estimator": "mock"}},
+        )
+        self.assertEqual(response.status_code, 200)
+        geometry = response.json()["stages"][-1]
+        self.assertEqual(geometry["actual_mode"], "mock")
+        self.assertEqual(geometry["details"]["camera_fov"], 11.0)
+        self.assertEqual(geometry["details"]["backend"], "mock")
 
     def test_segmentation_runs_after_crop_and_resize(self) -> None:
         temp_dir = Path("var/cache/test-preprocess") / uuid4().hex

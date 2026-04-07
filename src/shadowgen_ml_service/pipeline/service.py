@@ -253,7 +253,7 @@ class RenderService:
         geometry = self._run_stage_with_mode(
             stage_key="geometry_estimator",
             requested_mode=payload.stage_modes.geometry_estimator,
-            action=lambda: self.runtime.geometry.estimate(source_rgba),
+            action=lambda: self._geometry_estimator_for_mode(payload.stage_modes.geometry_estimator).estimate(source_rgba),
             previews_factory=lambda value: {
                 "geometry_input": source_rgba,
                 "geometry_overlay": draw_geometry_overlay(
@@ -283,7 +283,7 @@ class RenderService:
         detection = self._run_stage_with_mode(
             stage_key="detector",
             requested_mode=payload.stage_modes.detector,
-            action=lambda: self.runtime.detector.detect(source_rgba, request.preprocess.padding_px),
+            action=lambda: self._detector_for_mode(payload.stage_modes.detector).detect(source_rgba, request.preprocess.padding_px),
             previews_factory=lambda value: {
                 "detection_overlay": draw_detection_overlay(source_rgba, value.bbox, value.confidence),
                 "crop_for_resize": prepare_working_crop(source_rgba, value.bbox, self.settings.working_size),
@@ -397,6 +397,16 @@ class RenderService:
             if "mime_type" in message:
                 raise UnsupportedInputServiceError(message, request_id=request.request_id) from exc
             raise ValidationServiceError(message, request_id=request.request_id) from exc
+
+    def _detector_for_mode(self, requested_mode: str):
+        if requested_mode == "mock":
+            return self.runtime.mock_detector
+        return self.runtime.real_detector or self.runtime.mock_detector
+
+    def _geometry_estimator_for_mode(self, requested_mode: str):
+        if requested_mode == "mock":
+            return self.runtime.mock_geometry
+        return self.runtime.real_geometry or self.runtime.mock_geometry
 
     def _run_stage_with_mode(self, stage_key: str, requested_mode: str, action, previews_factory, warnings: list[str], details_factory=None) -> dict:
         actual_mode = self._resolve_stage_mode(stage_key, requested_mode)

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Optional
 
 from shadowgen_ml_service.adapters.mock import (
     DefaultArtifactEncoder,
@@ -29,7 +30,11 @@ from shadowgen_ml_service.pipeline.types import ComponentStatus, RuntimeDescript
 @dataclass
 class PipelineRuntime:
     detector: Detector
+    mock_detector: Detector
+    real_detector: Optional[Detector]
     geometry: GeometryEstimator
+    mock_geometry: GeometryEstimator
+    real_geometry: Optional[GeometryEstimator]
     segmenter: Segmenter
     depth: DepthEstimator
     normals: NormalEstimator
@@ -75,8 +80,12 @@ def build_runtime(settings: Settings) -> PipelineRuntime:
     birefnet = probe_birefnet()
     depth_anything = probe_depth_anything()
 
-    detector: Detector = MockDetector()
-    geometry: GeometryEstimator = MockGeometryEstimator()
+    mock_detector = MockDetector()
+    detector: Detector = mock_detector
+    real_detector: Detector | None = None
+    mock_geometry = MockGeometryEstimator()
+    geometry: GeometryEstimator = mock_geometry
+    real_geometry: GeometryEstimator | None = None
     segmenter = MockSegmenter()
     depth = MockDepthEstimator()
     normals = MockNormalEstimator()
@@ -101,6 +110,7 @@ def build_runtime(settings: Settings) -> PipelineRuntime:
                 box_threshold=settings.grounding_dino_box_threshold,
                 text_threshold=settings.grounding_dino_text_threshold,
             )
+            real_detector = detector
             detector_component = _component_status(
                 "detector",
                 "real",
@@ -142,6 +152,7 @@ def build_runtime(settings: Settings) -> PipelineRuntime:
                 camera_model=settings.geocalib_camera_model,
                 shared_intrinsics=settings.geocalib_shared_intrinsics,
             )
+            real_geometry = geometry
             geometry_component = _component_status(
                 "geometry_estimator",
                 "real",
@@ -212,7 +223,11 @@ def build_runtime(settings: Settings) -> PipelineRuntime:
     )
     return PipelineRuntime(
         detector=detector,
+        mock_detector=mock_detector,
+        real_detector=real_detector,
         geometry=geometry,
+        mock_geometry=mock_geometry,
+        real_geometry=real_geometry,
         segmenter=segmenter,
         depth=depth,
         normals=normals,

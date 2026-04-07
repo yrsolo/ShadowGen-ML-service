@@ -12,6 +12,7 @@
 - [x] Activate GeoCalib in the local `.venv` and verify the real Geometry path end-to-end
 - [x] Improve Geometry preview with floor-grid overlay and expose GeoCalib runtime settings in debug details
 - [x] Implement real/mocked Detection step wiring with GroundingDINO, runtime fallback, and bbox debug previews
+- [x] Fix playground stage-mode switching so `mock` really executes mock adapters for Geometry and Detection
 
 ## Notes
 

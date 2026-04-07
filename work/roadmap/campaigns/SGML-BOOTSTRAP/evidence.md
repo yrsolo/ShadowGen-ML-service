@@ -20,6 +20,7 @@
 - Geometry overlay now includes a synthetic floor grid, and debug metadata exposes active GeoCalib runtime settings (`weights`, `camera_model`, `shared_intrinsics`)
 - GroundingDINO was installed into the active `.venv` and `GET /v1/capabilities` now reports `detector` with `implementation=real`
 - Real detector smoke path now runs end-to-end with bbox details plus `detection_overlay` and `crop_for_resize` previews
+- Debug/playground stage overrides now execute real mock adapters for `detector` and `geometry_estimator`, instead of only relabeling the active backend
 
 ## Pending Follow-Ups
 
