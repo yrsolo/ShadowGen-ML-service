@@ -15,9 +15,10 @@
 - Browser playground added for stage-by-stage testing with previews and `mock/real` mode switches
 - `geometry_estimator` now has a real GeoCalib adapter path, runtime fallback behavior, and stage-level debug metadata
 - Playground `Geometry` card now shows numeric camera data and `geometry_overlay` preview
+- GeoCalib was installed into the active `.venv` and `GET /v1/capabilities` now reports `geometry_estimator` with `implementation=real`
+- Real geometry smoke path now runs end-to-end with preview overlays and numeric camera metadata
 
 ## Pending Follow-Ups
 
-- Install and verify the real GeoCalib package in the active `.venv`
 - Bring up the remaining real model wrappers against local NVIDIA environment
 - Add Docker packaging and deployment docs

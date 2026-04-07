@@ -9,6 +9,7 @@
 - [x] Finalize docs and evidence for bootstrap campaign
 - [x] Add mini web UI for pipeline stage testing
 - [x] Implement real/mocked Geometry step wiring with GeoCalib adapter, fallback, and UI diagnostics
+- [x] Activate GeoCalib in the local `.venv` and verify the real Geometry path end-to-end
 
 ## Notes
 

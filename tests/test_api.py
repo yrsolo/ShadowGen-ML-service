@@ -146,8 +146,26 @@ class ApiTests(unittest.TestCase):
         geometry = response.json()["stages"][-1]
         self.assertEqual(geometry["stage_key"], "geometry_estimator")
         self.assertEqual(geometry["status"], "completed")
-        self.assertEqual(geometry["actual_mode"], "mock-fallback")
         self.assertIn("camera_fov", geometry["details"])
+        self.assertIn(geometry["actual_mode"], {"real", "mock-fallback"})
+        if geometry["actual_mode"] == "real":
+            self.assertEqual(geometry["details"]["backend"], "real")
+        else:
+            self.assertEqual(geometry["details"]["backend"], "mock")
+
+    def test_debug_pipeline_geometry_real_smoke(self) -> None:
+        response = self.client.post(
+            "/v1/dev/pipeline/run-stage/geometry_estimator",
+            json={"render_request": make_request(), "stage_modes": {"geometry_estimator": "real"}},
+        )
+        self.assertEqual(response.status_code, 200)
+        geometry = response.json()["stages"][-1]
+        self.assertEqual(geometry["status"], "completed")
+        self.assertGreaterEqual(geometry["elapsed_ms"], 0)
+        self.assertIn("camera_pitch", geometry["details"])
+        preview_names = {preview["name"] for preview in geometry["previews"]}
+        self.assertIn("geometry_input", preview_names)
+        self.assertIn("geometry_overlay", preview_names)
 
     def test_segmentation_runs_after_crop_and_resize(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

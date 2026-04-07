@@ -42,12 +42,13 @@ The playground supports:
 .venv/Scripts/python.exe -m pip install -e "git+https://github.com/cvg/GeoCalib#egg=geocalib"
 ```
 
-For real-model probing, configure local model paths through env vars:
+If direct GitHub install is blocked, a local fallback also works:
 
-- `SHADOWGEN_GROUNDING_DINO_PATH`
-- `SHADOWGEN_GEOCALIB_PATH`
-- `SHADOWGEN_BIREFNET_PATH`
-- `SHADOWGEN_DEPTH_ANYTHING_PATH`
+```powershell
+Invoke-WebRequest https://github.com/cvg/GeoCalib/archive/refs/heads/main.zip -OutFile var/tmp/geocalib-main.zip
+Expand-Archive var/tmp/geocalib-main.zip -DestinationPath var/tmp/geocalib-src -Force
+.venv/Scripts/python.exe -m pip install -e var/tmp/geocalib-src/GeoCalib-main
+```
 
 ## GeoCalib bring-up
 
@@ -58,6 +59,13 @@ Expected workflow:
 1. Install GeoCalib into the current virtual environment.
 2. Keep heavy weights and artifacts out of git in ignored folders such as `.models/`.
 3. Start the service and inspect `GET /v1/capabilities`.
+
+Useful env vars:
+
+- `SHADOWGEN_MODEL_CACHE_DIR` for local model storage
+- `TORCH_HOME` if you want GeoCalib weights to download into a custom cache directory instead of the default torch cache
+
+GeoCalib downloads its released weights on first initialization. That is expected and should happen only once per cache location.
 
 What to verify:
 
