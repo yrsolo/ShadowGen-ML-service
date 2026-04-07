@@ -26,7 +26,6 @@ from shadowgen_ml_service.utils.images import (
     bbox_from_mask,
     compose_on_background,
     create_cutout,
-    crop_to_bbox,
     depth_from_mask,
     encode_image,
     estimate_foreground_mask,
@@ -51,11 +50,10 @@ class MockGeometryEstimator(GeometryEstimator):
 
 
 class MockSegmenter(Segmenter):
-    def segment(self, image: Image.Image, bbox: tuple[int, int, int, int]) -> SegmentationResult:
-        crop_rgba = crop_to_bbox(image, bbox)
-        crop_mask = estimate_foreground_mask(crop_rgba)
-        cutout_rgba = create_cutout(crop_rgba, crop_mask)
-        return SegmentationResult(bbox=bbox, mask=crop_mask, cutout_rgba=cutout_rgba, crop_rgba=crop_rgba)
+    def segment(self, image: Image.Image) -> SegmentationResult:
+        crop_mask = estimate_foreground_mask(image)
+        cutout_rgba = create_cutout(image, crop_mask)
+        return SegmentationResult(bbox=(0, 0, image.width, image.height), mask=crop_mask, cutout_rgba=cutout_rgba, crop_rgba=image)
 
 
 class MockDepthEstimator(DepthEstimator):

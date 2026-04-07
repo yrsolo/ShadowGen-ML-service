@@ -28,6 +28,12 @@ Quick start:
 .venv/Scripts/python.exe -m pytest
 ```
 
+Windows shortcut:
+
+```cmd
+run-service.cmd
+```
+
 Playground UI:
 
 - open `http://127.0.0.1:8000/playground`

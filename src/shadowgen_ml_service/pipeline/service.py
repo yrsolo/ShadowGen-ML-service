@@ -21,7 +21,7 @@ from shadowgen_ml_service.schemas import (
     StageExecutionResponse,
     StagePreviewResponse,
 )
-from shadowgen_ml_service.utils.images import decode_image, encode_image, fit_to_square
+from shadowgen_ml_service.utils.images import decode_image, encode_image, prepare_working_crop
 
 
 class ServiceError(Exception):
@@ -126,20 +126,21 @@ class RenderService:
             geometry_timed = self._timed(lambda: self.runtime.geometry.estimate(source_rgba))
             metrics["geometry_ms"] = geometry_timed.elapsed_ms
 
-            segmentation_timed = self._timed(lambda: self.runtime.segmenter.segment(source_rgba, detection_timed.value.bbox))
-            metrics["segmentation_ms"] = segmentation_timed.elapsed_ms
-
-            working_cutout, working_mask = fit_to_square(
-                segmentation_timed.value.cutout_rgba,
-                segmentation_timed.value.mask,
+            working_crop = prepare_working_crop(
+                source_rgba,
+                detection_timed.value.bbox,
                 self.settings.working_size,
             )
+            segmentation_timed = self._timed(lambda: self.runtime.segmenter.segment(working_crop))
+            metrics["segmentation_ms"] = segmentation_timed.elapsed_ms
             working_segmentation = segmentation_timed.value.__class__(
                 bbox=segmentation_timed.value.bbox,
-                mask=working_mask,
-                cutout_rgba=working_cutout,
+                mask=segmentation_timed.value.mask,
+                cutout_rgba=segmentation_timed.value.cutout_rgba,
                 crop_rgba=segmentation_timed.value.crop_rgba,
             )
+            working_cutout = working_segmentation.cutout_rgba
+            working_mask = working_segmentation.mask
 
             depth_timed = self._timed(lambda: self.runtime.depth.estimate(working_cutout, working_mask))
             metrics["depth_ms"] = depth_timed.elapsed_ms
@@ -260,21 +261,28 @@ class RenderService:
             stage_key="detector",
             requested_mode=payload.stage_modes.detector,
             action=lambda: self.runtime.detector.detect(source_rgba, request.preprocess.padding_px),
-            previews_factory=lambda value: {"detection_input": source_rgba.crop(value.bbox)},
+            previews_factory=lambda value: {
+                "crop_for_resize": prepare_working_crop(source_rgba, value.bbox, self.settings.working_size)
+            },
             warnings=warnings,
         )
         stages.append(detection["response"])
         if detection["response"].status == "failed" or stop_after == "detector":
             return PipelineDebugResponse(request_id=request.request_id, stages=stages, warnings=warnings)
 
+        working_crop = prepare_working_crop(
+            source_rgba,
+            detection["value"].bbox,
+            self.settings.working_size,
+        )
         segmentation = self._run_stage_with_mode(
             stage_key="segmenter",
             requested_mode=payload.stage_modes.segmenter,
-            action=lambda: self.runtime.segmenter.segment(source_rgba, detection["value"].bbox),
+            action=lambda: self.runtime.segmenter.segment(working_crop),
             previews_factory=lambda value: {
+                "working_crop": value.crop_rgba,
                 "cutout": value.cutout_rgba,
                 "mask": value.mask,
-                "crop": value.crop_rgba,
             },
             warnings=warnings,
         )
@@ -282,11 +290,8 @@ class RenderService:
         if segmentation["response"].status == "failed" or stop_after == "segmenter":
             return PipelineDebugResponse(request_id=request.request_id, stages=stages, warnings=warnings)
 
-        working_cutout, working_mask = fit_to_square(
-            segmentation["value"].cutout_rgba,
-            segmentation["value"].mask,
-            self.settings.working_size,
-        )
+        working_cutout = segmentation["value"].cutout_rgba
+        working_mask = segmentation["value"].mask
 
         depth = self._run_stage_with_mode(
             stage_key="depth_estimator",

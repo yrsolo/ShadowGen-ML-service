@@ -12,8 +12,8 @@
 1. Decode and validate image
 2. Estimate geometry on full image
 3. Detect main object
-4. Crop and pad with `preprocess.padding_px`
-5. Segment foreground
+4. Crop, pad, and resize with `preprocess.padding_px`
+5. Segment the prepared working crop
 6. Estimate depth
 7. Compute normals
 8. Generate shadow

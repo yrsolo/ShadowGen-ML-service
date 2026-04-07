@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 
 from shadowgen_ml_service.config import Settings, get_settings
 from shadowgen_ml_service.pipeline.runtime import build_runtime
@@ -42,6 +42,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.get("/health")
     async def health(request: Request):
         return request.app.state.render_service.health()
+
+    @app.get("/", include_in_schema=False)
+    async def root():
+        return RedirectResponse(url="/playground", status_code=307)
+
+    @app.get("/favicon.ico", include_in_schema=False)
+    async def favicon():
+        return Response(status_code=204)
 
     @app.get("/v1/capabilities")
     async def capabilities(request: Request):

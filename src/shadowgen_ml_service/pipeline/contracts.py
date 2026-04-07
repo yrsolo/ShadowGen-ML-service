@@ -30,7 +30,7 @@ class GeometryEstimator(ABC):
 
 class Segmenter(ABC):
     @abstractmethod
-    def segment(self, image: Image.Image, bbox: tuple[int, int, int, int]) -> SegmentationResult:
+    def segment(self, image: Image.Image) -> SegmentationResult:
         raise NotImplementedError
 
 

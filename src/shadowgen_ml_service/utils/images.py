@@ -84,6 +84,12 @@ def crop_to_bbox(image: Image.Image, bbox: tuple[int, int, int, int]) -> Image.I
     return image.crop(bbox)
 
 
+def prepare_working_crop(image: Image.Image, bbox: tuple[int, int, int, int], size: int) -> Image.Image:
+    crop = crop_to_bbox(image, bbox)
+    canvas, _ = fit_to_square(crop, Image.new("L", crop.size, 255), size)
+    return canvas
+
+
 def fit_to_square(image: Image.Image, mask: Image.Image, size: int) -> tuple[Image.Image, Image.Image]:
     ratio = min(size / image.width, size / image.height)
     new_width = max(1, int(image.width * ratio))

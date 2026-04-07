@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import base64
 from io import BytesIO
+from pathlib import Path
+import tempfile
 import unittest
 
 from fastapi.testclient import TestClient
@@ -9,6 +11,7 @@ from PIL import Image, ImageDraw
 
 from shadowgen_ml_service.app import create_app
 from shadowgen_ml_service.config import Settings
+from shadowgen_ml_service.pipeline.types import SegmentationResult
 from shadowgen_ml_service.pipeline.service import TimeoutServiceError
 
 
@@ -129,6 +132,34 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(detector["stage_key"], "detector")
         self.assertEqual(detector["status"], "failed")
         self.assertIn("Real detector", detector["error"])
+
+    def test_segmentation_runs_after_crop_and_resize(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            app = create_app(Settings(preprocess_cache_dir=Path(temp_dir)))
+            service = app.state.render_service
+
+            class RecordingSegmenter:
+                def __init__(self) -> None:
+                    self.seen_size = None
+
+                def segment(self, image):
+                    self.seen_size = image.size
+                    mask = Image.new("L", image.size, 255)
+                    cutout = image.copy()
+                    cutout.putalpha(mask)
+                    return SegmentationResult(
+                        bbox=(0, 0, image.width, image.height),
+                        mask=mask,
+                        cutout_rgba=cutout,
+                        crop_rgba=image,
+                    )
+
+            recorder = RecordingSegmenter()
+            service.runtime.segmenter = recorder
+            client = TestClient(app)
+            response = client.post("/v1/render", json=make_request())
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(recorder.seen_size, (service.settings.working_size, service.settings.working_size))
 
     def test_timeout_error_mapping(self) -> None:
         class FakeService:
