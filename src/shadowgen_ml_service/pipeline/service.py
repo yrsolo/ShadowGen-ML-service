@@ -268,6 +268,9 @@ class RenderService:
                 "camera_roll": round(value.camera_roll, 3),
                 "confidence": round(value.confidence, 4),
                 "backend": actual_mode,
+                "camera_model": self.settings.geocalib_camera_model if actual_mode == "real" else "mock",
+                "weights": self.settings.geocalib_weights if actual_mode == "real" else "mock-v1",
+                "shared_intrinsics": self.settings.geocalib_shared_intrinsics if actual_mode == "real" else False,
             },
             warnings=warnings,
         )

@@ -21,20 +21,25 @@ class FakeScalar:
 class FakeGeoCalibModel:
     def __init__(self, result) -> None:
         self.result = result
+        self.last_calibrate_kwargs = None
 
     def load_image(self, image):
         return image
 
-    def calibrate(self, image):
+    def calibrate(self, image, **kwargs):
+        self.last_calibrate_kwargs = kwargs
         return self.result
 
 
 class FakeGeoCalibModule:
     def __init__(self, result) -> None:
         self._result = result
+        self.last_model = None
 
-    def GeoCalib(self):
-        return FakeGeoCalibModel(self._result)
+    def GeoCalib(self, **kwargs):
+        self.last_model = FakeGeoCalibModel(self._result)
+        self.last_model.init_kwargs = kwargs
+        return self.last_model
 
 
 class GeometryEstimatorTests(unittest.TestCase):
@@ -60,6 +65,25 @@ class GeometryEstimatorTests(unittest.TestCase):
         geometry = estimator.estimate(Image.new("RGB", (64, 64), "white"))
         self.assertGreaterEqual(geometry.confidence, 0.05)
         self.assertLessEqual(geometry.confidence, 0.95)
+
+    def test_real_geometry_estimator_passes_runtime_settings(self) -> None:
+        result = {
+            "camera": SimpleNamespace(vfov=FakeScalar(math.radians(48.0))),
+            "gravity": SimpleNamespace(pitch=FakeScalar(math.radians(1.0)), roll=FakeScalar(math.radians(-0.5))),
+        }
+        module = FakeGeoCalibModule(result)
+        estimator = RealGeometryEstimator(
+            geocalib_module=module,
+            weights="distorted",
+            camera_model="simple_radial",
+            shared_intrinsics=True,
+        )
+        estimator.estimate(Image.new("RGB", (64, 64), "white"))
+        self.assertEqual(module.last_model.init_kwargs, {"weights": "distorted"})
+        self.assertEqual(
+            module.last_model.last_calibrate_kwargs,
+            {"camera_model": "simple_radial", "shared_intrinsics": True},
+        )
 
     def test_real_geometry_estimator_bubbles_runtime_errors(self) -> None:
         with patch("shadowgen_ml_service.adapters.real._import_module", side_effect=RuntimeError("boom")):

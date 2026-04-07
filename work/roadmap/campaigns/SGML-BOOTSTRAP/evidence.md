@@ -17,6 +17,7 @@
 - Playground `Geometry` card now shows numeric camera data and `geometry_overlay` preview
 - GeoCalib was installed into the active `.venv` and `GET /v1/capabilities` now reports `geometry_estimator` with `implementation=real`
 - Real geometry smoke path now runs end-to-end with preview overlays and numeric camera metadata
+- Geometry overlay now includes a synthetic floor grid, and debug metadata exposes active GeoCalib runtime settings (`weights`, `camera_model`, `shared_intrinsics`)
 
 ## Pending Follow-Ups
 

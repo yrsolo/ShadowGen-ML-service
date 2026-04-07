@@ -64,6 +64,9 @@ Useful env vars:
 
 - `SHADOWGEN_MODEL_CACHE_DIR` for local model storage
 - `TORCH_HOME` if you want GeoCalib weights to download into a custom cache directory instead of the default torch cache
+- `SHADOWGEN_GEOCALIB_WEIGHTS` to switch GeoCalib weights (`pinhole`, `distorted`, or a checkpoint path)
+- `SHADOWGEN_GEOCALIB_CAMERA_MODEL` to choose the camera model passed into calibration (`pinhole`, `simple_radial`, `simple_divisional`)
+- `SHADOWGEN_GEOCALIB_SHARED_INTRINSICS` to toggle GeoCalib shared-intrinsics optimization
 
 GeoCalib downloads its released weights on first initialization. That is expected and should happen only once per cache location.
 
@@ -72,6 +75,11 @@ What to verify:
 - `components[].name == "geometry_estimator"`
 - `implementation == "real"`
 - `using_mock == false`
+
+In the playground `Geometry` card:
+
+- `geometry_overlay` now includes a synthetic floor grid to make the estimated horizon and perspective easier to judge visually
+- stage details also show `camera_model`, `weights`, and `shared_intrinsics` for the active GeoCalib run
 
 If GeoCalib is unavailable or fails to initialize, the service falls back to the mock geometry estimator and the playground shows `mock-fallback`.
 

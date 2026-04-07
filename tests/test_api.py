@@ -3,8 +3,10 @@ from __future__ import annotations
 import base64
 from io import BytesIO
 from pathlib import Path
+import shutil
 import tempfile
 import unittest
+from uuid import uuid4
 
 from fastapi.testclient import TestClient
 from PIL import Image, ImageDraw
@@ -168,8 +170,9 @@ class ApiTests(unittest.TestCase):
         self.assertIn("geometry_overlay", preview_names)
 
     def test_segmentation_runs_after_crop_and_resize(self) -> None:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            app = create_app(Settings(preprocess_cache_dir=Path(temp_dir)))
+        temp_dir = Path("var/cache/test-preprocess") / uuid4().hex
+        try:
+            app = create_app(Settings(preprocess_cache_dir=temp_dir))
             service = app.state.render_service
 
             class RecordingSegmenter:
@@ -194,6 +197,8 @@ class ApiTests(unittest.TestCase):
             response = client.post("/v1/render", json=make_request())
             self.assertEqual(response.status_code, 200)
             self.assertEqual(recorder.seen_size, (service.settings.working_size, service.settings.working_size))
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True)
 
     def test_timeout_error_mapping(self) -> None:
         class FakeService:

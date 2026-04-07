@@ -111,13 +111,27 @@ def _confidence_from_result(result: Any) -> float:
 
 
 class RealGeometryEstimator(GeometryEstimator):
-    def __init__(self, geocalib_module: ModuleType | None = None) -> None:
+    def __init__(
+        self,
+        geocalib_module: ModuleType | None = None,
+        *,
+        weights: str = "pinhole",
+        camera_model: str = "pinhole",
+        shared_intrinsics: bool = False,
+    ) -> None:
         self._module = geocalib_module or _import_module("geocalib")
-        self._model = self._module.GeoCalib()
+        self.weights = weights
+        self.camera_model = camera_model
+        self.shared_intrinsics = shared_intrinsics
+        self._model = self._module.GeoCalib(weights=weights)
 
     def estimate(self, image: Image.Image) -> GeometryResult:
         prepared = self._prepare_input(image)
-        result = self._model.calibrate(prepared)
+        result = self._model.calibrate(
+            prepared,
+            camera_model=self.camera_model,
+            shared_intrinsics=self.shared_intrinsics,
+        )
         camera = _extract_attr(result, "camera")
         gravity = _extract_attr(result, "gravity")
         return GeometryResult(

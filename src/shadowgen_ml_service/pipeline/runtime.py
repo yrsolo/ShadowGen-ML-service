@@ -94,7 +94,11 @@ def build_runtime(settings: Settings) -> PipelineRuntime:
     )
     if mode != "mock" and geocalib.available:
         try:
-            geometry = RealGeometryEstimator()
+            geometry = RealGeometryEstimator(
+                weights=settings.geocalib_weights,
+                camera_model=settings.geocalib_camera_model,
+                shared_intrinsics=settings.geocalib_shared_intrinsics,
+            )
             geometry_component = _component_status(
                 "geometry_estimator",
                 "real",
@@ -102,7 +106,11 @@ def build_runtime(settings: Settings) -> PipelineRuntime:
                 geocalib.model_version,
                 True,
                 False,
-                "GeoCalib backend active",
+                (
+                    "GeoCalib backend active "
+                    f"(weights={settings.geocalib_weights}, camera_model={settings.geocalib_camera_model}, "
+                    f"shared_intrinsics={settings.geocalib_shared_intrinsics})"
+                ),
             )
         except Exception as exc:
             geometry_component = _component_status(
