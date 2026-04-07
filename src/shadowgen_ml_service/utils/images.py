@@ -161,6 +161,32 @@ def draw_geometry_overlay(
     return canvas
 
 
+def draw_detection_overlay(
+    image: Image.Image,
+    bbox: tuple[int, int, int, int],
+    confidence: float,
+    *,
+    label: str = "main object",
+) -> Image.Image:
+    canvas = image.convert("RGBA").copy()
+    draw = ImageDraw.Draw(canvas)
+    left, top, right, bottom = bbox
+    box_color = (255, 122, 89, 255)
+    fill_color = (255, 122, 89, 42)
+    info_bg = (255, 255, 255, 220)
+    text_color = (29, 36, 51, 255)
+
+    draw.rounded_rectangle((left, top, right, bottom), radius=18, outline=box_color, width=4, fill=fill_color)
+    card_left = max(12, left)
+    card_top = max(12, top - 58)
+    card_right = min(canvas.width - 12, card_left + 220)
+    card_bottom = min(canvas.height - 12, card_top + 46)
+    draw.rounded_rectangle((card_left, card_top, card_right, card_bottom), radius=14, fill=info_bg)
+    draw.text((card_left + 12, card_top + 10), label, fill=text_color)
+    draw.text((card_left + 12, card_top + 25), f"conf {confidence:.3f}", fill=text_color)
+    return canvas
+
+
 def _draw_floor_grid(
     overlay: Image.Image,
     *,

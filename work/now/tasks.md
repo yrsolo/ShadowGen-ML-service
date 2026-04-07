@@ -11,6 +11,7 @@
 - [x] Implement real/mocked Geometry step wiring with GeoCalib adapter, fallback, and UI diagnostics
 - [x] Activate GeoCalib in the local `.venv` and verify the real Geometry path end-to-end
 - [x] Improve Geometry preview with floor-grid overlay and expose GeoCalib runtime settings in debug details
+- [x] Implement real/mocked Detection step wiring with GroundingDINO, runtime fallback, and bbox debug previews
 
 ## Notes
 

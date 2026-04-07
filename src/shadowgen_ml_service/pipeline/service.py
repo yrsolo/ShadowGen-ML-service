@@ -21,7 +21,7 @@ from shadowgen_ml_service.schemas import (
     StageExecutionResponse,
     StagePreviewResponse,
 )
-from shadowgen_ml_service.utils.images import decode_image, draw_geometry_overlay, encode_image, prepare_working_crop
+from shadowgen_ml_service.utils.images import decode_image, draw_detection_overlay, draw_geometry_overlay, encode_image, prepare_working_crop
 
 
 class ServiceError(Exception):
@@ -104,6 +104,8 @@ class RenderService:
     def render(self, request: RenderRequest) -> RenderResponse:
         started = perf_counter()
         warnings = [f"mock_backend_{component.name}" for component in self.runtime.descriptor.components if component.using_mock]
+        if any(component.name == "detector" and component.implementation == "mock-fallback" for component in self.runtime.descriptor.components):
+            warnings.append("detector_real_fallback_active")
         if any(component.name == "geometry_estimator" and component.implementation == "mock-fallback" for component in self.runtime.descriptor.components):
             warnings.append("geometry_real_fallback_active")
         metrics: dict[str, int] = {}
@@ -283,7 +285,17 @@ class RenderService:
             requested_mode=payload.stage_modes.detector,
             action=lambda: self.runtime.detector.detect(source_rgba, request.preprocess.padding_px),
             previews_factory=lambda value: {
-                "crop_for_resize": prepare_working_crop(source_rgba, value.bbox, self.settings.working_size)
+                "detection_overlay": draw_detection_overlay(source_rgba, value.bbox, value.confidence),
+                "crop_for_resize": prepare_working_crop(source_rgba, value.bbox, self.settings.working_size),
+            },
+            details_factory=lambda value, actual_mode: {
+                "bbox_left": value.bbox[0],
+                "bbox_top": value.bbox[1],
+                "bbox_right": value.bbox[2],
+                "bbox_bottom": value.bbox[3],
+                "confidence": round(value.confidence, 4),
+                "backend": actual_mode,
+                "prompt": self.settings.grounding_dino_prompt if actual_mode == "real" else "mock",
             },
             warnings=warnings,
         )
@@ -431,6 +443,8 @@ class RenderService:
                 return "real"
             if component.implementation == "real" and component.available:
                 return "real"
+            if stage_key == "detector" and component.available and component.using_mock:
+                return "mock-fallback"
             if stage_key == "geometry_estimator" and component.available and component.using_mock:
                 return "mock-fallback"
             return "unavailable"
@@ -438,7 +452,7 @@ class RenderService:
 
     def _stage_unavailable_message(self, stage_key: str) -> str:
         messages = {
-            "detector": "Real detector is not wired yet. Configure the model stack and replace the scaffold.",
+            "detector": "Real detector is unavailable. Configure the GroundingDINO integration and model weights first.",
             "geometry_estimator": "Real geometry estimator is not wired yet. Configure GeoCalib integration first.",
             "segmenter": "Real segmenter is not wired yet. Configure the BiRefNet adapter first.",
             "depth_estimator": "Real depth estimator is not wired yet. Configure the Depth Anything adapter first.",

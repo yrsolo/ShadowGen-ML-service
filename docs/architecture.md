@@ -30,3 +30,17 @@
   - `camera_roll`
   - `confidence`
 - the playground exposes both numeric geometry details and an overlay preview
+
+## Detection step
+
+- `detector` runs on the original full image after geometry and before crop / resize
+- the real backend is `IDEA-Research/grounding-dino-base` through the Hugging Face `transformers` implementation
+- the detector uses a fixed prompt, currently `object.`, to find the primary foreground object
+- candidate boxes are ranked by confidence, and when scores are close the larger area wins
+- the normalized result is:
+  - `bbox`
+  - `confidence`
+- the playground exposes:
+  - `detection_overlay` with the selected bbox
+  - `crop_for_resize` preview for the downstream working crop
+  - numeric bbox coordinates and backend metadata

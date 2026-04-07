@@ -13,6 +13,7 @@ from shadowgen_ml_service.adapters.mock import (
     MockShadowGenerator,
 )
 from shadowgen_ml_service.adapters.real import (
+    RealDetector,
     RealGeometryEstimator,
     probe_birefnet,
     probe_depth_anything,
@@ -74,7 +75,7 @@ def build_runtime(settings: Settings) -> PipelineRuntime:
     birefnet = probe_birefnet()
     depth_anything = probe_depth_anything()
 
-    detector = MockDetector()
+    detector: Detector = MockDetector()
     geometry: GeometryEstimator = MockGeometryEstimator()
     segmenter = MockSegmenter()
     depth = MockDepthEstimator()
@@ -82,6 +83,48 @@ def build_runtime(settings: Settings) -> PipelineRuntime:
     shadow = MockShadowGenerator()
     composer = MockComposer()
     encoder = DefaultArtifactEncoder()
+
+    detector_component = _component_status(
+        "detector",
+        "mock",
+        grounding.model_name,
+        "mock-v1",
+        True,
+        True,
+        "deterministic fallback detector" if not grounding.available else "real wrapper scaffold exists",
+    )
+    if mode != "mock" and grounding.available:
+        try:
+            detector = RealDetector(
+                model_id=settings.grounding_dino_model_id,
+                prompt=settings.grounding_dino_prompt,
+                box_threshold=settings.grounding_dino_box_threshold,
+                text_threshold=settings.grounding_dino_text_threshold,
+            )
+            detector_component = _component_status(
+                "detector",
+                "real",
+                grounding.model_name,
+                grounding.model_version,
+                True,
+                False,
+                (
+                    "GroundingDINO backend active "
+                    f"(model_id={settings.grounding_dino_model_id}, prompt={settings.grounding_dino_prompt!r}, "
+                    f"box_threshold={settings.grounding_dino_box_threshold}, "
+                    f"text_threshold={settings.grounding_dino_text_threshold})"
+                ),
+            )
+        except Exception as exc:
+            detector_component = _component_status(
+                "detector",
+                "mock-fallback",
+                grounding.model_name,
+                "mock-v1",
+                True,
+                True,
+                f"GroundingDINO init failed: {exc}",
+            )
 
     geometry_component = _component_status(
         "geometry_estimator",
@@ -124,15 +167,7 @@ def build_runtime(settings: Settings) -> PipelineRuntime:
             )
 
     components = [
-        _component_status(
-            "detector",
-            "mock",
-            grounding.model_name,
-            "mock-v1",
-            True,
-            True,
-            "deterministic fallback detector" if not grounding.available else "real wrapper scaffold exists",
-        ),
+        detector_component,
         geometry_component,
         _component_status(
             "segmenter",

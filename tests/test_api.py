@@ -127,7 +127,7 @@ class ApiTests(unittest.TestCase):
         preview_names = {preview["name"] for preview in geometry_stage["previews"]}
         self.assertIn("geometry_overlay", preview_names)
 
-    def test_debug_pipeline_stage_real_failure(self) -> None:
+    def test_debug_pipeline_detector_real_smoke(self) -> None:
         response = self.client.post(
             "/v1/dev/pipeline/run-stage/detector",
             json={"render_request": make_request(), "stage_modes": {"detector": "real"}},
@@ -136,8 +136,13 @@ class ApiTests(unittest.TestCase):
         payload = response.json()
         detector = payload["stages"][-1]
         self.assertEqual(detector["stage_key"], "detector")
-        self.assertEqual(detector["status"], "failed")
-        self.assertIn("Real detector", detector["error"])
+        self.assertEqual(detector["status"], "completed")
+        self.assertIn(detector["actual_mode"], {"real", "mock-fallback"})
+        self.assertIn("confidence", detector["details"])
+        self.assertIn("bbox_left", detector["details"])
+        preview_names = {preview["name"] for preview in detector["previews"]}
+        self.assertIn("detection_overlay", preview_names)
+        self.assertIn("crop_for_resize", preview_names)
 
     def test_debug_pipeline_geometry_real_uses_mock_fallback(self) -> None:
         response = self.client.post(

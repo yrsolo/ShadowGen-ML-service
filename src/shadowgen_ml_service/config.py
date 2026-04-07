@@ -35,6 +35,10 @@ class Settings:
     geocalib_weights: str = os.getenv("SHADOWGEN_GEOCALIB_WEIGHTS", "pinhole")
     geocalib_camera_model: str = os.getenv("SHADOWGEN_GEOCALIB_CAMERA_MODEL", "pinhole")
     geocalib_shared_intrinsics: bool = _as_bool("SHADOWGEN_GEOCALIB_SHARED_INTRINSICS", False)
+    grounding_dino_model_id: str = os.getenv("SHADOWGEN_GROUNDING_DINO_MODEL_ID", "IDEA-Research/grounding-dino-base")
+    grounding_dino_prompt: str = os.getenv("SHADOWGEN_GROUNDING_DINO_PROMPT", "object.")
+    grounding_dino_box_threshold: float = float(os.getenv("SHADOWGEN_GROUNDING_DINO_BOX_THRESHOLD", "0.25"))
+    grounding_dino_text_threshold: float = float(os.getenv("SHADOWGEN_GROUNDING_DINO_TEXT_THRESHOLD", "0.25"))
 
     def ensure_local_dirs(self) -> None:
         for path in (self.model_cache_dir, self.preprocess_cache_dir, self.artifact_dir):

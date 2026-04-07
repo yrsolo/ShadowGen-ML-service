@@ -39,6 +39,7 @@ The playground supports:
 
 ```powershell
 .venv/Scripts/python.exe -m pip install -e .[ml]
+.venv/Scripts/python.exe -m pip install transformers
 .venv/Scripts/python.exe -m pip install -e "git+https://github.com/cvg/GeoCalib#egg=geocalib"
 ```
 
@@ -82,6 +83,37 @@ In the playground `Geometry` card:
 - stage details also show `camera_model`, `weights`, and `shared_intrinsics` for the active GeoCalib run
 
 If GeoCalib is unavailable or fails to initialize, the service falls back to the mock geometry estimator and the playground shows `mock-fallback`.
+
+## GroundingDINO bring-up
+
+The real `Detection` step uses `IDEA-Research/grounding-dino-base` through `transformers`.
+
+Expected workflow:
+
+1. Install `transformers` into the active virtual environment.
+2. Start the service and let the model download into the local Hugging Face / torch cache on first initialization.
+3. Inspect `GET /v1/capabilities`.
+
+Useful env vars:
+
+- `SHADOWGEN_GROUNDING_DINO_MODEL_ID` to switch the detector checkpoint
+- `SHADOWGEN_GROUNDING_DINO_PROMPT` to override the zero-shot prompt, default `object.`
+- `SHADOWGEN_GROUNDING_DINO_BOX_THRESHOLD` to change the box confidence threshold
+- `SHADOWGEN_GROUNDING_DINO_TEXT_THRESHOLD` to change the text threshold used by post-processing
+
+What to verify:
+
+- `components[].name == "detector"`
+- `implementation == "real"`
+- `using_mock == false`
+
+In the playground `Detection` card:
+
+- `detection_overlay` shows the selected bbox on the source image
+- `crop_for_resize` shows the working crop that will go to segmentation
+- stage details expose bbox coordinates, confidence, backend mode, and prompt
+
+If GroundingDINO is unavailable or fails to initialize, the service falls back to the mock detector and the playground shows `mock-fallback`.
 
 ## Note on Python
 

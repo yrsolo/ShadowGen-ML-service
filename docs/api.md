@@ -70,3 +70,18 @@ Geometry previews include:
 
 - `geometry_input`
 - `geometry_overlay`
+
+For `detector`, each stage entry may include:
+
+- `details.bbox_left`
+- `details.bbox_top`
+- `details.bbox_right`
+- `details.bbox_bottom`
+- `details.confidence`
+- `details.backend`
+- `details.prompt`
+
+Detection previews include:
+
+- `detection_overlay`
+- `crop_for_resize`
