@@ -3,10 +3,10 @@ from __future__ import annotations
 import base64
 import binascii
 from io import BytesIO
-from math import cos, radians, sin
+from math import cos, radians, sin, tan
 
 import numpy as np
-from PIL import Image, ImageChops, ImageColor, ImageFilter, ImageOps
+from PIL import Image, ImageChops, ImageColor, ImageDraw, ImageFilter, ImageOps
 
 
 MIME_TO_PIL = {
@@ -109,6 +109,38 @@ def create_cutout(image: Image.Image, mask: Image.Image) -> Image.Image:
     rgba = image.convert("RGBA").copy()
     rgba.putalpha(mask)
     return rgba
+
+
+def draw_geometry_overlay(
+    image: Image.Image,
+    camera_fov: float,
+    camera_pitch: float,
+    camera_roll: float,
+    confidence: float,
+) -> Image.Image:
+    canvas = image.convert("RGBA").copy()
+    draw = ImageDraw.Draw(canvas)
+    width, height = canvas.size
+    center_x = width / 2
+    center_y = height / 2
+
+    roll_rad = radians(camera_roll)
+    pitch_shift = tan(radians(camera_pitch)) * height * 0.2
+    horizon_y = center_y + pitch_shift
+    length = max(width, height) * 0.8
+    dx = cos(roll_rad) * length
+    dy = sin(roll_rad) * length
+
+    horizon_color = (255, 122, 89, 255)
+    axis_color = (29, 36, 51, 220)
+    draw.line((center_x - dx, horizon_y - dy, center_x + dx, horizon_y + dy), fill=horizon_color, width=4)
+    draw.line((center_x, 0, center_x, height), fill=axis_color, width=2)
+    draw.ellipse((center_x - 6, center_y - 6, center_x + 6, center_y + 6), fill=horizon_color)
+    draw.rounded_rectangle((14, height - 72, 250, height - 16), radius=14, fill=(255, 255, 255, 215))
+    draw.text((24, height - 63), f"fov {camera_fov:.1f}°", fill=axis_color)
+    draw.text((24, height - 47), f"pitch {camera_pitch:.1f}°", fill=axis_color)
+    draw.text((24, height - 31), f"roll {camera_roll:.1f}°  conf {confidence:.2f}", fill=axis_color)
+    return canvas
 
 
 def depth_from_mask(mask: Image.Image) -> Image.Image:

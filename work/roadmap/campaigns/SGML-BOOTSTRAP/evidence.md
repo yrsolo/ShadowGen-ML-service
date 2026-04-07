@@ -8,13 +8,16 @@
 ## Captured Evidence
 
 - `python -m compileall src tests` passed
-- `python -m pytest` passed: `13 passed`
+- `python -m pytest` passed: `20 passed`
 - FastAPI app exposes `/health`, `/v1/capabilities`, `/v1/render`
 - FastAPI app exposes `/playground`, `/v1/dev/pipeline/run-all`, `/v1/dev/pipeline/run-stage/{stage_key}`
 - Request contract updated with `preprocess.padding_px`
 - Browser playground added for stage-by-stage testing with previews and `mock/real` mode switches
+- `geometry_estimator` now has a real GeoCalib adapter path, runtime fallback behavior, and stage-level debug metadata
+- Playground `Geometry` card now shows numeric camera data and `geometry_overlay` preview
 
 ## Pending Follow-Ups
 
-- Bring up real model wrappers against local NVIDIA environment
+- Install and verify the real GeoCalib package in the active `.venv`
+- Bring up the remaining real model wrappers against local NVIDIA environment
 - Add Docker packaging and deployment docs

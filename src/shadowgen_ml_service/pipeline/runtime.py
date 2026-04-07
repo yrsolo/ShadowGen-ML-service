@@ -12,7 +12,13 @@ from shadowgen_ml_service.adapters.mock import (
     MockSegmenter,
     MockShadowGenerator,
 )
-from shadowgen_ml_service.adapters.real import probe_birefnet, probe_depth_anything, probe_geocalib, probe_grounding_dino
+from shadowgen_ml_service.adapters.real import (
+    RealGeometryEstimator,
+    probe_birefnet,
+    probe_depth_anything,
+    probe_geocalib,
+    probe_grounding_dino,
+)
 from shadowgen_ml_service.config import Settings
 from shadowgen_ml_service.pipeline.cache import PreprocessCache
 from shadowgen_ml_service.pipeline.contracts import ArtifactEncoder, Composer, DepthEstimator, Detector, GeometryEstimator, NormalEstimator, Segmenter, ShadowGenerator
@@ -69,13 +75,45 @@ def build_runtime(settings: Settings) -> PipelineRuntime:
     depth_anything = probe_depth_anything()
 
     detector = MockDetector()
-    geometry = MockGeometryEstimator()
+    geometry: GeometryEstimator = MockGeometryEstimator()
     segmenter = MockSegmenter()
     depth = MockDepthEstimator()
     normals = MockNormalEstimator()
     shadow = MockShadowGenerator()
     composer = MockComposer()
     encoder = DefaultArtifactEncoder()
+
+    geometry_component = _component_status(
+        "geometry_estimator",
+        "mock",
+        geocalib.model_name,
+        "mock-v1",
+        True,
+        True,
+        "deterministic fallback geometry estimator" if not geocalib.available else "real wrapper scaffold exists",
+    )
+    if mode != "mock" and geocalib.available:
+        try:
+            geometry = RealGeometryEstimator()
+            geometry_component = _component_status(
+                "geometry_estimator",
+                "real",
+                geocalib.model_name,
+                geocalib.model_version,
+                True,
+                False,
+                "GeoCalib backend active",
+            )
+        except Exception as exc:
+            geometry_component = _component_status(
+                "geometry_estimator",
+                "mock-fallback",
+                geocalib.model_name,
+                "mock-v1",
+                True,
+                True,
+                f"GeoCalib init failed: {exc}",
+            )
 
     components = [
         _component_status(
@@ -87,15 +125,7 @@ def build_runtime(settings: Settings) -> PipelineRuntime:
             True,
             "deterministic fallback detector" if not grounding.available else "real wrapper scaffold exists",
         ),
-        _component_status(
-            "geometry_estimator",
-            "mock",
-            geocalib.model_name,
-            "mock-v1",
-            True,
-            True,
-            "deterministic fallback geometry estimator" if not geocalib.available else "real wrapper scaffold exists",
-        ),
+        geometry_component,
         _component_status(
             "segmenter",
             "mock",
@@ -120,7 +150,7 @@ def build_runtime(settings: Settings) -> PipelineRuntime:
         _component_status("artifact_encoder", "python", "artifact-encoder", "v1", True, False),
     ]
 
-    fallback_needed = not all(probe.available for probe in (grounding, geocalib, birefnet, depth_anything))
+    fallback_needed = any(component.using_mock for component in components if component.name in {"detector", "geometry_estimator", "segmenter", "depth_estimator"})
     if mode == "mock":
         active_mode = "mock"
         degraded = False

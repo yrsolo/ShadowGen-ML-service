@@ -163,6 +163,7 @@ class StageExecutionResponse(BaseModel):
     actual_mode: str
     elapsed_ms: int | None = None
     error: str | None = None
+    details: dict[str, str | int | float | bool] | None = None
     previews: list[StagePreviewResponse] = Field(default_factory=list)
 
 

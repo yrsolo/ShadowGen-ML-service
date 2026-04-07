@@ -19,3 +19,14 @@
 8. Generate shadow
 9. Compose final output
 10. Encode artifacts and metrics
+
+## Geometry step
+
+- `geometry_estimator` runs on the original full image before crop and segmentation
+- the real backend is `GeoCalib` when available in the active virtual environment
+- the result is normalized into:
+  - `camera_fov`
+  - `camera_pitch`
+  - `camera_roll`
+  - `confidence`
+- the playground exposes both numeric geometry details and an overlay preview

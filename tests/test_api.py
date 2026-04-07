@@ -120,6 +120,10 @@ class ApiTests(unittest.TestCase):
         payload = response.json()
         self.assertEqual(payload["stages"][0]["stage_key"], "decode")
         self.assertEqual(payload["stages"][-1]["stage_key"], "composer")
+        geometry_stage = next(item for item in payload["stages"] if item["stage_key"] == "geometry_estimator")
+        self.assertIn("details", geometry_stage)
+        preview_names = {preview["name"] for preview in geometry_stage["previews"]}
+        self.assertIn("geometry_overlay", preview_names)
 
     def test_debug_pipeline_stage_real_failure(self) -> None:
         response = self.client.post(
@@ -132,6 +136,18 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(detector["stage_key"], "detector")
         self.assertEqual(detector["status"], "failed")
         self.assertIn("Real detector", detector["error"])
+
+    def test_debug_pipeline_geometry_real_uses_mock_fallback(self) -> None:
+        response = self.client.post(
+            "/v1/dev/pipeline/run-stage/geometry_estimator",
+            json={"render_request": make_request(), "stage_modes": {"geometry_estimator": "real"}},
+        )
+        self.assertEqual(response.status_code, 200)
+        geometry = response.json()["stages"][-1]
+        self.assertEqual(geometry["stage_key"], "geometry_estimator")
+        self.assertEqual(geometry["status"], "completed")
+        self.assertEqual(geometry["actual_mode"], "mock-fallback")
+        self.assertIn("camera_fov", geometry["details"])
 
     def test_segmentation_runs_after_crop_and_resize(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

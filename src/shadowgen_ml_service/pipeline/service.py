@@ -21,7 +21,7 @@ from shadowgen_ml_service.schemas import (
     StageExecutionResponse,
     StagePreviewResponse,
 )
-from shadowgen_ml_service.utils.images import decode_image, encode_image, prepare_working_crop
+from shadowgen_ml_service.utils.images import decode_image, draw_geometry_overlay, encode_image, prepare_working_crop
 
 
 class ServiceError(Exception):
@@ -104,6 +104,8 @@ class RenderService:
     def render(self, request: RenderRequest) -> RenderResponse:
         started = perf_counter()
         warnings = [f"mock_backend_{component.name}" for component in self.runtime.descriptor.components if component.using_mock]
+        if any(component.name == "geometry_estimator" and component.implementation == "mock-fallback" for component in self.runtime.descriptor.components):
+            warnings.append("geometry_real_fallback_active")
         metrics: dict[str, int] = {}
 
         raw_bytes, source_rgba = self._decode_request(request)
@@ -250,7 +252,23 @@ class RenderService:
             stage_key="geometry_estimator",
             requested_mode=payload.stage_modes.geometry_estimator,
             action=lambda: self.runtime.geometry.estimate(source_rgba),
-            previews_factory=lambda value: {"geometry_input": source_rgba},
+            previews_factory=lambda value: {
+                "geometry_input": source_rgba,
+                "geometry_overlay": draw_geometry_overlay(
+                    source_rgba,
+                    value.camera_fov,
+                    value.camera_pitch,
+                    value.camera_roll,
+                    value.confidence,
+                ),
+            },
+            details_factory=lambda value, actual_mode: {
+                "camera_fov": round(value.camera_fov, 3),
+                "camera_pitch": round(value.camera_pitch, 3),
+                "camera_roll": round(value.camera_roll, 3),
+                "confidence": round(value.confidence, 4),
+                "backend": actual_mode,
+            },
             warnings=warnings,
         )
         stages.append(geometry["response"])
@@ -365,9 +383,9 @@ class RenderService:
                 raise UnsupportedInputServiceError(message, request_id=request.request_id) from exc
             raise ValidationServiceError(message, request_id=request.request_id) from exc
 
-    def _run_stage_with_mode(self, stage_key: str, requested_mode: str, action, previews_factory, warnings: list[str]) -> dict:
+    def _run_stage_with_mode(self, stage_key: str, requested_mode: str, action, previews_factory, warnings: list[str], details_factory=None) -> dict:
         actual_mode = self._resolve_stage_mode(stage_key, requested_mode)
-        if requested_mode == "real" and actual_mode != "real":
+        if requested_mode == "real" and actual_mode == "unavailable":
             error_message = self._stage_unavailable_message(stage_key)
             warnings.append(f"{stage_key}_real_unavailable")
             return {
@@ -380,9 +398,12 @@ class RenderService:
                     error=error_message,
                 ),
             }
+        if requested_mode == "real" and actual_mode == "mock-fallback":
+            warnings.append(f"{stage_key}_mock_fallback")
 
         timed = self._timed(action)
         previews = previews_factory(timed.value)
+        details = details_factory(timed.value, actual_mode) if details_factory is not None else None
         return {
             "value": timed.value,
             "response": self._stage_response(
@@ -391,6 +412,7 @@ class RenderService:
                 requested_mode=requested_mode,
                 actual_mode=actual_mode,
                 elapsed_ms=timed.elapsed_ms,
+                details=details,
                 previews=previews,
             ),
         }
@@ -404,8 +426,10 @@ class RenderService:
         if requested_mode == "real":
             if stage_key in {"normal_estimator", "shadow_generator", "composer"}:
                 return "real"
-            if component.detail and "real wrapper scaffold exists" in component.detail and self.runtime.descriptor.mode in {"real", "auto-real"}:
+            if component.implementation == "real" and component.available:
                 return "real"
+            if stage_key == "geometry_estimator" and component.available and component.using_mock:
+                return "mock-fallback"
             return "unavailable"
         return "mock"
 
@@ -426,6 +450,7 @@ class RenderService:
         actual_mode: str,
         elapsed_ms: int | None = None,
         error: str | None = None,
+        details: dict[str, str | int | float | bool] | None = None,
         previews: dict[str, Image.Image] | None = None,
     ) -> StageExecutionResponse:
         title, description = self._stage_meta(stage_key)
@@ -443,6 +468,7 @@ class RenderService:
             actual_mode=actual_mode,
             elapsed_ms=elapsed_ms,
             error=error,
+            details=details,
             previews=preview_items,
         )
 

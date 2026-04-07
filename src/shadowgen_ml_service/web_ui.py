@@ -48,9 +48,6 @@ def render_playground_html() -> str:
     .hero {
       padding: 28px;
       border-radius: 32px;
-      position: sticky;
-      top: 14px;
-      z-index: 20;
     }
     .hero h1 {
       margin: 0 0 10px;
@@ -211,6 +208,30 @@ def render_playground_html() -> str:
       gap: 8px;
       flex-wrap: wrap;
       margin-top: 12px;
+    }
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .detail-card {
+      border-radius: 18px;
+      padding: 10px 12px;
+      background: rgba(255,255,255,0.82);
+      border: 1px solid var(--line);
+    }
+    .detail-card small {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 4px;
+    }
+    .detail-card strong {
+      font-size: 15px;
+      color: var(--text);
     }
     .chip {
       border-radius: 999px;
@@ -431,6 +452,7 @@ def render_playground_html() -> str:
               <div class="chip">actual: ${stageState.actual_mode || "n/a"}</div>
               <div class="chip">time: ${stageState.elapsed_ms != null ? `${stageState.elapsed_ms} ms` : "n/a"}</div>
             </div>
+            <div class="detail-grid">${renderDetailsMarkup(stageState.details || null)}</div>
             <div class="error" id="error-${stage.key}" style="${stageState.error ? "display:block;" : ""}">${stageState.error || ""}</div>
           </div>
           <div class="previews" id="previews-${stage.key}">${renderPreviewMarkup(stageState.previews || [])}</div>
@@ -450,6 +472,18 @@ def render_playground_html() -> str:
       pipelineEl.querySelectorAll("[data-rerun]").forEach((button) => {
         button.addEventListener("click", () => runPipeline(button.dataset.rerun));
       });
+    }
+
+    function renderDetailsMarkup(details) {
+      if (!details) {
+        return "";
+      }
+      return Object.entries(details).map(([key, value]) => `
+        <div class="detail-card">
+          <small>${key.replaceAll("_", " ")}</small>
+          <strong>${typeof value === "number" ? Number(value).toFixed(key.includes("confidence") ? 3 : 2) : value}</strong>
+        </div>
+      `).join("");
     }
 
     function renderPreviewMarkup(previews) {

@@ -53,3 +53,20 @@ Errors always use:
   }
 }
 ```
+
+## Playground debug metadata
+
+`/v1/dev/pipeline/run-all` and `/v1/dev/pipeline/run-stage/{stage_key}` return per-stage debug entries.
+
+For `geometry_estimator`, each stage entry may include:
+
+- `details.camera_fov`
+- `details.camera_pitch`
+- `details.camera_roll`
+- `details.confidence`
+- `details.backend`
+
+Geometry previews include:
+
+- `geometry_input`
+- `geometry_overlay`
