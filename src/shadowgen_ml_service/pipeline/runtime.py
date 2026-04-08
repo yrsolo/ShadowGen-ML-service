@@ -38,6 +38,7 @@ def build_runtime(settings: Settings) -> PipelineRuntime:
                 prompt=settings.grounding_dino_prompt,
                 box_threshold=settings.grounding_dino_box_threshold,
                 text_threshold=settings.grounding_dino_text_threshold,
+                target_device=settings.target_device,
             )
             real_detector = detector
             detector_component = component_status("detector", "real", grounding.model_name, grounding.model_version, True, False, "GroundingDINO backend active")
@@ -70,6 +71,7 @@ def build_runtime(settings: Settings) -> PipelineRuntime:
                 model_id=settings.birefnet_model_id,
                 resolution=settings.birefnet_resolution,
                 mask_threshold=settings.birefnet_mask_threshold,
+                target_device=settings.target_device,
             )
             real_segmenter = segmenter
             segmenter_component = component_status("segmenter", "real", birefnet.model_name, birefnet.model_version, True, False, "BiRefNet backend active")

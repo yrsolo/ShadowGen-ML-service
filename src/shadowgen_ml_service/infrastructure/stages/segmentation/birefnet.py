@@ -68,15 +68,17 @@ class RealSegmenter(Segmenter):
         model_id: str = "ZhengPeng7/BiRefNet_lite-matting",
         resolution: int = 1024,
         mask_threshold: float = 0.5,
+        target_device: str = "cuda",
         local_files_only: bool = False,
     ) -> None:
         self.model_id = model_id
         self.resolution = resolution
         self.mask_threshold = mask_threshold
+        self.target_device = target_device
         self.local_files_only = local_files_only
         self._torch = torch_module or import_module("torch")
         self._transforms = transforms_module or import_module("torchvision.transforms")
-        self.device_label = "cpu"
+        self.device_label = self._resolve_device_label()
         self._transform_image = self._transforms.Compose(
             [
                 self._transforms.Resize((resolution, resolution)),
@@ -107,20 +109,15 @@ class RealSegmenter(Segmenter):
             self._processor, self._model = cached
         if hasattr(self._model, "eval"):
             self._model.eval()
+        if hasattr(self._model, "to"):
+            self._model = self._model.to(self.device_label)
         self.device_label = self._infer_device_label()
 
     def segment(self, image: Image.Image) -> SegmentationResult:
         image_rgb = image.convert("RGB")
         image_tensor = self._transform_image(image_rgb).unsqueeze(0)
         if hasattr(image_tensor, "to"):
-            parameter = None
-            if hasattr(self._model, "parameters"):
-                try:
-                    parameter = next(self._model.parameters())
-                except Exception:
-                    parameter = None
-            if parameter is not None:
-                image_tensor = image_tensor.to(device=parameter.device, dtype=parameter.dtype)
+            image_tensor = image_tensor.to(device=self.device_label)
         with self._torch.no_grad():
             prediction = self._model(image_tensor)[-1].sigmoid().cpu()
         alpha = prediction[0].squeeze()
@@ -147,6 +144,11 @@ class RealSegmenter(Segmenter):
                 return str(next(self._model.parameters()).device)
             except Exception:
                 pass
+        return "cpu"
+
+    def _resolve_device_label(self) -> str:
+        if str(self.target_device).startswith("cuda") and bool(getattr(getattr(self._torch, "cuda", None), "is_available", lambda: False)()):
+            return str(self.target_device)
         return "cpu"
 
 

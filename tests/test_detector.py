@@ -11,6 +11,7 @@ from shadowgen_ml_service.adapters.real import RealDetector, select_primary_dete
 class FakeTensor:
     def __init__(self, values):
         self._values = values
+        self.last_device = None
 
     def reshape(self, *_shape):
         return self
@@ -24,6 +25,10 @@ class FakeTensor:
     def __array__(self):
         return np.asarray(self._values, dtype=np.float32)
 
+    def to(self, device):
+        self.last_device = device
+        return self
+
 
 class FakeProcessor:
     last_from_pretrained = None
@@ -35,7 +40,7 @@ class FakeProcessor:
 
     def __call__(self, images, text, return_tensors):
         self.last_call = {"text": text, "return_tensors": return_tensors, "size": images.size}
-        return {"input_ids": "tokens", "pixel_values": "pixels"}
+        return {"input_ids": FakeTensor([1, 2, 3]), "pixel_values": FakeTensor([4, 5, 6])}
 
     def post_process_grounded_object_detection(self, outputs, input_ids, threshold, text_threshold, target_sizes):
         self.last_post_process = {
@@ -68,6 +73,13 @@ class FakeModel:
         self.last_inputs = inputs
         return {"logits": "fake"}
 
+    def to(self, device):
+        self.device = device
+        return self
+
+    def eval(self):
+        return self
+
 
 class FakeTransformersModule:
     GroundingDinoProcessor = FakeProcessor
@@ -83,6 +95,11 @@ class FakeNoGrad:
 
 
 class FakeTorch:
+    class cuda:
+        @staticmethod
+        def is_available():
+            return True
+
     @staticmethod
     def no_grad():
         return FakeNoGrad()
@@ -107,12 +124,15 @@ class DetectorTests(unittest.TestCase):
             prompt="object.",
             box_threshold=0.25,
             text_threshold=0.2,
+            target_device="cuda:0",
         )
         result = detector.detect(Image.new("RGB", (320, 240), "white"), padding_px=100)
         self.assertEqual(result.bbox, (18, 28, 110, 220))
         self.assertAlmostEqual(result.confidence, 0.88, places=3)
         self.assertEqual(FakeProcessor.last_from_pretrained[0], "IDEA-Research/grounding-dino-base")
         self.assertEqual(FakeModel.last_from_pretrained[0], "IDEA-Research/grounding-dino-base")
+        self.assertEqual(detector.device_label, "cuda:0")
+        self.assertEqual(detector._model.device, "cuda:0")
 
 
 if __name__ == "__main__":

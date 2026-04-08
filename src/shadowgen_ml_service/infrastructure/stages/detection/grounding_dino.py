@@ -62,15 +62,17 @@ class RealDetector(Detector):
         prompt: str = "object.",
         box_threshold: float = 0.25,
         text_threshold: float = 0.25,
+        target_device: str = "cuda",
         local_files_only: bool = False,
     ) -> None:
         self.model_id = model_id
         self.prompt = prompt
         self.box_threshold = box_threshold
         self.text_threshold = text_threshold
+        self.target_device = target_device
         self.local_files_only = local_files_only
-        self._torch = torch_module
-        self.device_label = "cpu"
+        self._torch = torch_module or import_module("torch")
+        self.device_label = self._resolve_device_label()
         if transformers_module is not None:
             processor_cls = transformers_module.GroundingDinoProcessor
             model_cls = transformers_module.GroundingDinoForObjectDetection
@@ -90,13 +92,21 @@ class RealDetector(Detector):
             self._processor, self._model = cached
         if hasattr(self._model, "eval"):
             self._model.eval()
+        if hasattr(self._model, "to"):
+            self._model = self._model.to(self.device_label)
         self.device_label = self._infer_device_label()
 
     def detect(self, image: Image.Image, padding_px: int) -> DetectionResult:
         image_rgb = image.convert("RGB")
         inputs = self._processor(images=image_rgb, text=self.prompt, return_tensors="pt")
-        torch_module = self._torch or import_module("torch")
-        with torch_module.no_grad():
+        if hasattr(inputs, "to"):
+            inputs = inputs.to(self.device_label)
+        elif isinstance(inputs, dict):
+            inputs = {
+                key: value.to(self.device_label) if hasattr(value, "to") else value
+                for key, value in inputs.items()
+            }
+        with self._torch.no_grad():
             outputs = self._model(**inputs)
         results = self._processor.post_process_grounded_object_detection(
             outputs,
@@ -131,6 +141,11 @@ class RealDetector(Detector):
                 return str(next(self._model.parameters()).device)
             except Exception:
                 pass
+        return "cpu"
+
+    def _resolve_device_label(self) -> str:
+        if str(self.target_device).startswith("cuda") and bool(getattr(getattr(self._torch, "cuda", None), "is_available", lambda: False)()):
+            return str(self.target_device)
         return "cpu"
 
 

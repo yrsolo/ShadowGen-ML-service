@@ -17,6 +17,11 @@ class FakeNoGrad:
 
 
 class FakeTorch:
+    class cuda:
+        @staticmethod
+        def is_available():
+            return True
+
     @staticmethod
     def no_grad():
         return FakeNoGrad()
@@ -25,6 +30,7 @@ class FakeTorch:
 class FakeTensor:
     def __init__(self, array):
         self.array = np.asarray(array, dtype=np.float32)
+        self.last_device = None
 
     @property
     def shape(self):
@@ -50,6 +56,10 @@ class FakeTensor:
 
     def __getitem__(self, item):
         return FakeTensor(self.array[item])
+
+    def to(self, device=None, dtype=None):
+        self.last_device = device
+        return self
 
 
 class FakeCompose:
@@ -105,6 +115,10 @@ class FakeSegmentationModel:
     def eval(self):
         return self
 
+    def to(self, device):
+        self.device = device
+        return self
+
     def __call__(self, image_tensor):
         _batch, _channels, height, width = image_tensor.shape
         matte = np.zeros((1, 1, height, width), dtype=np.float32)
@@ -126,6 +140,7 @@ class SegmenterTests(unittest.TestCase):
             model_id="ZhengPeng7/BiRefNet_lite-matting",
             resolution=64,
             mask_threshold=0.5,
+            target_device="cuda:0",
         )
         image = Image.new("RGBA", (96, 80), (255, 255, 255, 255))
         result = segmenter.segment(image)
@@ -134,6 +149,8 @@ class SegmenterTests(unittest.TestCase):
         self.assertEqual(result.crop_rgba.size, image.size)
         self.assertEqual(result.bbox, (0, 0, image.width, image.height))
         self.assertEqual(FakeSegmentationModel.last_from_pretrained[0], "ZhengPeng7/BiRefNet_lite-matting")
+        self.assertEqual(segmenter.device_label, "cuda:0")
+        self.assertEqual(segmenter._model.device, "cuda:0")
 
 
 if __name__ == "__main__":
