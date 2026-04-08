@@ -211,6 +211,21 @@ class ApiTests(unittest.TestCase):
         preview_names = {preview["name"] for preview in normals["previews"]}
         self.assertIn("normals", preview_names)
 
+    def test_debug_pipeline_shadow_real_smoke(self) -> None:
+        response = self.client.post(
+            "/v1/dev/pipeline/run-stage/shadow_generator",
+            json={"render_request": make_request(), "stage_modes": {"shadow_generator": "real"}},
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        shadow = payload["stages"][-1]
+        self.assertEqual(shadow["stage_key"], "shadow_generator")
+        self.assertEqual(shadow["status"], "completed")
+        self.assertIn(shadow["actual_mode"], {"real", "mock-fallback"})
+        self.assertIn("backend", shadow["details"])
+        preview_names = {preview["name"] for preview in shadow["previews"]}
+        self.assertIn("shadow", preview_names)
+
     def test_debug_pipeline_geometry_real_uses_mock_fallback(self) -> None:
         response = self.client.post(
             "/v1/dev/pipeline/run-stage/geometry_estimator",
@@ -365,6 +380,26 @@ class ApiTests(unittest.TestCase):
         normals = response.json()["stages"][-1]
         self.assertEqual(normals["actual_mode"], "mock")
         self.assertEqual(normals["details"]["backend"], "mock")
+
+    def test_debug_pipeline_shadow_mock_uses_mock_adapter_even_when_real_is_available(self) -> None:
+        app = create_app(Settings())
+
+        class BombShadowGenerator:
+            def generate(self, cutout_rgba, mask, depth_map, normal_map, geometry, shadow):
+                raise AssertionError("real shadow generator should not run in mock mode")
+
+        app.state.render_service.runtime.real_shadow = BombShadowGenerator()
+        app.state.render_service.runtime.shadow = BombShadowGenerator()
+        client = TestClient(app)
+
+        response = client.post(
+            "/v1/dev/pipeline/run-stage/shadow_generator",
+            json={"render_request": make_request(), "stage_modes": {"shadow_generator": "mock"}},
+        )
+        self.assertEqual(response.status_code, 200)
+        shadow = response.json()["stages"][-1]
+        self.assertEqual(shadow["actual_mode"], "mock")
+        self.assertEqual(shadow["details"]["backend"], "deterministic-stub")
 
     def test_debug_pipeline_foreground_refiner_mock_uses_mock_adapter_even_when_real_is_available(self) -> None:
         app = create_app(Settings())

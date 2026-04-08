@@ -41,6 +41,11 @@
 - Stage 07 `normal_estimator` now prefers the neural `Stable-X/StableNormal` backend, while keeping the previous depth-derived implementation as an explicit fallback backend instead of removing it
 - Playground/debug metadata for `Normals` now exposes backend kind and variant so it is clear whether the stage ran through `stable-normal` or `from-depth`
 - `py -3.11 -m pytest` passed after landing neural normals wiring: `40 passed`
+- Stage 08 `shadow_generator` now has a migrated legacy pix2pix backend based on the old `ShadowGEN/SHADOW/pix2pix.py` inference path
+- Only the minimum generator inference code and one checkpoint were imported; discriminator, training path, and unrelated old-project helpers were intentionally left behind
+- Local shadow checkpoint is stored in the ignored `.models/shadow/AveragedModel.pth` path
+- `shadow_generator` now supports proper `mock` and `real` runtime selection in debug/playground instead of always behaving like an internal stage
+- `py -3.11 -m pytest tests/test_runtime.py tests/test_api.py` passed after landing pix2pix shadow wiring: `40 passed`
 - `python -m pytest` passed after landing depth/normals: `47 passed`
 
 ## Pending Follow-Ups

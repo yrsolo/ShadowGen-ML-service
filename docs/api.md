@@ -135,3 +135,11 @@ For `normal_estimator`, each stage entry may include:
 Normals previews include:
 
 - `normals`
+
+For `shadow_generator`, each stage entry may include:
+
+- `details.backend`
+
+Shadow previews include:
+
+- `shadow`

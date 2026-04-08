@@ -109,3 +109,18 @@
 - the playground exposes:
   - `normals`
   - backend, variant, map size, and device metadata
+
+## Shadow step
+
+- `shadow_generator` is a dedicated runtime stage with explicit `mock` and `real` backends
+- the current real backend is the legacy pix2pix generator migrated from the older ShadowGEN project
+- only the minimum inference code and a single generator checkpoint are carried forward; discriminator and training code are intentionally excluded
+- the real backend consumes:
+  - refined foreground cutout
+  - foreground mask
+  - azimuth / `shadow.angle_deg`
+- the model predicts a shadowed composite on white, and the service converts that prediction into the standalone RGBA shadow layer used by the composer
+- if the pix2pix backend or local weights are unavailable, the stage falls back to the deterministic analytical shadow stub
+- the playground exposes:
+  - `shadow`
+  - backend and device metadata

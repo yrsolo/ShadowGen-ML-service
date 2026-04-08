@@ -11,6 +11,7 @@ UNAVAILABLE_MESSAGES = {
     "foreground_refiner": "Real foreground colour estimator is unavailable. Install the Fast Foreground Colour Estimation dependencies first.",
     "depth_estimator": "Real depth estimator is unavailable. Configure the Depth Anything adapter first.",
     "normal_estimator": "Real normal estimator is unavailable. Configure the StableNormal adapter or use the depth-derived fallback.",
+    "shadow_generator": "Real shadow generator is unavailable. Configure the pix2pix shadow backend and local weights first.",
 }
 
 
@@ -23,7 +24,7 @@ class BackendSelector:
         if component is None:
             return StageBackendSelection(requested_mode=requested_mode, actual_mode="internal")
         if requested_mode == "real":
-            if stage_key in {"shadow_generator", "composer"}:
+            if stage_key == "composer":
                 return StageBackendSelection(requested_mode=requested_mode, actual_mode="real")
             if component.implementation == "real" and component.available:
                 return StageBackendSelection(requested_mode=requested_mode, actual_mode="real")

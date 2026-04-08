@@ -8,6 +8,7 @@ from shadowgen_ml_service.bootstrap.probes import (
     probe_geocalib,
     probe_grounding_dino,
     probe_stable_normal,
+    probe_shadow_pix2pix,
 )
 from shadowgen_ml_service.bootstrap.runtime_descriptor import build_runtime_descriptor, component_status
 from shadowgen_ml_service.config import Settings
@@ -28,6 +29,7 @@ from shadowgen_ml_service.infrastructure.stages.normals.mock import MockNormalEs
 from shadowgen_ml_service.infrastructure.stages.normals.from_depth import NormalFromDepthEstimator
 from shadowgen_ml_service.infrastructure.stages.segmentation.birefnet import RealSegmenter
 from shadowgen_ml_service.infrastructure.stages.segmentation.mock import MockSegmenter
+from shadowgen_ml_service.infrastructure.stages.shadow.pix2pix import Pix2PixShadowGenerator
 from shadowgen_ml_service.infrastructure.stages.shadow.stub import DeterministicShadowGenerator
 
 
@@ -40,6 +42,10 @@ def build_runtime(settings: Settings) -> PipelineRuntime:
     depth_anything = probe_depth_anything()
     stable_normal = probe_stable_normal(
         allow_cpu=settings.stable_normal_allow_cpu,
+        target_device=settings.target_device,
+    )
+    shadow_pix2pix = probe_shadow_pix2pix(
+        settings.shadow_pix2pix_weights_path,
         target_device=settings.target_device,
     )
 
@@ -289,6 +295,45 @@ def build_runtime(settings: Settings) -> PipelineRuntime:
                     f"StableNormal init failed; using depth-derived normals fallback: {exc}",
                 )
 
+    mock_shadow = DeterministicShadowGenerator()
+    shadow = mock_shadow
+    real_shadow = None
+    shadow_component = component_status(
+        "shadow_generator",
+        "mock",
+        shadow_pix2pix.model_name,
+        "stub-v1",
+        True,
+        True,
+        shadow_pix2pix.detail or "deterministic fallback shadow generator",
+    )
+    if mode != "mock" and shadow_pix2pix.available:
+        try:
+            shadow = Pix2PixShadowGenerator(
+                weights_path=settings.shadow_pix2pix_weights_path,
+                target_device=settings.target_device,
+            )
+            real_shadow = shadow
+            shadow_component = component_status(
+                "shadow_generator",
+                "real",
+                shadow_pix2pix.model_name,
+                "AveragedModel",
+                True,
+                False,
+                f"legacy pix2pix shadow backend active (weights={settings.shadow_pix2pix_weights_path})",
+            )
+        except Exception as exc:
+            shadow_component = component_status(
+                "shadow_generator",
+                "mock-fallback",
+                shadow_pix2pix.model_name,
+                "stub-v1",
+                True,
+                True,
+                f"pix2pix shadow init failed: {exc}",
+            )
+
     components = [
         detector_component,
         geometry_component,
@@ -296,7 +341,7 @@ def build_runtime(settings: Settings) -> PipelineRuntime:
         foreground_refiner_component,
         depth_component,
         normals_component,
-        component_status("shadow_generator", "deterministic-stub", "shadow-stub", "v1", True, False),
+        shadow_component,
         component_status("composer", "python", "solid-background-composer", "v1", True, False),
         component_status("artifact_encoder", "python", "artifact-encoder", "v1", True, False),
     ]
@@ -319,7 +364,9 @@ def build_runtime(settings: Settings) -> PipelineRuntime:
         normals=normals,
         mock_normals=mock_normals,
         real_normals=real_normals,
-        shadow=DeterministicShadowGenerator(),
+        shadow=shadow,
+        mock_shadow=mock_shadow,
+        real_shadow=real_shadow,
         composer=PythonComposer(),
         encoder=DefaultArtifactEncoder(),
         cache=FilesystemPreprocessCacheRepository(settings.preprocess_cache_dir),

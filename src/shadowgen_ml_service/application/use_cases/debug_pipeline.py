@@ -157,13 +157,17 @@ class DebugPipelineUseCase:
             "shadow_generator",
             command.stage_modes.get("shadow_generator", "real"),
             context,
-            lambda: self.runtime.shadow.generate(
+            lambda: self._shadow_backend(command.stage_modes.get("shadow_generator", "real")).generate(
+                cutout_rgba=context.segmentation.cutout_rgba,
                 mask=context.segmentation.mask,
                 depth_map=context.depth.depth_map,
                 normal_map=context.normals.normal_map,
                 geometry=context.geometry,
                 shadow=command.render.shadow,
             ),
+            lambda value, actual_mode: {
+                "backend": str(getattr(self._shadow_backend(command.stage_modes.get("shadow_generator", "real")), "backend_name", actual_mode)),
+            },
         )
         stages.append(shadow)
         if shadow.status == "failed" or stop_after == "shadow_generator":
@@ -263,6 +267,9 @@ class DebugPipelineUseCase:
     def _normals_backend(self, requested_mode: str):
         return self.runtime.mock_normals if requested_mode == "mock" else (self.runtime.real_normals or self.runtime.mock_normals)
 
+    def _shadow_backend(self, requested_mode: str):
+        return self.runtime.mock_shadow if requested_mode == "mock" else (self.runtime.real_shadow or self.runtime.mock_shadow)
+
     def _device_label_for_stage(self, stage_key: str, requested_mode: str, actual_mode: str) -> str:
         if actual_mode in {"mock", "mock-fallback", "internal"}:
             return "cpu"
@@ -278,6 +285,8 @@ class DebugPipelineUseCase:
             backend = self._depth_backend(requested_mode)
         elif stage_key == "normal_estimator":
             backend = self._normals_backend(requested_mode)
+        elif stage_key == "shadow_generator":
+            backend = self._shadow_backend(requested_mode)
         else:
             return "cpu"
         return str(getattr(backend, "device_label", "cpu"))

@@ -8,6 +8,7 @@
   - foreground colour refinement is now a standalone post-segmentation stage instead of being hidden inside matting backends
   - depth estimation and normals are now first-class pipeline stages with runtime selection, previews, and diagnostics
   - `normal_estimator` now prefers a neural `StableNormal` backend and falls back to an explicit `from-depth` backend instead of hiding that logic inside depth
+  - `shadow_generator` now has a migrated legacy pix2pix backend with local checkpoint storage in `.models/`, while preserving the deterministic stub as the mock/fallback path
 
 ## Next Likely Campaigns
 

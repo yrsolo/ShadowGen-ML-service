@@ -30,4 +30,5 @@ Update:
 - Put playground and debug presentation in `interfaces/dev/`
 - Keep post-processing modules such as foreground colour refinement as standalone stages; do not bury them inside the segmenter implementation
 - Keep neural and analytic backends split inside each stage package, for example `normals/stable_normal.py` vs `normals/from_depth.py`
+- When reusing legacy ML code, import only the isolated inference path and checkpoint, never the old training stack or app-specific helpers wholesale
 - Keep legacy root or `pipeline/` modules as compatibility shims only, not as places for new logic

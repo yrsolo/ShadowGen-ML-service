@@ -22,6 +22,7 @@
 - [x] Add a dedicated foreground colour refinement stage based on Fast Foreground Colour Estimation so semi-transparent edge colour correction is decoupled from the segmenter
 - [x] Implement stage 06 `Depth` with real `Depth Anything V2` wiring and stage 07 `Normals` as a proper runtime-selectable module with mock/real behavior
 - [x] Upgrade stage 07 `Normals` with a neural `StableNormal` backend while keeping the explicit `from-depth` fallback as a separate runtime module
+- [x] Add the legacy pix2pix shadow model as the stage 08 real `shadow_generator` backend while keeping the deterministic stub as the mock/fallback path
 
 ## Notes
 

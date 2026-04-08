@@ -9,8 +9,13 @@ from shadowgen_ml_service.utils.images import generate_shadow_layer
 
 
 class DeterministicShadowGenerator(ShadowGenerator):
+    def __init__(self) -> None:
+        self.device_label = "cpu"
+        self.backend_name = "deterministic-stub"
+
     def generate(
         self,
+        cutout_rgba: Image.Image,
         mask: Image.Image,
         depth_map: Image.Image,
         normal_map: Image.Image,

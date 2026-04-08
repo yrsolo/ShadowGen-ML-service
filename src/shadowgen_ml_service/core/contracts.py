@@ -59,6 +59,7 @@ class ShadowGenerator(ABC):
     @abstractmethod
     def generate(
         self,
+        cutout_rgba: Image.Image,
         mask: Image.Image,
         depth_map: Image.Image,
         normal_map: Image.Image,

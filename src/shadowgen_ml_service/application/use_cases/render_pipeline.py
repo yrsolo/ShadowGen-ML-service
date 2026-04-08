@@ -113,6 +113,7 @@ class RenderPipelineUseCase:
             "shadow_generator",
             context,
             lambda: self.runtime.shadow.generate(
+                cutout_rgba=context.segmentation.cutout_rgba,
                 mask=context.segmentation.mask,
                 depth_map=context.depth.depth_map,
                 normal_map=context.normals.normal_map,
@@ -213,6 +214,8 @@ class RenderPipelineUseCase:
             context.warnings.append("depth_real_fallback_active")
         if any(component.name == "normal_estimator" and component.model_name == "normal-map-from-depth" for component in self.runtime.descriptor.components):
             context.warnings.append("normals_neural_backend_unavailable")
+        if any(component.name == "shadow_generator" and component.implementation == "mock-fallback" for component in self.runtime.descriptor.components):
+            context.warnings.append("shadow_real_fallback_active")
 
     def _segmentation_alpha(self, segmentation: SegmentationResult):
         return segmentation.cutout_rgba.getchannel("A")

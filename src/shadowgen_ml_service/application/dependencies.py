@@ -39,6 +39,8 @@ class PipelineRuntime:
     mock_normals: NormalEstimator
     real_normals: NormalEstimator | None
     shadow: ShadowGenerator
+    mock_shadow: ShadowGenerator
+    real_shadow: ShadowGenerator | None
     composer: Composer
     encoder: ArtifactEncoder
     cache: PreprocessCacheRepository

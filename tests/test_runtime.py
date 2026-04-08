@@ -134,6 +134,31 @@ class RuntimeTests(unittest.TestCase):
                 self.assertEqual(normal_component.model_name, "normal-map-from-depth")
                 self.assertIn("StableNormal init failed", normal_component.detail)
 
+    def test_auto_runtime_uses_real_shadow_when_weights_exist(self) -> None:
+        with patch("shadowgen_ml_service.pipeline.runtime.probe_shadow_pix2pix") as probe_shadow:
+            with patch("shadowgen_ml_service.pipeline.runtime.Pix2PixShadowGenerator") as real_shadow:
+                probe_shadow.return_value.model_name = "legacy-shadow-pix2pix"
+                probe_shadow.return_value.model_version = "bootstrap-probe"
+                probe_shadow.return_value.available = True
+                probe_shadow.return_value.detail = "CUDA runtime detected"
+                runtime = build_runtime(Settings(runtime_mode="auto"))
+                shadow_component = next(item for item in runtime.descriptor.components if item.name == "shadow_generator")
+                self.assertFalse(shadow_component.using_mock)
+                self.assertEqual(shadow_component.implementation, "real")
+                real_shadow.assert_called_once()
+
+    def test_real_runtime_falls_back_to_stub_shadow_when_init_fails(self) -> None:
+        with patch("shadowgen_ml_service.pipeline.runtime.probe_shadow_pix2pix") as probe_shadow:
+            with patch("shadowgen_ml_service.pipeline.runtime.Pix2PixShadowGenerator", side_effect=RuntimeError("init failed")):
+                probe_shadow.return_value.model_name = "legacy-shadow-pix2pix"
+                probe_shadow.return_value.model_version = "bootstrap-probe"
+                probe_shadow.return_value.available = True
+                probe_shadow.return_value.detail = "CUDA runtime detected"
+                runtime = build_runtime(Settings(runtime_mode="real"))
+                shadow_component = next(item for item in runtime.descriptor.components if item.name == "shadow_generator")
+                self.assertTrue(shadow_component.using_mock)
+                self.assertEqual(shadow_component.implementation, "mock-fallback")
+
 
 if __name__ == "__main__":
     unittest.main()

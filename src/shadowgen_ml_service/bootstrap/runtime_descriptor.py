@@ -27,7 +27,7 @@ def build_runtime_descriptor(mode: str, components: list[ComponentStatus]) -> Ru
     fallback_needed = any(
         component.using_mock
         for component in components
-        if component.name in {"detector", "geometry_estimator", "segmenter", "foreground_refiner", "depth_estimator"}
+        if component.name in {"detector", "geometry_estimator", "segmenter", "foreground_refiner", "depth_estimator", "shadow_generator"}
     )
     if mode == "mock":
         active_mode = "mock"

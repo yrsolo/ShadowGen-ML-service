@@ -262,6 +262,51 @@ In the playground `Normals` card:
 - `normals` shows the RGB normal map
 - stage details expose backend kind, variant, output size, and execution device
 
+## Legacy pix2pix shadow bring-up
+
+The `Shadow` stage can now use the legacy pix2pix generator migrated from:
+
+- `N:\PROJECTS\python\STUDY\ShadowGEN\SHADOW\pix2pix.py`
+
+What was intentionally imported:
+
+- generator inference architecture
+- azimuth / `rot` conditioning logic
+- one generator checkpoint
+
+What was intentionally not imported:
+
+- discriminator
+- training loop
+- dataset code
+- old service helpers and unrelated utilities
+
+Local weights location:
+
+- `.models/shadow/AveragedModel.pth`
+
+Useful env vars:
+
+- `SHADOWGEN_SHADOW_PIX2PIX_WEIGHTS_PATH` to point the service at a different local checkpoint
+- `SHADOWGEN_TARGET_DEVICE` to control whether inference targets `cuda`, `cuda:0`, or `cpu`
+
+Runtime behavior:
+
+- `real` mode uses the migrated pix2pix generator when the checkpoint is present
+- `mock` mode uses the deterministic analytical shadow generator
+- if the pix2pix backend fails to initialize, the service falls back to the deterministic stub and reports that in capabilities/debug metadata
+
+What to verify:
+
+- `components[].name == "shadow_generator"`
+- `implementation == "real"` when the checkpoint is present and the backend initializes successfully
+- `using_mock == false` when pix2pix is active
+
+In the playground `Shadow` card:
+
+- `shadow` shows the generated standalone RGBA shadow layer
+- stage details expose backend mode and execution device
+
 ## Note on Python
 
 This repository keeps the code compatible with Python `3.11+`.
