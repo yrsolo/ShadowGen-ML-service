@@ -29,4 +29,5 @@ Update:
 - Put FastAPI, schemas, and route handlers in `interfaces/http/`
 - Put playground and debug presentation in `interfaces/dev/`
 - Keep post-processing modules such as foreground colour refinement as standalone stages; do not bury them inside the segmenter implementation
+- Keep neural and analytic backends split inside each stage package, for example `normals/stable_normal.py` vs `normals/from_depth.py`
 - Keep legacy root or `pipeline/` modules as compatibility shims only, not as places for new logic

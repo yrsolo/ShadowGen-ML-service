@@ -10,6 +10,7 @@ UNAVAILABLE_MESSAGES = {
     "segmenter": "Real segmenter is unavailable. Configure the BiRefNet adapter first.",
     "foreground_refiner": "Real foreground colour estimator is unavailable. Install the Fast Foreground Colour Estimation dependencies first.",
     "depth_estimator": "Real depth estimator is unavailable. Configure the Depth Anything adapter first.",
+    "normal_estimator": "Real normal estimator is unavailable. Configure the StableNormal adapter or use the depth-derived fallback.",
 }
 
 

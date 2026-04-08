@@ -10,7 +10,7 @@ STAGE_CATALOG = [
     StageDefinition("segmenter", "Segmentation", "Build the foreground mask and cut out the object."),
     StageDefinition("foreground_refiner", "Foreground", "Correct semi-transparent foreground colours after matting."),
     StageDefinition("depth_estimator", "Depth", "Estimate the relative depth map for the foreground crop."),
-    StageDefinition("normal_estimator", "Normals", "Compute surface normals from the depth map."),
+    StageDefinition("normal_estimator", "Normals", "Predict surface normals from the refined foreground crop, with depth-derived fallback."),
     StageDefinition("shadow_generator", "Shadow", "Generate the shadow layer from geometry and user lighting controls."),
     StageDefinition("composer", "Composition", "Composite the object and shadow on the target background."),
 ]

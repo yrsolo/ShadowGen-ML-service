@@ -135,13 +135,16 @@ class DebugPipelineUseCase:
         if depth.status == "failed" or stop_after == "depth_estimator":
             return DebugPipelineOutcome(request_id=command.render.request_id, stages=stages, warnings=context.warnings)
 
+        normals_mode = command.stage_modes.get("normal_estimator", "real")
+        normals_backend = self._normals_backend(normals_mode)
         normals = self._run_stage(
             "normal_estimator",
-            command.stage_modes.get("normal_estimator", "real"),
+            normals_mode,
             context,
-            lambda: self._normals_backend(command.stage_modes.get("normal_estimator", "real")).estimate(context.depth.depth_map),
+            lambda: normals_backend.estimate(context.segmentation.cutout_rgba, context.depth.depth_map),
             lambda value, actual_mode: {
-                "backend": actual_mode,
+                "backend": str(getattr(normals_backend, "backend_name", actual_mode)),
+                "variant": str(getattr(normals_backend, "model_variant", "from-depth")),
                 "normals_width": value.normal_map.width,
                 "normals_height": value.normal_map.height,
             },

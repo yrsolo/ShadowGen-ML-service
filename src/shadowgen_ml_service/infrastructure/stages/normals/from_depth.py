@@ -10,6 +10,10 @@ from shadowgen_ml_service.utils.images import normals_from_depth
 class NormalFromDepthEstimator(NormalEstimator):
     def __init__(self) -> None:
         self.device_label = "cpu"
+        self.backend_name = "from-depth"
+        self.model_variant = "from-depth-v2"
 
-    def estimate(self, depth_map: Image.Image) -> NormalResult:
+    def estimate(self, image: Image.Image, depth_map: Image.Image | None = None) -> NormalResult:
+        if depth_map is None:
+            raise ValueError("depth_map is required for the depth-derived normals backend")
         return NormalResult(normal_map=normals_from_depth(depth_map))

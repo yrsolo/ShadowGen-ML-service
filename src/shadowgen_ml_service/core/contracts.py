@@ -51,7 +51,7 @@ class DepthEstimator(ABC):
 
 class NormalEstimator(ABC):
     @abstractmethod
-    def estimate(self, depth_map: Image.Image) -> NormalResult:
+    def estimate(self, image: Image.Image, depth_map: Image.Image | None = None) -> NormalResult:
         raise NotImplementedError
 
 

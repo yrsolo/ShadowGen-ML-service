@@ -3,6 +3,7 @@ from shadowgen_ml_service.infrastructure.stages.detection.grounding_dino import 
 from shadowgen_ml_service.infrastructure.stages.foreground_refinement.fast_foreground_estimation import FastForegroundColorEstimator, probe_fast_foreground_estimation
 from shadowgen_ml_service.infrastructure.stages.geometry.geocalib import RealGeometryEstimator, probe_geocalib
 from shadowgen_ml_service.infrastructure.stages.normals.from_depth import NormalFromDepthEstimator
+from shadowgen_ml_service.infrastructure.stages.normals.stable_normal import StableNormalEstimator, probe_stable_normal
 from shadowgen_ml_service.infrastructure.stages.segmentation.birefnet import RealSegmenter, probe_birefnet
 from shadowgen_ml_service.infrastructure.stages.shared.model_support import import_module as _import_module
 
@@ -12,6 +13,7 @@ __all__ = [
     "RealDepthEstimator",
     "RealGeometryEstimator",
     "NormalFromDepthEstimator",
+    "StableNormalEstimator",
     "RealSegmenter",
     "_import_module",
     "probe_birefnet",
@@ -19,5 +21,6 @@ __all__ = [
     "probe_fast_foreground_estimation",
     "probe_geocalib",
     "probe_grounding_dino",
+    "probe_stable_normal",
     "select_primary_detection",
 ]

@@ -101,9 +101,11 @@
 
 ## Normals step
 
-- `normal_estimator` is a separate pipeline stage, even though its real implementation is derived from the depth map
-- the real backend computes image-space gradients from depth and converts them into RGB normal vectors
-- the mock backend returns a flat neutral normal map, which makes the playground switch meaningful and keeps architectural symmetry with the other stages
+- `normal_estimator` is a separate pipeline stage and does not live inside the depth adapter
+- the preferred real backend is the neural `Stable-X/StableNormal` estimator, which predicts normals from the refined foreground cutout
+- when the neural backend is unavailable or fails to initialize, the service keeps the stage operational through the explicit `from-depth` fallback backend
+- the fallback backend computes image-space gradients from depth and converts them into RGB normal vectors
+- the mock backend returns a flat neutral normal map, which keeps the playground switch meaningful and preserves stage symmetry
 - the playground exposes:
   - `normals`
-  - backend, map size, and device metadata
+  - backend, variant, map size, and device metadata

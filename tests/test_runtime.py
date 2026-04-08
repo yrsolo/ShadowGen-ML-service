@@ -108,6 +108,32 @@ class RuntimeTests(unittest.TestCase):
                 self.assertTrue(depth_component.using_mock)
                 self.assertEqual(depth_component.implementation, "mock-fallback")
 
+    def test_auto_runtime_uses_stable_normal_when_available(self) -> None:
+        with patch("shadowgen_ml_service.pipeline.runtime.probe_stable_normal") as probe_stable_normal:
+            with patch("shadowgen_ml_service.pipeline.runtime.StableNormalEstimator") as stable_normal:
+                probe_stable_normal.return_value.model_name = "Stable-X/StableNormal"
+                probe_stable_normal.return_value.model_version = "bootstrap-probe"
+                probe_stable_normal.return_value.available = True
+                probe_stable_normal.return_value.detail = "CUDA runtime detected"
+                runtime = build_runtime(Settings(runtime_mode="auto"))
+                normal_component = next(item for item in runtime.descriptor.components if item.name == "normal_estimator")
+                self.assertFalse(normal_component.using_mock)
+                self.assertEqual(normal_component.model_name, "Stable-X/StableNormal")
+                stable_normal.assert_called_once()
+
+    def test_real_runtime_falls_back_to_depth_normals_when_stable_normal_init_fails(self) -> None:
+        with patch("shadowgen_ml_service.pipeline.runtime.probe_stable_normal") as probe_stable_normal:
+            with patch("shadowgen_ml_service.pipeline.runtime.StableNormalEstimator", side_effect=RuntimeError("init failed")):
+                probe_stable_normal.return_value.model_name = "Stable-X/StableNormal"
+                probe_stable_normal.return_value.model_version = "bootstrap-probe"
+                probe_stable_normal.return_value.available = True
+                probe_stable_normal.return_value.detail = "CUDA runtime detected"
+                runtime = build_runtime(Settings(runtime_mode="real"))
+                normal_component = next(item for item in runtime.descriptor.components if item.name == "normal_estimator")
+                self.assertFalse(normal_component.using_mock)
+                self.assertEqual(normal_component.model_name, "normal-map-from-depth")
+                self.assertIn("StableNormal init failed", normal_component.detail)
+
 
 if __name__ == "__main__":
     unittest.main()

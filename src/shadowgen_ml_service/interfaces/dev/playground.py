@@ -378,7 +378,7 @@ def render_playground_html() -> str:
       { key: "segmenter", title: "Segmentation", description: "Маска объекта, cutout и кроп для дальнейших модулей." },
       { key: "foreground_refiner", title: "Foreground", description: "Коррекция цвета полупрозрачных пикселей после matting." },
       { key: "depth_estimator", title: "Depth", description: "Построение карты глубины на вырезанном объекте." },
-      { key: "normal_estimator", title: "Normals", description: "Вычисление карты нормалей из depth map." },
+      { key: "normal_estimator", title: "Normals", description: "Предсказание карты нормалей по refined cutout с fallback через depth." },
       { key: "shadow_generator", title: "Shadow", description: "Генерация слоя тени по light controls." },
       { key: "composer", title: "Composition", description: "Композит объекта и тени на выбранный фон." }
     ];

@@ -207,6 +207,7 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(normals["status"], "completed")
         self.assertIn(normals["actual_mode"], {"real", "mock-fallback"})
         self.assertIn("normals_width", normals["details"])
+        self.assertIn(normals["details"]["backend"], {"stable-normal", "from-depth", "mock"})
         preview_names = {preview["name"] for preview in normals["previews"]}
         self.assertIn("normals", preview_names)
 
@@ -349,7 +350,7 @@ class ApiTests(unittest.TestCase):
         app = create_app(Settings())
 
         class BombNormalsEstimator:
-            def estimate(self, depth_map):
+            def estimate(self, image, depth_map=None):
                 raise AssertionError("real normals estimator should not run in mock mode")
 
         app.state.render_service.runtime.real_normals = BombNormalsEstimator()

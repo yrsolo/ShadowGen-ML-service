@@ -77,7 +77,11 @@ class RenderPipelineUseCase:
             )
             context.depth = depth
 
-            normals = self._execute_public_stage("normal_estimator", context, lambda: self.runtime.normals.estimate(depth.depth_map))
+            normals = self._execute_public_stage(
+                "normal_estimator",
+                context,
+                lambda: self.runtime.normals.estimate(context.segmentation.cutout_rgba, depth.depth_map),
+            )
             context.normals = normals
 
             snapshot = PreprocessSnapshot(
@@ -207,6 +211,8 @@ class RenderPipelineUseCase:
             context.warnings.append("foreground_refiner_real_fallback_active")
         if any(component.name == "depth_estimator" and component.implementation == "mock-fallback" for component in self.runtime.descriptor.components):
             context.warnings.append("depth_real_fallback_active")
+        if any(component.name == "normal_estimator" and component.model_name == "normal-map-from-depth" for component in self.runtime.descriptor.components):
+            context.warnings.append("normals_neural_backend_unavailable")
 
     def _segmentation_alpha(self, segmentation: SegmentationResult):
         return segmentation.cutout_rgba.getchannel("A")

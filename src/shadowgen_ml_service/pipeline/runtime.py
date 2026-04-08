@@ -15,6 +15,7 @@ from shadowgen_ml_service.infrastructure.stages.geometry.geocalib import RealGeo
 from shadowgen_ml_service.infrastructure.stages.geometry.mock import MockGeometryEstimator
 from shadowgen_ml_service.infrastructure.stages.normals.mock import MockNormalEstimator
 from shadowgen_ml_service.infrastructure.stages.normals.from_depth import NormalFromDepthEstimator
+from shadowgen_ml_service.infrastructure.stages.normals.stable_normal import StableNormalEstimator, probe_stable_normal
 from shadowgen_ml_service.infrastructure.stages.segmentation.birefnet import RealSegmenter, probe_birefnet
 from shadowgen_ml_service.infrastructure.stages.segmentation.mock import MockSegmenter
 from shadowgen_ml_service.infrastructure.stages.shadow.stub import DeterministicShadowGenerator
@@ -27,6 +28,7 @@ def build_runtime(settings: Settings) -> PipelineRuntime:
     birefnet = probe_birefnet(allow_cpu=settings.birefnet_allow_cpu)
     fast_foreground = probe_fast_foreground_estimation()
     depth_anything = probe_depth_anything()
+    stable_normal = probe_stable_normal(allow_cpu=settings.stable_normal_allow_cpu, target_device=settings.target_device)
 
     mock_detector = MockDetector()
     detector = mock_detector
@@ -136,17 +138,52 @@ def build_runtime(settings: Settings) -> PipelineRuntime:
             depth_component = component_status("depth_estimator", "mock-fallback", depth_anything.model_name, "mock-v1", True, True, f"Depth Anything init failed: {exc}")
 
     mock_normals = MockNormalEstimator()
-    normals = mock_normals if mode == "mock" else NormalFromDepthEstimator()
-    real_normals = None if mode == "mock" else normals
-    normals_component = component_status(
-        "normal_estimator",
-        "mock" if mode == "mock" else "real",
-        "normal-map-from-depth",
-        "mock-v1" if mode == "mock" else "v1",
-        True,
-        mode == "mock",
-        "flat fallback normals" if mode == "mock" else "normals derived from depth",
-    )
+    normals = mock_normals
+    real_normals = None
+    if mode == "mock":
+        normals_component = component_status("normal_estimator", "mock", "flat-normal-map", "mock-v1", True, True, "flat fallback normals")
+    else:
+        fallback_normals = NormalFromDepthEstimator()
+        normals = fallback_normals
+        real_normals = fallback_normals
+        normals_component = component_status(
+            "normal_estimator",
+            "real",
+            "normal-map-from-depth",
+            fallback_normals.model_variant,
+            True,
+            False,
+            stable_normal.detail or "StableNormal unavailable; using depth-derived normals fallback",
+        )
+        if stable_normal.available:
+            try:
+                normals = StableNormalEstimator(
+                    model_variant=settings.stable_normal_variant,
+                    resolution=settings.stable_normal_resolution,
+                    target_device=settings.target_device,
+                    allow_cpu=settings.stable_normal_allow_cpu,
+                    cache_dir=settings.model_cache_dir / "stable-normal",
+                )
+                real_normals = normals
+                normals_component = component_status(
+                    "normal_estimator",
+                    "real",
+                    stable_normal.model_name,
+                    settings.stable_normal_variant,
+                    True,
+                    False,
+                    "StableNormal backend active",
+                )
+            except Exception as exc:
+                normals_component = component_status(
+                    "normal_estimator",
+                    "real",
+                    "normal-map-from-depth",
+                    fallback_normals.model_variant,
+                    True,
+                    False,
+                    f"StableNormal init failed; using depth-derived normals fallback: {exc}",
+                )
 
     components = [
         detector_component,
@@ -193,11 +230,13 @@ __all__ = [
     "RealSegmenter",
     "FastForegroundColorEstimator",
     "RealDepthEstimator",
+    "StableNormalEstimator",
     "build_runtime",
     "probe_birefnet",
     "probe_depth_anything",
     "probe_fast_foreground_estimation",
     "probe_depth_anything",
+    "probe_stable_normal",
     "probe_geocalib",
     "probe_grounding_dino",
 ]

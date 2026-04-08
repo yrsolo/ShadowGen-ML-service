@@ -1,7 +1,14 @@
 from __future__ import annotations
 
 from shadowgen_ml_service.application.dependencies import PipelineRuntime
-from shadowgen_ml_service.bootstrap.probes import probe_birefnet, probe_depth_anything, probe_fast_foreground_estimation, probe_geocalib, probe_grounding_dino
+from shadowgen_ml_service.bootstrap.probes import (
+    probe_birefnet,
+    probe_depth_anything,
+    probe_fast_foreground_estimation,
+    probe_geocalib,
+    probe_grounding_dino,
+    probe_stable_normal,
+)
 from shadowgen_ml_service.bootstrap.runtime_descriptor import build_runtime_descriptor, component_status
 from shadowgen_ml_service.config import Settings
 from shadowgen_ml_service.infrastructure.cache.preprocess_cache_repository import FilesystemPreprocessCacheRepository
@@ -16,6 +23,7 @@ from shadowgen_ml_service.infrastructure.stages.geometry.geocalib import RealGeo
 from shadowgen_ml_service.infrastructure.stages.geometry.mock import MockGeometryEstimator
 from shadowgen_ml_service.infrastructure.stages.foreground_refinement.fast_foreground_estimation import FastForegroundColorEstimator
 from shadowgen_ml_service.infrastructure.stages.foreground_refinement.mock import PassthroughForegroundColorEstimator
+from shadowgen_ml_service.infrastructure.stages.normals.stable_normal import StableNormalEstimator
 from shadowgen_ml_service.infrastructure.stages.normals.mock import MockNormalEstimator
 from shadowgen_ml_service.infrastructure.stages.normals.from_depth import NormalFromDepthEstimator
 from shadowgen_ml_service.infrastructure.stages.segmentation.birefnet import RealSegmenter
@@ -30,6 +38,10 @@ def build_runtime(settings: Settings) -> PipelineRuntime:
     birefnet = probe_birefnet(allow_cpu=settings.birefnet_allow_cpu)
     fast_foreground = probe_fast_foreground_estimation()
     depth_anything = probe_depth_anything()
+    stable_normal = probe_stable_normal(
+        allow_cpu=settings.stable_normal_allow_cpu,
+        target_device=settings.target_device,
+    )
 
     mock_detector = MockDetector()
     detector = mock_detector
@@ -218,17 +230,64 @@ def build_runtime(settings: Settings) -> PipelineRuntime:
             )
 
     mock_normals = MockNormalEstimator()
-    normals = mock_normals if mode == "mock" else NormalFromDepthEstimator()
-    real_normals = None if mode == "mock" else normals
-    normals_component = component_status(
-        "normal_estimator",
-        "mock" if mode == "mock" else "real",
-        "normal-map-from-depth",
-        "mock-v1" if mode == "mock" else "v1",
-        True,
-        mode == "mock",
-        "flat fallback normals" if mode == "mock" else "normals derived from depth gradients",
-    )
+    normals = mock_normals
+    real_normals = None
+    if mode == "mock":
+        normals_component = component_status(
+            "normal_estimator",
+            "mock",
+            "flat-normal-map",
+            "mock-v1",
+            True,
+            True,
+            "flat fallback normals",
+        )
+    else:
+        fallback_normals = NormalFromDepthEstimator()
+        normals = fallback_normals
+        real_normals = fallback_normals
+        normals_component = component_status(
+            "normal_estimator",
+            "real",
+            "normal-map-from-depth",
+            fallback_normals.model_variant,
+            True,
+            False,
+            stable_normal.detail or "StableNormal unavailable; using depth-derived normals fallback",
+        )
+        if stable_normal.available:
+            try:
+                normals = StableNormalEstimator(
+                    model_variant=settings.stable_normal_variant,
+                    resolution=settings.stable_normal_resolution,
+                    target_device=settings.target_device,
+                    allow_cpu=settings.stable_normal_allow_cpu,
+                    cache_dir=settings.model_cache_dir / "stable-normal",
+                )
+                real_normals = normals
+                normals_component = component_status(
+                    "normal_estimator",
+                    "real",
+                    stable_normal.model_name,
+                    settings.stable_normal_variant,
+                    True,
+                    False,
+                    (
+                        "StableNormal backend active "
+                        f"(variant={settings.stable_normal_variant}, resolution={settings.stable_normal_resolution}, "
+                        f"allow_cpu={settings.stable_normal_allow_cpu})"
+                    ),
+                )
+            except Exception as exc:
+                normals_component = component_status(
+                    "normal_estimator",
+                    "real",
+                    "normal-map-from-depth",
+                    fallback_normals.model_variant,
+                    True,
+                    False,
+                    f"StableNormal init failed; using depth-derived normals fallback: {exc}",
+                )
 
     components = [
         detector_component,

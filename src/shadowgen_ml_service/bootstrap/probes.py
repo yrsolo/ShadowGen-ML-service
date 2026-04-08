@@ -2,4 +2,5 @@ from shadowgen_ml_service.infrastructure.stages.depth.depth_anything import prob
 from shadowgen_ml_service.infrastructure.stages.detection.grounding_dino import probe_grounding_dino
 from shadowgen_ml_service.infrastructure.stages.foreground_refinement.fast_foreground_estimation import probe_fast_foreground_estimation
 from shadowgen_ml_service.infrastructure.stages.geometry.geocalib import probe_geocalib
+from shadowgen_ml_service.infrastructure.stages.normals.stable_normal import probe_stable_normal
 from shadowgen_ml_service.infrastructure.stages.segmentation.birefnet import probe_birefnet

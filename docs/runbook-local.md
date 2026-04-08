@@ -238,20 +238,29 @@ The `Normals` stage is now treated as its own runtime module.
 
 Runtime behavior:
 
-- `real` mode computes normals from the depth map gradients
+- `real` mode first tries the neural `Stable-X/StableNormal` backend
+- if the neural backend is unavailable or fails to initialize, the stage falls back to the deterministic `from-depth` backend instead of disappearing
 - `mock` mode returns a flat neutral normal map
-- both variants are CPU-side today, which is expected because this stage is lightweight relative to depth inference
+
+Useful env vars:
+
+- `SHADOWGEN_STABLE_NORMAL_VARIANT` to switch the StableNormal hub entry, default `StableNormal_turbo`
+- `SHADOWGEN_STABLE_NORMAL_RESOLUTION` to control StableNormal inference resolution
+- `SHADOWGEN_STABLE_NORMAL_ALLOW_CPU=true` to opt into CPU execution when CUDA is unavailable
+- `SHADOWGEN_TARGET_DEVICE` to control the preferred device such as `cuda` or `cuda:0`
 
 What to verify:
 
 - `components[].name == "normal_estimator"`
 - `implementation == "real"` in normal runtime mode
+- `model_name == "Stable-X/StableNormal"` when the neural backend is active
+- `model_name == "normal-map-from-depth"` only when the stage is running on the explicit depth-derived fallback
 - switching the playground card to `mock` changes the stage backend and output
 
 In the playground `Normals` card:
 
 - `normals` shows the RGB normal map
-- stage details expose backend mode, output size, and execution device
+- stage details expose backend kind, variant, output size, and execution device
 
 ## Note on Python
 

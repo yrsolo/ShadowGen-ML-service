@@ -130,6 +130,7 @@ For `normal_estimator`, each stage entry may include:
 - `details.normals_width`
 - `details.normals_height`
 - `details.backend`
+- `details.variant`
 
 Normals previews include:
 

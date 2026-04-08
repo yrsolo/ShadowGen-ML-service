@@ -38,6 +38,9 @@
 - The preprocess cache now stores the refined cutout, and the playground exposes before/after previews (`segmenter_cutout` vs `foreground_cutout`)
 - Stage 06 `depth_estimator` now has a real `Depth Anything V2 Small` backend with runtime fallback, device reporting, and debug previews
 - Stage 07 `normal_estimator` is now a proper runtime-selectable module with real depth-derived normals and a flat mock fallback for playground/debug work
+- Stage 07 `normal_estimator` now prefers the neural `Stable-X/StableNormal` backend, while keeping the previous depth-derived implementation as an explicit fallback backend instead of removing it
+- Playground/debug metadata for `Normals` now exposes backend kind and variant so it is clear whether the stage ran through `stable-normal` or `from-depth`
+- `py -3.11 -m pytest` passed after landing neural normals wiring: `40 passed`
 - `python -m pytest` passed after landing depth/normals: `47 passed`
 
 ## Pending Follow-Ups
