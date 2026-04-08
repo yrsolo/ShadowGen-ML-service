@@ -22,7 +22,7 @@ class BackendSelector:
         if component is None:
             return StageBackendSelection(requested_mode=requested_mode, actual_mode="internal")
         if requested_mode == "real":
-            if stage_key in {"normal_estimator", "shadow_generator", "composer"}:
+            if stage_key in {"shadow_generator", "composer"}:
                 return StageBackendSelection(requested_mode=requested_mode, actual_mode="real")
             if component.implementation == "real" and component.available:
                 return StageBackendSelection(requested_mode=requested_mode, actual_mode="real")

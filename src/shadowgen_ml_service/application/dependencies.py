@@ -33,7 +33,11 @@ class PipelineRuntime:
     mock_foreground_refiner: ForegroundColorEstimator
     real_foreground_refiner: ForegroundColorEstimator | None
     depth: DepthEstimator
+    mock_depth: DepthEstimator
+    real_depth: DepthEstimator | None
     normals: NormalEstimator
+    mock_normals: NormalEstimator
+    real_normals: NormalEstimator | None
     shadow: ShadowGenerator
     composer: Composer
     encoder: ArtifactEncoder

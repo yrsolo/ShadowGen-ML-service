@@ -209,6 +209,50 @@ In the playground `Foreground` card:
 - `foreground_cutout` shows the corrected cutout after foreground colour estimation
 - stage details expose the active backend mode
 
+## Depth Anything bring-up
+
+The real `Depth` step uses `depth-anything/Depth-Anything-V2-Small-hf`.
+
+Useful env vars:
+
+- `SHADOWGEN_DEPTH_ANYTHING_MODEL_ID` to switch the depth checkpoint
+- `SHADOWGEN_TARGET_DEVICE` to control whether the service targets `cuda`, `cuda:0`, or `cpu`
+
+What to verify:
+
+- `components[].name == "depth_estimator"`
+- `implementation == "real"` when Depth Anything initializes successfully
+- `using_mock == false` when the real backend is active
+
+In the playground `Depth` card:
+
+- `depth` shows the normalized monocular depth map
+- `working_cutout` shows the refined foreground cutout that was sent into the model
+- stage details expose backend mode, output size, and execution device
+
+If Depth Anything is unavailable or fails to initialize, the service falls back to the deterministic mock depth estimator and the playground shows `mock-fallback`.
+
+## Normals bring-up
+
+The `Normals` stage is now treated as its own runtime module.
+
+Runtime behavior:
+
+- `real` mode computes normals from the depth map gradients
+- `mock` mode returns a flat neutral normal map
+- both variants are CPU-side today, which is expected because this stage is lightweight relative to depth inference
+
+What to verify:
+
+- `components[].name == "normal_estimator"`
+- `implementation == "real"` in normal runtime mode
+- switching the playground card to `mock` changes the stage backend and output
+
+In the playground `Normals` card:
+
+- `normals` shows the RGB normal map
+- stage details expose backend mode, output size, and execution device
+
 ## Note on Python
 
 This repository keeps the code compatible with Python `3.11+`.

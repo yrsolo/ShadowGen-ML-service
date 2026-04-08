@@ -180,6 +180,36 @@ class ApiTests(unittest.TestCase):
         self.assertIn("detection_overlay", preview_names)
         self.assertIn("crop_for_resize", preview_names)
 
+    def test_debug_pipeline_depth_real_smoke(self) -> None:
+        response = self.client.post(
+            "/v1/dev/pipeline/run-stage/depth_estimator",
+            json={"render_request": make_request(), "stage_modes": {"depth_estimator": "real"}},
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        depth = payload["stages"][-1]
+        self.assertEqual(depth["stage_key"], "depth_estimator")
+        self.assertEqual(depth["status"], "completed")
+        self.assertIn(depth["actual_mode"], {"real", "mock-fallback"})
+        self.assertIn("depth_width", depth["details"])
+        preview_names = {preview["name"] for preview in depth["previews"]}
+        self.assertIn("depth", preview_names)
+
+    def test_debug_pipeline_normals_real_smoke(self) -> None:
+        response = self.client.post(
+            "/v1/dev/pipeline/run-stage/normal_estimator",
+            json={"render_request": make_request(), "stage_modes": {"depth_estimator": "real", "normal_estimator": "real"}},
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        normals = payload["stages"][-1]
+        self.assertEqual(normals["stage_key"], "normal_estimator")
+        self.assertEqual(normals["status"], "completed")
+        self.assertIn(normals["actual_mode"], {"real", "mock-fallback"})
+        self.assertIn("normals_width", normals["details"])
+        preview_names = {preview["name"] for preview in normals["previews"]}
+        self.assertIn("normals", preview_names)
+
     def test_debug_pipeline_geometry_real_uses_mock_fallback(self) -> None:
         response = self.client.post(
             "/v1/dev/pipeline/run-stage/geometry_estimator",
@@ -294,6 +324,46 @@ class ApiTests(unittest.TestCase):
         segmenter = response.json()["stages"][-1]
         self.assertEqual(segmenter["actual_mode"], "mock")
         self.assertEqual(segmenter["details"]["backend"], "mock")
+
+    def test_debug_pipeline_depth_mock_uses_mock_adapter_even_when_real_is_available(self) -> None:
+        app = create_app(Settings())
+
+        class BombDepthEstimator:
+            def estimate(self, image, mask):
+                raise AssertionError("real depth estimator should not run in mock mode")
+
+        app.state.render_service.runtime.real_depth = BombDepthEstimator()
+        app.state.render_service.runtime.depth = BombDepthEstimator()
+        client = TestClient(app)
+
+        response = client.post(
+            "/v1/dev/pipeline/run-stage/depth_estimator",
+            json={"render_request": make_request(), "stage_modes": {"depth_estimator": "mock"}},
+        )
+        self.assertEqual(response.status_code, 200)
+        depth = response.json()["stages"][-1]
+        self.assertEqual(depth["actual_mode"], "mock")
+        self.assertEqual(depth["details"]["backend"], "mock")
+
+    def test_debug_pipeline_normals_mock_uses_mock_adapter_even_when_real_is_available(self) -> None:
+        app = create_app(Settings())
+
+        class BombNormalsEstimator:
+            def estimate(self, depth_map):
+                raise AssertionError("real normals estimator should not run in mock mode")
+
+        app.state.render_service.runtime.real_normals = BombNormalsEstimator()
+        app.state.render_service.runtime.normals = BombNormalsEstimator()
+        client = TestClient(app)
+
+        response = client.post(
+            "/v1/dev/pipeline/run-stage/normal_estimator",
+            json={"render_request": make_request(), "stage_modes": {"normal_estimator": "mock"}},
+        )
+        self.assertEqual(response.status_code, 200)
+        normals = response.json()["stages"][-1]
+        self.assertEqual(normals["actual_mode"], "mock")
+        self.assertEqual(normals["details"]["backend"], "mock")
 
     def test_debug_pipeline_foreground_refiner_mock_uses_mock_adapter_even_when_real_is_available(self) -> None:
         app = create_app(Settings())

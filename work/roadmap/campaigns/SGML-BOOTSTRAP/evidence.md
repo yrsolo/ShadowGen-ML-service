@@ -36,6 +36,9 @@
 - Local setup docs now require explicit CUDA `torch` / `torchvision` installation before `pip install -e .[dev,ml]`, preventing accidental CPU-only PyTorch environments
 - A dedicated `foreground_refiner` stage now runs after segmentation using the Fast Foreground Colour Estimation method, so semi-transparent edge colour correction is no longer embedded inside the segmenter implementation
 - The preprocess cache now stores the refined cutout, and the playground exposes before/after previews (`segmenter_cutout` vs `foreground_cutout`)
+- Stage 06 `depth_estimator` now has a real `Depth Anything V2 Small` backend with runtime fallback, device reporting, and debug previews
+- Stage 07 `normal_estimator` is now a proper runtime-selectable module with real depth-derived normals and a flat mock fallback for playground/debug work
+- `python -m pytest` passed after landing depth/normals: `47 passed`
 
 ## Pending Follow-Ups
 

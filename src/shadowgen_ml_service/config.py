@@ -44,6 +44,7 @@ class Settings:
     birefnet_resolution: int = _as_int("SHADOWGEN_BIREFNET_RESOLUTION", 1024)
     birefnet_mask_threshold: float = float(os.getenv("SHADOWGEN_BIREFNET_MASK_THRESHOLD", "0.5"))
     birefnet_allow_cpu: bool = _as_bool("SHADOWGEN_BIREFNET_ALLOW_CPU", False)
+    depth_anything_model_id: str = os.getenv("SHADOWGEN_DEPTH_ANYTHING_MODEL_ID", "depth-anything/Depth-Anything-V2-Small-hf")
 
     def ensure_local_dirs(self) -> None:
         for path in (self.model_cache_dir, self.preprocess_cache_dir, self.artifact_dir):

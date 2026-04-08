@@ -5,6 +5,7 @@ from shadowgen_ml_service.infrastructure.cache.preprocess_cache_repository impor
 from shadowgen_ml_service.infrastructure.encoding.default import DefaultArtifactEncoder
 from shadowgen_ml_service.infrastructure.presentation.preview_registry import DefaultPreviewBuilderRegistry
 from shadowgen_ml_service.infrastructure.stages.composition.python_composer import PythonComposer
+from shadowgen_ml_service.infrastructure.stages.depth.depth_anything import RealDepthEstimator, probe_depth_anything
 from shadowgen_ml_service.infrastructure.stages.depth.mock import MockDepthEstimator
 from shadowgen_ml_service.infrastructure.stages.detection.grounding_dino import RealDetector, probe_grounding_dino
 from shadowgen_ml_service.infrastructure.stages.detection.mock import MockDetector
@@ -12,11 +13,11 @@ from shadowgen_ml_service.infrastructure.stages.foreground_refinement.fast_foreg
 from shadowgen_ml_service.infrastructure.stages.foreground_refinement.mock import PassthroughForegroundColorEstimator
 from shadowgen_ml_service.infrastructure.stages.geometry.geocalib import RealGeometryEstimator, probe_geocalib
 from shadowgen_ml_service.infrastructure.stages.geometry.mock import MockGeometryEstimator
+from shadowgen_ml_service.infrastructure.stages.normals.mock import MockNormalEstimator
 from shadowgen_ml_service.infrastructure.stages.normals.from_depth import NormalFromDepthEstimator
 from shadowgen_ml_service.infrastructure.stages.segmentation.birefnet import RealSegmenter, probe_birefnet
 from shadowgen_ml_service.infrastructure.stages.segmentation.mock import MockSegmenter
 from shadowgen_ml_service.infrastructure.stages.shadow.stub import DeterministicShadowGenerator
-from shadowgen_ml_service.bootstrap.probes import probe_depth_anything
 
 
 def build_runtime(settings: Settings) -> PipelineRuntime:
@@ -114,13 +115,46 @@ def build_runtime(settings: Settings) -> PipelineRuntime:
                 f"foreground refinement init failed: {exc}",
             )
 
+    mock_depth = MockDepthEstimator()
+    depth = mock_depth
+    real_depth = None
+    depth_component = component_status(
+        "depth_estimator",
+        "mock",
+        depth_anything.model_name,
+        "mock-v1",
+        True,
+        True,
+        "deterministic fallback depth estimator" if not depth_anything.available else "real wrapper scaffold exists",
+    )
+    if mode != "mock" and depth_anything.available:
+        try:
+            depth = RealDepthEstimator(model_id=settings.depth_anything_model_id, target_device=settings.target_device)
+            real_depth = depth
+            depth_component = component_status("depth_estimator", "real", depth_anything.model_name, depth_anything.model_version, True, False, "Depth Anything backend active")
+        except Exception as exc:
+            depth_component = component_status("depth_estimator", "mock-fallback", depth_anything.model_name, "mock-v1", True, True, f"Depth Anything init failed: {exc}")
+
+    mock_normals = MockNormalEstimator()
+    normals = mock_normals if mode == "mock" else NormalFromDepthEstimator()
+    real_normals = None if mode == "mock" else normals
+    normals_component = component_status(
+        "normal_estimator",
+        "mock" if mode == "mock" else "real",
+        "normal-map-from-depth",
+        "mock-v1" if mode == "mock" else "v1",
+        True,
+        mode == "mock",
+        "flat fallback normals" if mode == "mock" else "normals derived from depth",
+    )
+
     components = [
         detector_component,
         geometry_component,
         segmenter_component,
         foreground_refiner_component,
-        component_status("depth_estimator", "mock", depth_anything.model_name, "mock-v1", True, True, "deterministic fallback depth estimator" if not depth_anything.available else "real wrapper scaffold exists"),
-        component_status("normal_estimator", "internal", "normal-map-from-depth", "v1", True, False),
+        depth_component,
+        normals_component,
         component_status("shadow_generator", "deterministic-stub", "shadow-stub", "v1", True, False),
         component_status("composer", "python", "solid-background-composer", "v1", True, False),
         component_status("artifact_encoder", "python", "artifact-encoder", "v1", True, False),
@@ -138,8 +172,12 @@ def build_runtime(settings: Settings) -> PipelineRuntime:
         foreground_refiner=foreground_refiner,
         mock_foreground_refiner=mock_foreground_refiner,
         real_foreground_refiner=real_foreground_refiner,
-        depth=MockDepthEstimator(),
-        normals=NormalFromDepthEstimator(),
+        depth=depth,
+        mock_depth=mock_depth,
+        real_depth=real_depth,
+        normals=normals,
+        mock_normals=mock_normals,
+        real_normals=real_normals,
         shadow=DeterministicShadowGenerator(),
         composer=PythonComposer(),
         encoder=DefaultArtifactEncoder(),
@@ -154,10 +192,12 @@ __all__ = [
     "RealGeometryEstimator",
     "RealSegmenter",
     "FastForegroundColorEstimator",
+    "RealDepthEstimator",
     "build_runtime",
     "probe_birefnet",
     "probe_depth_anything",
     "probe_fast_foreground_estimation",
+    "probe_depth_anything",
     "probe_geocalib",
     "probe_grounding_dino",
 ]

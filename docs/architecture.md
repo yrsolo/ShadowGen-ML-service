@@ -87,3 +87,23 @@
   - `segmenter_cutout`
   - `foreground_cutout`
   - backend metadata for the refinement stage
+
+## Depth step
+
+- `depth_estimator` runs on the refined foreground cutout after segmentation and foreground colour correction
+- the real backend is `depth-anything/Depth-Anything-V2-Small-hf` through Hugging Face `transformers`
+- the model output is normalized into a single-channel depth map and resized back to the working crop resolution
+- the binary foreground mask is applied again after inference so background pixels stay zeroed
+- the playground exposes:
+  - `depth`
+  - `working_cutout`
+  - backend, map size, and device metadata
+
+## Normals step
+
+- `normal_estimator` is a separate pipeline stage, even though its real implementation is derived from the depth map
+- the real backend computes image-space gradients from depth and converts them into RGB normal vectors
+- the mock backend returns a flat neutral normal map, which makes the playground switch meaningful and keeps architectural symmetry with the other stages
+- the playground exposes:
+  - `normals`
+  - backend, map size, and device metadata

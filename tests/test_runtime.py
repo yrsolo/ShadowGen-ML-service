@@ -85,6 +85,29 @@ class RuntimeTests(unittest.TestCase):
                 self.assertTrue(segmenter_component.using_mock)
                 self.assertEqual(segmenter_component.implementation, "mock-fallback")
 
+    def test_auto_runtime_uses_real_depth_when_available(self) -> None:
+        with patch("shadowgen_ml_service.pipeline.runtime.probe_depth_anything") as probe_depth_anything:
+            with patch("shadowgen_ml_service.pipeline.runtime.RealDepthEstimator") as real_depth:
+                probe_depth_anything.return_value.model_name = "depth-anything/Depth-Anything-V2-Small-hf"
+                probe_depth_anything.return_value.model_version = "bootstrap-probe"
+                probe_depth_anything.return_value.available = True
+                runtime = build_runtime(Settings(runtime_mode="auto"))
+                depth_component = next(item for item in runtime.descriptor.components if item.name == "depth_estimator")
+                self.assertFalse(depth_component.using_mock)
+                self.assertEqual(depth_component.implementation, "real")
+                real_depth.assert_called_once()
+
+    def test_real_runtime_falls_back_to_mock_depth_when_init_fails(self) -> None:
+        with patch("shadowgen_ml_service.pipeline.runtime.probe_depth_anything") as probe_depth_anything:
+            with patch("shadowgen_ml_service.pipeline.runtime.RealDepthEstimator", side_effect=RuntimeError("init failed")):
+                probe_depth_anything.return_value.model_name = "depth-anything/Depth-Anything-V2-Small-hf"
+                probe_depth_anything.return_value.model_version = "bootstrap-probe"
+                probe_depth_anything.return_value.available = True
+                runtime = build_runtime(Settings(runtime_mode="real"))
+                depth_component = next(item for item in runtime.descriptor.components if item.name == "depth_estimator")
+                self.assertTrue(depth_component.using_mock)
+                self.assertEqual(depth_component.implementation, "mock-fallback")
+
 
 if __name__ == "__main__":
     unittest.main()

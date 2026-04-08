@@ -205,6 +205,8 @@ class RenderPipelineUseCase:
             context.warnings.append("segmenter_real_fallback_active")
         if any(component.name == "foreground_refiner" and component.implementation == "mock-fallback" for component in self.runtime.descriptor.components):
             context.warnings.append("foreground_refiner_real_fallback_active")
+        if any(component.name == "depth_estimator" and component.implementation == "mock-fallback" for component in self.runtime.descriptor.components):
+            context.warnings.append("depth_real_fallback_active")
 
     def _segmentation_alpha(self, segmentation: SegmentationResult):
         return segmentation.cutout_rgba.getchannel("A")

@@ -121,7 +121,15 @@ class DebugPipelineUseCase:
             "depth_estimator",
             command.stage_modes.get("depth_estimator", "mock"),
             context,
-            lambda: self.runtime.depth.estimate(context.segmentation.cutout_rgba, context.segmentation.mask),
+            lambda: self._depth_backend(command.stage_modes.get("depth_estimator", "mock")).estimate(
+                context.segmentation.cutout_rgba,
+                context.segmentation.mask,
+            ),
+            lambda value, actual_mode: {
+                "backend": actual_mode,
+                "depth_width": value.depth_map.width,
+                "depth_height": value.depth_map.height,
+            },
         )
         stages.append(depth)
         if depth.status == "failed" or stop_after == "depth_estimator":
@@ -131,7 +139,12 @@ class DebugPipelineUseCase:
             "normal_estimator",
             command.stage_modes.get("normal_estimator", "real"),
             context,
-            lambda: self.runtime.normals.estimate(context.depth.depth_map),
+            lambda: self._normals_backend(command.stage_modes.get("normal_estimator", "real")).estimate(context.depth.depth_map),
+            lambda value, actual_mode: {
+                "backend": actual_mode,
+                "normals_width": value.normal_map.width,
+                "normals_height": value.normal_map.height,
+            },
         )
         stages.append(normals)
         if normals.status == "failed" or stop_after == "normal_estimator":
@@ -241,6 +254,12 @@ class DebugPipelineUseCase:
             else (self.runtime.real_foreground_refiner or self.runtime.mock_foreground_refiner)
         )
 
+    def _depth_backend(self, requested_mode: str):
+        return self.runtime.mock_depth if requested_mode == "mock" else (self.runtime.real_depth or self.runtime.mock_depth)
+
+    def _normals_backend(self, requested_mode: str):
+        return self.runtime.mock_normals if requested_mode == "mock" else (self.runtime.real_normals or self.runtime.mock_normals)
+
     def _device_label_for_stage(self, stage_key: str, requested_mode: str, actual_mode: str) -> str:
         if actual_mode in {"mock", "mock-fallback", "internal"}:
             return "cpu"
@@ -252,6 +271,10 @@ class DebugPipelineUseCase:
             backend = self._segmenter_backend(requested_mode)
         elif stage_key == "foreground_refiner":
             backend = self._foreground_refiner_backend(requested_mode)
+        elif stage_key == "depth_estimator":
+            backend = self._depth_backend(requested_mode)
+        elif stage_key == "normal_estimator":
+            backend = self._normals_backend(requested_mode)
         else:
             return "cpu"
         return str(getattr(backend, "device_label", "cpu"))

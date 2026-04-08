@@ -113,3 +113,24 @@ Foreground refinement previews include:
 
 - `segmenter_cutout`
 - `foreground_cutout`
+
+For `depth_estimator`, each stage entry may include:
+
+- `details.depth_width`
+- `details.depth_height`
+- `details.backend`
+
+Depth previews include:
+
+- `depth`
+- `working_cutout`
+
+For `normal_estimator`, each stage entry may include:
+
+- `details.normals_width`
+- `details.normals_height`
+- `details.backend`
+
+Normals previews include:
+
+- `normals`

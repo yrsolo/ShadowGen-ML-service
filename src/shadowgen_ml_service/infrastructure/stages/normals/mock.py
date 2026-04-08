@@ -4,12 +4,12 @@ from PIL import Image
 
 from shadowgen_ml_service.core.contracts import NormalEstimator
 from shadowgen_ml_service.core.models import NormalResult
-from shadowgen_ml_service.utils.images import normals_from_depth
 
 
-class NormalFromDepthEstimator(NormalEstimator):
+class MockNormalEstimator(NormalEstimator):
     def __init__(self) -> None:
         self.device_label = "cpu"
 
     def estimate(self, depth_map: Image.Image) -> NormalResult:
-        return NormalResult(normal_map=normals_from_depth(depth_map))
+        normal_map = Image.new("RGB", depth_map.size, (127, 127, 255))
+        return NormalResult(normal_map=normal_map)
