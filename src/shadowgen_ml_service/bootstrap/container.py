@@ -1,0 +1,174 @@
+from __future__ import annotations
+
+from shadowgen_ml_service.application.dependencies import PipelineRuntime
+from shadowgen_ml_service.bootstrap.probes import probe_birefnet, probe_depth_anything, probe_geocalib, probe_grounding_dino
+from shadowgen_ml_service.bootstrap.runtime_descriptor import build_runtime_descriptor, component_status
+from shadowgen_ml_service.config import Settings
+from shadowgen_ml_service.infrastructure.cache.preprocess_cache_repository import FilesystemPreprocessCacheRepository
+from shadowgen_ml_service.infrastructure.encoding.default import DefaultArtifactEncoder
+from shadowgen_ml_service.infrastructure.presentation.preview_registry import DefaultPreviewBuilderRegistry
+from shadowgen_ml_service.infrastructure.stages.composition.python_composer import PythonComposer
+from shadowgen_ml_service.infrastructure.stages.depth.mock import MockDepthEstimator
+from shadowgen_ml_service.infrastructure.stages.detection.grounding_dino import RealDetector
+from shadowgen_ml_service.infrastructure.stages.detection.mock import MockDetector
+from shadowgen_ml_service.infrastructure.stages.geometry.geocalib import RealGeometryEstimator
+from shadowgen_ml_service.infrastructure.stages.geometry.mock import MockGeometryEstimator
+from shadowgen_ml_service.infrastructure.stages.normals.from_depth import NormalFromDepthEstimator
+from shadowgen_ml_service.infrastructure.stages.segmentation.birefnet import RealSegmenter
+from shadowgen_ml_service.infrastructure.stages.segmentation.mock import MockSegmenter
+from shadowgen_ml_service.infrastructure.stages.shadow.stub import DeterministicShadowGenerator
+
+
+def build_runtime(settings: Settings) -> PipelineRuntime:
+    mode = settings.runtime_mode.lower()
+    grounding = probe_grounding_dino()
+    geocalib = probe_geocalib()
+    birefnet = probe_birefnet(allow_cpu=settings.birefnet_allow_cpu)
+    depth_anything = probe_depth_anything()
+
+    mock_detector = MockDetector()
+    detector = mock_detector
+    real_detector = None
+    detector_component = component_status(
+        "detector",
+        "mock",
+        grounding.model_name,
+        "mock-v1",
+        True,
+        True,
+        "deterministic fallback detector" if not grounding.available else "real wrapper scaffold exists",
+    )
+    if mode != "mock" and grounding.available:
+        try:
+            detector = RealDetector(
+                model_id=settings.grounding_dino_model_id,
+                prompt=settings.grounding_dino_prompt,
+                box_threshold=settings.grounding_dino_box_threshold,
+                text_threshold=settings.grounding_dino_text_threshold,
+            )
+            real_detector = detector
+            detector_component = component_status(
+                "detector",
+                "real",
+                grounding.model_name,
+                grounding.model_version,
+                True,
+                False,
+                (
+                    "GroundingDINO backend active "
+                    f"(model_id={settings.grounding_dino_model_id}, prompt={settings.grounding_dino_prompt!r}, "
+                    f"box_threshold={settings.grounding_dino_box_threshold}, text_threshold={settings.grounding_dino_text_threshold})"
+                ),
+            )
+        except Exception as exc:
+            detector_component = component_status("detector", "mock-fallback", grounding.model_name, "mock-v1", True, True, f"GroundingDINO init failed: {exc}")
+
+    mock_geometry = MockGeometryEstimator()
+    geometry = mock_geometry
+    real_geometry = None
+    geometry_component = component_status(
+        "geometry_estimator",
+        "mock",
+        geocalib.model_name,
+        "mock-v1",
+        True,
+        True,
+        "deterministic fallback geometry estimator" if not geocalib.available else "real wrapper scaffold exists",
+    )
+    if mode != "mock" and geocalib.available:
+        try:
+            geometry = RealGeometryEstimator(
+                weights=settings.geocalib_weights,
+                camera_model=settings.geocalib_camera_model,
+                shared_intrinsics=settings.geocalib_shared_intrinsics,
+            )
+            real_geometry = geometry
+            geometry_component = component_status(
+                "geometry_estimator",
+                "real",
+                geocalib.model_name,
+                geocalib.model_version,
+                True,
+                False,
+                (
+                    "GeoCalib backend active "
+                    f"(weights={settings.geocalib_weights}, camera_model={settings.geocalib_camera_model}, "
+                    f"shared_intrinsics={settings.geocalib_shared_intrinsics})"
+                ),
+            )
+        except Exception as exc:
+            geometry_component = component_status("geometry_estimator", "mock-fallback", geocalib.model_name, "mock-v1", True, True, f"GeoCalib init failed: {exc}")
+
+    mock_segmenter = MockSegmenter()
+    segmenter = mock_segmenter
+    real_segmenter = None
+    segmenter_component = component_status(
+        "segmenter",
+        "mock",
+        birefnet.model_name,
+        "mock-v1",
+        True,
+        True,
+        birefnet.detail or ("deterministic fallback matting stage" if not birefnet.available else "real wrapper scaffold exists"),
+    )
+    if mode != "mock" and birefnet.available:
+        try:
+            segmenter = RealSegmenter(
+                model_id=settings.birefnet_model_id,
+                resolution=settings.birefnet_resolution,
+                mask_threshold=settings.birefnet_mask_threshold,
+            )
+            real_segmenter = segmenter
+            segmenter_component = component_status(
+                "segmenter",
+                "real",
+                birefnet.model_name,
+                birefnet.model_version,
+                True,
+                False,
+                (
+                    "BiRefNet backend active "
+                    f"(model_id={settings.birefnet_model_id}, resolution={settings.birefnet_resolution}, "
+                    f"mask_threshold={settings.birefnet_mask_threshold}, allow_cpu={settings.birefnet_allow_cpu})"
+                ),
+            )
+        except Exception as exc:
+            segmenter_component = component_status("segmenter", "mock-fallback", birefnet.model_name, "mock-v1", True, True, f"BiRefNet init failed: {exc}")
+
+    components = [
+        detector_component,
+        geometry_component,
+        segmenter_component,
+        component_status(
+            "depth_estimator",
+            "mock",
+            depth_anything.model_name,
+            "mock-v1",
+            True,
+            True,
+            "deterministic fallback depth estimator" if not depth_anything.available else "real wrapper scaffold exists",
+        ),
+        component_status("normal_estimator", "internal", "normal-map-from-depth", "v1", True, False),
+        component_status("shadow_generator", "deterministic-stub", "shadow-stub", "v1", True, False),
+        component_status("composer", "python", "solid-background-composer", "v1", True, False),
+        component_status("artifact_encoder", "python", "artifact-encoder", "v1", True, False),
+    ]
+    return PipelineRuntime(
+        detector=detector,
+        mock_detector=mock_detector,
+        real_detector=real_detector,
+        geometry=geometry,
+        mock_geometry=mock_geometry,
+        real_geometry=real_geometry,
+        segmenter=segmenter,
+        mock_segmenter=mock_segmenter,
+        real_segmenter=real_segmenter,
+        depth=MockDepthEstimator(),
+        normals=NormalFromDepthEstimator(),
+        shadow=DeterministicShadowGenerator(),
+        composer=PythonComposer(),
+        encoder=DefaultArtifactEncoder(),
+        cache=FilesystemPreprocessCacheRepository(settings.preprocess_cache_dir),
+        previews=DefaultPreviewBuilderRegistry(),
+        descriptor=build_runtime_descriptor(mode, components),
+    )

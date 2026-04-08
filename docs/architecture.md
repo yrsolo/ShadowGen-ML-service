@@ -1,11 +1,21 @@
 # Architecture
 
-## Layers
+## Layered layout
 
-- API layer: FastAPI endpoints and request validation
-- Application layer: render orchestration and result assembly
-- Domain contracts: pipeline stage protocols and typed models
-- Infrastructure layer: mock adapters, real adapter slots, filesystem cache
+- `core/`: internal value objects, commands, runtime metadata, errors, and ports
+- `application/`: use cases, pipeline context, stage runner, stage catalog, backend selection
+- `infrastructure/`: stage implementations, filesystem cache, artifact encoding, preview builders
+- `interfaces/http/`: FastAPI app factory, route modules, request/response schemas, mappers
+- `interfaces/dev/`: playground UI and dev-facing presentation surface
+- `bootstrap/`: composition root, probes, runtime descriptor assembly
+
+## Architectural rules
+
+- `core` does not import FastAPI, Pydantic, or interface modules
+- `application` depends on `core`, never on HTTP schemas or route modules
+- stage implementations are split per stage package instead of `real.py` / `mock.py` god files
+- public and dev HTTP contracts stay stable while internal orchestration changes behind mappers and use cases
+- preview generation and cache persistence are separate subsystems, not embedded into the main render use case
 
 ## Pipeline stages
 

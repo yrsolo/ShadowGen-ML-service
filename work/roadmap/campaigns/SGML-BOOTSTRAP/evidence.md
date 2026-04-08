@@ -25,6 +25,13 @@
 - Stage 5 segmentation is now wired with a real `ZhengPeng7/BiRefNet_lite-matting` adapter, deterministic mock fallback, and playground previews for `working_crop`, `mask`, and `cutout`
 - On this workstation, BiRefNet real mode is intentionally kept on mock by default because CUDA is unavailable; CPU execution requires explicit opt-in through `SHADOWGEN_BIREFNET_ALLOW_CPU=true`
 - `python -m pytest` passed: `34 passed`
+- Hard-cut architecture refactor completed:
+  - `core/`, `application/`, `infrastructure/`, `interfaces/`, and `bootstrap/` now exist as the primary code layout
+  - render/debug orchestration moved out of the old service module into dedicated use cases
+  - stage adapters are split per stage package instead of living in multi-stage `real.py` / `mock.py` implementations
+  - HTTP schemas/routes and playground UI are separated from pipeline internals
+  - architecture boundary tests now enforce clean-layer imports
+- `python -m pytest` passed after the architecture cut: `37 passed`
 
 ## Pending Follow-Ups
 

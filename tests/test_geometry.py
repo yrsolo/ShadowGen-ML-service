@@ -86,7 +86,7 @@ class GeometryEstimatorTests(unittest.TestCase):
         )
 
     def test_real_geometry_estimator_bubbles_runtime_errors(self) -> None:
-        with patch("shadowgen_ml_service.adapters.real._import_module", side_effect=RuntimeError("boom")):
+        with patch("shadowgen_ml_service.infrastructure.stages.geometry.geocalib.import_module", side_effect=RuntimeError("boom")):
             with self.assertRaises(RuntimeError):
                 RealGeometryEstimator()
 

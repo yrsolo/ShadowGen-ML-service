@@ -20,3 +20,12 @@ Update:
 - Keep model weights, caches, images, and generated artifacts in ignored directories
 - Do not commit secrets
 - Use `var/cache`, `var/tmp`, `artifacts`, `.models`, and `data/*` for local-only runtime data
+
+## Structure discipline
+
+- Put business commands, models, and ports in `core/`
+- Put orchestration only in `application/`
+- Put model backends and technical persistence in `infrastructure/`
+- Put FastAPI, schemas, and route handlers in `interfaces/http/`
+- Put playground and debug presentation in `interfaces/dev/`
+- Keep legacy root or `pipeline/` modules as compatibility shims only, not as places for new logic

@@ -15,6 +15,9 @@
 - [x] Fix playground stage-mode switching so `mock` really executes mock adapters for Geometry and Detection
 - [x] Keep outer margins in the post-detection working crop so shadows have room instead of stretching the object to the full square
 - [x] Implement stage 5 segmentation with real/mocked BiRefNet wiring, fallback behavior, and playground mask previews
+- [x] Execute hard-cut architecture refactor into `core/application/infrastructure/interfaces/bootstrap`
+- [x] Replace service-centered orchestration with use cases, stage runner, backend selector, preview registry, and composition root
+- [x] Add architecture boundary tests so new code cannot leak FastAPI/Pydantic into core/application again
 
 ## Notes
 
