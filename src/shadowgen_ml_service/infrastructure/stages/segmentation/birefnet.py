@@ -76,6 +76,7 @@ class RealSegmenter(Segmenter):
         self.local_files_only = local_files_only
         self._torch = torch_module or import_module("torch")
         self._transforms = transforms_module or import_module("torchvision.transforms")
+        self.device_label = "cpu"
         self._transform_image = self._transforms.Compose(
             [
                 self._transforms.Resize((resolution, resolution)),
@@ -106,6 +107,7 @@ class RealSegmenter(Segmenter):
             self._processor, self._model = cached
         if hasattr(self._model, "eval"):
             self._model.eval()
+        self.device_label = self._infer_device_label()
 
     def segment(self, image: Image.Image) -> SegmentationResult:
         image_rgb = image.convert("RGB")
@@ -136,6 +138,16 @@ class RealSegmenter(Segmenter):
             cutout_rgba=cutout_rgba,
             crop_rgba=image,
         )
+
+    def _infer_device_label(self) -> str:
+        if hasattr(self._model, "device"):
+            return str(self._model.device)
+        if hasattr(self._model, "parameters"):
+            try:
+                return str(next(self._model.parameters()).device)
+            except Exception:
+                pass
+        return "cpu"
 
 
 def probe_birefnet(*, allow_cpu: bool = False) -> RealAdapterProbe:

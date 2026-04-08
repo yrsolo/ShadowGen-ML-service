@@ -71,6 +71,7 @@ class RealGeometryEstimator(GeometryEstimator):
         self.camera_model = camera_model
         self.shared_intrinsics = shared_intrinsics
         self._model = self._module.GeoCalib(weights=weights)
+        self.device_label = self._infer_device_label()
 
     def estimate(self, image: Image.Image) -> GeometryResult:
         prepared = self._prepare_input(image)
@@ -96,6 +97,16 @@ class RealGeometryEstimator(GeometryEstimator):
                 image_rgb.save(temp_file.name, format="PNG")
                 return self._model.load_image(temp_file.name)
         return np.asarray(image_rgb)
+
+    def _infer_device_label(self) -> str:
+        if hasattr(self._model, "device"):
+            return str(self._model.device)
+        if hasattr(self._model, "parameters"):
+            try:
+                return str(next(self._model.parameters()).device)
+            except Exception:
+                pass
+        return "cpu"
 
 
 def probe_geocalib() -> RealAdapterProbe:

@@ -70,6 +70,7 @@ class RealDetector(Detector):
         self.text_threshold = text_threshold
         self.local_files_only = local_files_only
         self._torch = torch_module
+        self.device_label = "cpu"
         if transformers_module is not None:
             processor_cls = transformers_module.GroundingDinoProcessor
             model_cls = transformers_module.GroundingDinoForObjectDetection
@@ -89,6 +90,7 @@ class RealDetector(Detector):
             self._processor, self._model = cached
         if hasattr(self._model, "eval"):
             self._model.eval()
+        self.device_label = self._infer_device_label()
 
     def detect(self, image: Image.Image, padding_px: int) -> DetectionResult:
         image_rgb = image.convert("RGB")
@@ -120,6 +122,16 @@ class RealDetector(Detector):
             candidates.append((bbox, confidence))
         bbox, confidence = select_primary_detection(candidates)
         return DetectionResult(bbox=bbox, confidence=confidence)
+
+    def _infer_device_label(self) -> str:
+        if hasattr(self._model, "device"):
+            return str(self._model.device)
+        if hasattr(self._model, "parameters"):
+            try:
+                return str(next(self._model.parameters()).device)
+            except Exception:
+                pass
+        return "cpu"
 
 
 def probe_grounding_dino() -> RealAdapterProbe:

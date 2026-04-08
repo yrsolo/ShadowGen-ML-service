@@ -178,6 +178,8 @@ class DebugPipelineUseCase:
             previews_factory=lambda stage_value: self.runtime.previews.build(stage_key, self._assign_stage_value(stage_key, context, stage_value), context),
         )
         if execution.status == "completed":
+            execution.details = dict(execution.details or {})
+            execution.details.setdefault("device", self._device_label_for_stage(stage_key, requested_mode, execution.actual_mode))
             self._assign_stage_value(stage_key, context, value)
         return execution
 
@@ -238,6 +240,21 @@ class DebugPipelineUseCase:
             if requested_mode == "mock"
             else (self.runtime.real_foreground_refiner or self.runtime.mock_foreground_refiner)
         )
+
+    def _device_label_for_stage(self, stage_key: str, requested_mode: str, actual_mode: str) -> str:
+        if actual_mode in {"mock", "mock-fallback", "internal"}:
+            return "cpu"
+        if stage_key == "detector":
+            backend = self._detector_backend(requested_mode)
+        elif stage_key == "geometry_estimator":
+            backend = self._geometry_backend(requested_mode)
+        elif stage_key == "segmenter":
+            backend = self._segmenter_backend(requested_mode)
+        elif stage_key == "foreground_refiner":
+            backend = self._foreground_refiner_backend(requested_mode)
+        else:
+            return "cpu"
+        return str(getattr(backend, "device_label", "cpu"))
 
     def _decode_command(self, command: DebugPipelineCommand):
         render = command.render

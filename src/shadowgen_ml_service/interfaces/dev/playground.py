@@ -493,6 +493,7 @@ def render_playground_html() -> str:
               <div class="chip">requested: ${stageModeFor(stage.key)}</div>
               <div class="chip">actual: ${stageState.actual_mode || "n/a"}</div>
               <div class="chip">time: ${stageState.elapsed_ms != null ? `${stageState.elapsed_ms} ms` : "n/a"}</div>
+              ${stageState.details?.device ? `<div class="chip">device: ${stageState.details.device}</div>` : ""}
               ${capability ? `<div class="chip">runtime: ${capability.implementation}</div>` : ""}
             </div>
             ${renderCapabilityNotice(stage, stageState)}
