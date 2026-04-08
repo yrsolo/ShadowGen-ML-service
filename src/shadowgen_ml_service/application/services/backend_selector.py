@@ -8,6 +8,7 @@ UNAVAILABLE_MESSAGES = {
     "detector": "Real detector is unavailable. Configure the GroundingDINO integration and model weights first.",
     "geometry_estimator": "Real geometry estimator is unavailable. Configure GeoCalib integration first.",
     "segmenter": "Real segmenter is unavailable. Configure the BiRefNet adapter first.",
+    "foreground_refiner": "Real foreground colour estimator is unavailable. Install the Fast Foreground Colour Estimation dependencies first.",
     "depth_estimator": "Real depth estimator is unavailable. Configure the Depth Anything adapter first.",
 }
 

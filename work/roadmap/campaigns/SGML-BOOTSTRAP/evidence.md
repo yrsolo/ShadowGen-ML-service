@@ -34,6 +34,8 @@
 - `python -m pytest` passed after the architecture cut: `37 passed`
 - `pyproject.toml` now carries the actual non-torch ML dependencies for the service (`transformers`, `huggingface_hub`, `safetensors`, `timm`, `einops`, `kornia`, `geocalib`)
 - Local setup docs now require explicit CUDA `torch` / `torchvision` installation before `pip install -e .[dev,ml]`, preventing accidental CPU-only PyTorch environments
+- A dedicated `foreground_refiner` stage now runs after segmentation using the Fast Foreground Colour Estimation method, so semi-transparent edge colour correction is no longer embedded inside the segmenter implementation
+- The preprocess cache now stores the refined cutout, and the playground exposes before/after previews (`segmenter_cutout` vs `foreground_cutout`)
 
 ## Pending Follow-Ups
 

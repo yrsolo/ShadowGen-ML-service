@@ -30,6 +30,12 @@ class DefaultPreviewBuilderRegistry(PreviewBuilderRegistry):
             return previews
         if stage_key == "segmenter":
             return {"working_crop": stage_value.crop_rgba, "cutout": stage_value.cutout_rgba, "mask": stage_value.mask}
+        if stage_key == "foreground_refiner":
+            previews = {"foreground_cutout": stage_value.cutout_rgba}
+            pre_refinement_cutout = getattr(context, "pre_refinement_cutout", None)
+            if pre_refinement_cutout is not None:
+                previews["segmenter_cutout"] = pre_refinement_cutout
+            return previews
         if stage_key == "depth_estimator":
             previews = {"depth": stage_value.depth_map}
             segmentation = getattr(context, "segmentation", None)

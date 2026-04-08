@@ -11,6 +11,7 @@ class StageModesPayload(BaseModel):
     detector: Literal["mock", "real"] = "mock"
     geometry_estimator: Literal["mock", "real"] = "mock"
     segmenter: Literal["mock", "real"] = "mock"
+    foreground_refiner: Literal["mock", "real"] = "real"
     depth_estimator: Literal["mock", "real"] = "mock"
     normal_estimator: Literal["mock", "real"] = "real"
     shadow_generator: Literal["mock", "real"] = "real"

@@ -14,6 +14,7 @@ dependencies = [
   "uvicorn>=0.30,<1.0",
   "pillow>=10.4,<11.0",
   "numpy>=1.26,<3.0",
+  "opencv-python-headless>=4.10,<5.0",
 ]
 
 [project.optional-dependencies]

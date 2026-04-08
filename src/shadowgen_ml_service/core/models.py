@@ -32,6 +32,11 @@ class SegmentationResult:
 
 
 @dataclass(frozen=True)
+class ForegroundRefinementResult:
+    cutout_rgba: Image.Image
+
+
+@dataclass(frozen=True)
 class DepthResult:
     depth_map: Image.Image
 
@@ -85,6 +90,7 @@ class PreprocessSnapshot:
     segmentation: SegmentationResult
     depth: DepthResult
     normals: NormalResult
+    foreground_refinement: ForegroundRefinementResult | None = None
     cache_path: Path | None = None
 
 

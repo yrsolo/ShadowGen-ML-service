@@ -38,6 +38,7 @@ Rules:
 - exactly one `final` artifact
 - debug artifacts only when `output.return_debug=true`
 - `metrics.total_ms` always present
+- `metrics.foreground_refinement_ms` may be present when the dedicated foreground colour refinement stage runs before depth/composition
 - `warnings` always present
 - `model_info` always present
 
@@ -101,3 +102,14 @@ Segmentation previews include:
 - `working_crop`
 - `mask`
 - `cutout`
+
+For `foreground_refiner`, each stage entry may include:
+
+- `details.cutout_width`
+- `details.cutout_height`
+- `details.backend`
+
+Foreground refinement previews include:
+
+- `segmenter_cutout`
+- `foreground_cutout`

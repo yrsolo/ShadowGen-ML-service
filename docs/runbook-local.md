@@ -63,6 +63,7 @@ The playground supports:
 - switching each stage between `mock` and `real`
 - showing stage-local errors and previews
 - adjusting the global preview size
+- comparing raw segmentation cutouts against the post-matting foreground colour refinement stage
 
 ### Optional ML bootstrap
 
@@ -176,6 +177,38 @@ In the playground `Segmentation` card:
 - `cutout` shows the RGBA cutout after matting
 - stage details expose mask size, bbox, and backend mode
 
+## Foreground colour refinement bring-up
+
+The dedicated `Foreground` step runs after segmentation and before depth/composition.
+
+It uses the Fast Foreground Colour Estimation method from:
+
+- `https://github.com/Photoroom/fast-foreground-estimation`
+
+Why this exists:
+
+- segmentation and matting are responsible for alpha
+- foreground colour estimation is responsible for fixing the RGB values of semi-transparent edge pixels
+- that separation keeps the architecture cleaner and lets us swap or benchmark this refinement stage independently from the segmenter
+
+Runtime behavior:
+
+- the real backend is active when `cv2` is installed
+- the fallback backend is a passthrough refiner that keeps the alpha channel but skips colour correction
+- the corrected cutout is what downstream depth/shadow/composition stages receive and what the preprocess cache stores
+
+What to verify:
+
+- `components[].name == "foreground_refiner"`
+- `implementation == "real"` when OpenCV is available
+- `using_mock == false` when the Fast Foreground Colour Estimation backend is active
+
+In the playground `Foreground` card:
+
+- `segmenter_cutout` shows the raw cutout coming from the segmentation stage
+- `foreground_cutout` shows the corrected cutout after foreground colour estimation
+- stage details expose the active backend mode
+
 ## Note on Python
 
 This repository keeps the code compatible with Python `3.11+`.
@@ -187,3 +220,4 @@ Important packaging note:
 - install the CUDA build of `torch` explicitly first
 - then install `-e .[dev,ml]`
 - if you run only `pip install -e .[ml]`, pip may silently choose a CPU-only torch in some environments
+- `opencv-python-headless` is part of the base service dependencies because the foreground colour refinement stage uses it in both mock-heavy and real-model workflows

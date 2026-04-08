@@ -19,6 +19,7 @@
 - [x] Replace service-centered orchestration with use cases, stage runner, backend selector, preview registry, and composition root
 - [x] Add architecture boundary tests so new code cannot leak FastAPI/Pydantic into core/application again
 - [x] Normalize Python packaging so `pyproject.toml` carries the real non-torch ML dependencies and the local runbook documents the explicit CUDA `torch` install flow
+- [x] Add a dedicated foreground colour refinement stage based on Fast Foreground Colour Estimation so semi-transparent edge colour correction is decoupled from the segmenter
 
 ## Notes
 

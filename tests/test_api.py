@@ -13,7 +13,7 @@ from PIL import Image, ImageDraw
 
 from shadowgen_ml_service.app import create_app
 from shadowgen_ml_service.config import Settings
-from shadowgen_ml_service.pipeline.types import DetectionResult, GeometryResult
+from shadowgen_ml_service.pipeline.types import DetectionResult, ForegroundRefinementResult, GeometryResult
 from shadowgen_ml_service.pipeline.types import SegmentationResult
 from shadowgen_ml_service.pipeline.service import TimeoutServiceError
 
@@ -148,6 +148,21 @@ class ApiTests(unittest.TestCase):
         self.assertIn("cutout", preview_names)
         self.assertIn("mask", preview_names)
 
+    def test_debug_pipeline_foreground_refiner_real_smoke(self) -> None:
+        response = self.client.post(
+            "/v1/dev/pipeline/run-stage/foreground_refiner",
+            json={"render_request": make_request(), "stage_modes": {"foreground_refiner": "real"}},
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        foreground = payload["stages"][-1]
+        self.assertEqual(foreground["stage_key"], "foreground_refiner")
+        self.assertEqual(foreground["status"], "completed")
+        self.assertIn(foreground["actual_mode"], {"real", "mock-fallback"})
+        preview_names = {preview["name"] for preview in foreground["previews"]}
+        self.assertIn("segmenter_cutout", preview_names)
+        self.assertIn("foreground_cutout", preview_names)
+
     def test_debug_pipeline_detector_real_smoke(self) -> None:
         response = self.client.post(
             "/v1/dev/pipeline/run-stage/detector",
@@ -279,6 +294,33 @@ class ApiTests(unittest.TestCase):
         segmenter = response.json()["stages"][-1]
         self.assertEqual(segmenter["actual_mode"], "mock")
         self.assertEqual(segmenter["details"]["backend"], "mock")
+
+    def test_debug_pipeline_foreground_refiner_mock_uses_mock_adapter_even_when_real_is_available(self) -> None:
+        app = create_app(Settings())
+
+        class BombForegroundRefiner:
+            def refine(self, image, alpha):
+                raise AssertionError("real foreground refiner should not run in mock mode")
+
+        class StubMockForegroundRefiner:
+            def refine(self, image, alpha):
+                cutout = image.convert("RGBA")
+                cutout.putalpha(alpha)
+                return ForegroundRefinementResult(cutout_rgba=cutout)
+
+        app.state.render_service.runtime.real_foreground_refiner = BombForegroundRefiner()
+        app.state.render_service.runtime.foreground_refiner = BombForegroundRefiner()
+        app.state.render_service.runtime.mock_foreground_refiner = StubMockForegroundRefiner()
+        client = TestClient(app)
+
+        response = client.post(
+            "/v1/dev/pipeline/run-stage/foreground_refiner",
+            json={"render_request": make_request(), "stage_modes": {"foreground_refiner": "mock"}},
+        )
+        self.assertEqual(response.status_code, 200)
+        foreground = response.json()["stages"][-1]
+        self.assertEqual(foreground["actual_mode"], "mock")
+        self.assertEqual(foreground["details"]["backend"], "mock")
 
     def test_segmentation_runs_after_crop_and_resize(self) -> None:
         temp_dir = Path("var/cache/test-preprocess") / uuid4().hex

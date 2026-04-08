@@ -9,7 +9,7 @@ from shadowgen_ml_service.application.services.stage_runner import StageRunner
 from shadowgen_ml_service.config import Settings
 from shadowgen_ml_service.core.commands import RenderCommand
 from shadowgen_ml_service.core.errors import TimeoutServiceError, UnsupportedInputServiceError, ValidationServiceError
-from shadowgen_ml_service.core.models import PreprocessSnapshot
+from shadowgen_ml_service.core.models import PreprocessSnapshot, SegmentationResult
 from shadowgen_ml_service.utils.images import decode_image, prepare_working_crop
 
 
@@ -57,11 +57,23 @@ class RenderPipelineUseCase:
 
             segmentation = self._execute_public_stage("segmenter", context, lambda: self.runtime.segmenter.segment(context.working_crop))
             context.segmentation = segmentation
+            context.pre_refinement_cutout = segmentation.cutout_rgba
+
+            foreground_refinement = self._execute_public_stage(
+                "foreground_refiner",
+                context,
+                lambda: self.runtime.foreground_refiner.refine(
+                    context.segmentation.crop_rgba,
+                    self._segmentation_alpha(context.segmentation),
+                ),
+            )
+            context.foreground_refinement = foreground_refinement
+            context.segmentation = self._merge_refined_cutout(context.segmentation, foreground_refinement.cutout_rgba)
 
             depth = self._execute_public_stage(
                 "depth_estimator",
                 context,
-                lambda: self.runtime.depth.estimate(segmentation.cutout_rgba, segmentation.mask),
+                lambda: self.runtime.depth.estimate(context.segmentation.cutout_rgba, context.segmentation.mask),
             )
             context.depth = depth
 
@@ -71,9 +83,10 @@ class RenderPipelineUseCase:
             snapshot = PreprocessSnapshot(
                 detection=detection,
                 geometry=geometry,
-                segmentation=segmentation,
+                segmentation=context.segmentation,
                 depth=depth,
                 normals=normals,
+                foreground_refinement=foreground_refinement,
             )
             self.runtime.cache.save(cache_key, snapshot)
         else:
@@ -81,6 +94,7 @@ class RenderPipelineUseCase:
             context.metrics.values.setdefault("detection_ms", 0)
             context.metrics.values.setdefault("geometry_ms", 0)
             context.metrics.values.setdefault("segmentation_ms", 0)
+            context.metrics.values.setdefault("foreground_refinement_ms", 0)
             context.metrics.values.setdefault("depth_ms", 0)
             context.metrics.values.setdefault("normals_ms", 0)
             context.preprocess_snapshot = snapshot
@@ -89,6 +103,7 @@ class RenderPipelineUseCase:
             context.segmentation = snapshot.segmentation
             context.depth = snapshot.depth
             context.normals = snapshot.normals
+            context.foreground_refinement = snapshot.foreground_refinement
 
         shadow = self._execute_public_stage(
             "shadow_generator",
@@ -153,6 +168,7 @@ class RenderPipelineUseCase:
             "geometry_estimator": "geometry_ms",
             "detector": "detection_ms",
             "segmenter": "segmentation_ms",
+            "foreground_refiner": "foreground_refinement_ms",
             "depth_estimator": "depth_ms",
             "normal_estimator": "normals_ms",
             "shadow_generator": "shadow_ms",
@@ -187,3 +203,16 @@ class RenderPipelineUseCase:
             context.warnings.append("geometry_real_fallback_active")
         if any(component.name == "segmenter" and component.implementation == "mock-fallback" for component in self.runtime.descriptor.components):
             context.warnings.append("segmenter_real_fallback_active")
+        if any(component.name == "foreground_refiner" and component.implementation == "mock-fallback" for component in self.runtime.descriptor.components):
+            context.warnings.append("foreground_refiner_real_fallback_active")
+
+    def _segmentation_alpha(self, segmentation: SegmentationResult):
+        return segmentation.cutout_rgba.getchannel("A")
+
+    def _merge_refined_cutout(self, segmentation: SegmentationResult, refined_cutout_rgba):
+        return SegmentationResult(
+            bbox=segmentation.bbox,
+            mask=segmentation.mask,
+            cutout_rgba=refined_cutout_rgba,
+            crop_rgba=segmentation.crop_rgba,
+        )

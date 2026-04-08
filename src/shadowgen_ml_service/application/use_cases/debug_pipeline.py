@@ -99,6 +99,24 @@ class DebugPipelineUseCase:
         if segmentation.status == "failed" or stop_after == "segmenter":
             return DebugPipelineOutcome(request_id=command.render.request_id, stages=stages, warnings=context.warnings)
 
+        foreground_refiner = self._run_stage(
+            "foreground_refiner",
+            command.stage_modes.get("foreground_refiner", "real"),
+            context,
+            lambda: self._foreground_refiner_backend(command.stage_modes.get("foreground_refiner", "real")).refine(
+                context.segmentation.crop_rgba,
+                context.segmentation.cutout_rgba.getchannel("A"),
+            ),
+            lambda value, actual_mode: {
+                "backend": actual_mode,
+                "cutout_width": value.cutout_rgba.width,
+                "cutout_height": value.cutout_rgba.height,
+            },
+        )
+        stages.append(foreground_refiner)
+        if foreground_refiner.status == "failed" or stop_after == "foreground_refiner":
+            return DebugPipelineOutcome(request_id=command.render.request_id, stages=stages, warnings=context.warnings)
+
         depth = self._run_stage(
             "depth_estimator",
             command.stage_modes.get("depth_estimator", "mock"),
@@ -176,6 +194,15 @@ class DebugPipelineUseCase:
             )
         elif stage_key == "segmenter":
             context.segmentation = value
+        elif stage_key == "foreground_refiner":
+            context.pre_refinement_cutout = context.segmentation.cutout_rgba
+            context.foreground_refinement = value
+            context.segmentation = context.segmentation.__class__(
+                bbox=context.segmentation.bbox,
+                mask=context.segmentation.mask,
+                cutout_rgba=value.cutout_rgba,
+                crop_rgba=context.segmentation.crop_rgba,
+            )
         elif stage_key == "depth_estimator":
             context.depth = value
         elif stage_key == "normal_estimator":
@@ -204,6 +231,13 @@ class DebugPipelineUseCase:
 
     def _segmenter_backend(self, requested_mode: str):
         return self.runtime.mock_segmenter if requested_mode == "mock" else (self.runtime.real_segmenter or self.runtime.mock_segmenter)
+
+    def _foreground_refiner_backend(self, requested_mode: str):
+        return (
+            self.runtime.mock_foreground_refiner
+            if requested_mode == "mock"
+            else (self.runtime.real_foreground_refiner or self.runtime.mock_foreground_refiner)
+        )
 
     def _decode_command(self, command: DebugPipelineCommand):
         render = command.render

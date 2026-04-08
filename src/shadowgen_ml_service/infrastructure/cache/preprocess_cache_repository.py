@@ -8,7 +8,7 @@ from pathlib import Path
 from PIL import Image
 
 from shadowgen_ml_service.core.contracts import PreprocessCacheRepository
-from shadowgen_ml_service.core.models import DepthResult, DetectionResult, GeometryResult, NormalResult, PreprocessSnapshot, SegmentationResult
+from shadowgen_ml_service.core.models import DepthResult, DetectionResult, ForegroundRefinementResult, GeometryResult, NormalResult, PreprocessSnapshot, SegmentationResult
 
 
 class FilesystemPreprocessCacheRepository(PreprocessCacheRepository):
@@ -45,6 +45,11 @@ class FilesystemPreprocessCacheRepository(PreprocessCacheRepository):
             segmentation=segmentation,
             depth=DepthResult(depth_map=Image.open(cache_dir / "depth.png").convert("L")),
             normals=NormalResult(normal_map=Image.open(cache_dir / "normals.png").convert("RGB")),
+            foreground_refinement=(
+                ForegroundRefinementResult(cutout_rgba=Image.open(cache_dir / "foreground-cutout.png").convert("RGBA"))
+                if (cache_dir / "foreground-cutout.png").exists()
+                else None
+            ),
             cache_path=cache_dir,
         )
 
@@ -60,5 +65,7 @@ class FilesystemPreprocessCacheRepository(PreprocessCacheRepository):
         snapshot.segmentation.mask.save(cache_dir / "mask.png", format="PNG")
         snapshot.segmentation.cutout_rgba.save(cache_dir / "cutout.png", format="PNG")
         snapshot.segmentation.crop_rgba.save(cache_dir / "crop.png", format="PNG")
+        if snapshot.foreground_refinement is not None:
+            snapshot.foreground_refinement.cutout_rgba.save(cache_dir / "foreground-cutout.png", format="PNG")
         snapshot.depth.depth_map.save(cache_dir / "depth.png", format="PNG")
         snapshot.normals.normal_map.save(cache_dir / "normals.png", format="PNG")

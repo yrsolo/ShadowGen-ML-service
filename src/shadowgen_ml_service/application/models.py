@@ -13,6 +13,7 @@ from shadowgen_ml_service.core.models import (
     DepthResult,
     DetectionResult,
     EncodedArtifact,
+    ForegroundRefinementResult,
     GeometryResult,
     HealthStatus,
     NormalResult,
@@ -58,9 +59,11 @@ class PipelineContext:
     cache_key: str | None = None
     preprocess_snapshot: PreprocessSnapshot | None = None
     working_crop: Image.Image | None = None
+    pre_refinement_cutout: Image.Image | None = None
     detection: DetectionResult | None = None
     geometry: GeometryResult | None = None
     segmentation: SegmentationResult | None = None
+    foreground_refinement: ForegroundRefinementResult | None = None
     depth: DepthResult | None = None
     normals: NormalResult | None = None
     shadow: ShadowResult | None = None

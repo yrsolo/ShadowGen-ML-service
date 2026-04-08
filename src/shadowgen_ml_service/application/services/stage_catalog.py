@@ -8,6 +8,7 @@ STAGE_CATALOG = [
     StageDefinition("geometry_estimator", "Geometry", "Estimate camera geometry from the original image."),
     StageDefinition("detector", "Detection", "Locate the main foreground object and compute the crop area."),
     StageDefinition("segmenter", "Segmentation", "Build the foreground mask and cut out the object."),
+    StageDefinition("foreground_refiner", "Foreground", "Correct semi-transparent foreground colours after matting."),
     StageDefinition("depth_estimator", "Depth", "Estimate the relative depth map for the foreground crop."),
     StageDefinition("normal_estimator", "Normals", "Compute surface normals from the depth map."),
     StageDefinition("shadow_generator", "Shadow", "Generate the shadow layer from geometry and user lighting controls."),

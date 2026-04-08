@@ -8,6 +8,8 @@ from shadowgen_ml_service.infrastructure.stages.composition.python_composer impo
 from shadowgen_ml_service.infrastructure.stages.depth.mock import MockDepthEstimator
 from shadowgen_ml_service.infrastructure.stages.detection.grounding_dino import RealDetector, probe_grounding_dino
 from shadowgen_ml_service.infrastructure.stages.detection.mock import MockDetector
+from shadowgen_ml_service.infrastructure.stages.foreground_refinement.fast_foreground_estimation import FastForegroundColorEstimator, probe_fast_foreground_estimation
+from shadowgen_ml_service.infrastructure.stages.foreground_refinement.mock import PassthroughForegroundColorEstimator
 from shadowgen_ml_service.infrastructure.stages.geometry.geocalib import RealGeometryEstimator, probe_geocalib
 from shadowgen_ml_service.infrastructure.stages.geometry.mock import MockGeometryEstimator
 from shadowgen_ml_service.infrastructure.stages.normals.from_depth import NormalFromDepthEstimator
@@ -22,6 +24,7 @@ def build_runtime(settings: Settings) -> PipelineRuntime:
     grounding = probe_grounding_dino()
     geocalib = probe_geocalib()
     birefnet = probe_birefnet(allow_cpu=settings.birefnet_allow_cpu)
+    fast_foreground = probe_fast_foreground_estimation()
     depth_anything = probe_depth_anything()
 
     mock_detector = MockDetector()
@@ -73,10 +76,47 @@ def build_runtime(settings: Settings) -> PipelineRuntime:
         except Exception as exc:
             segmenter_component = component_status("segmenter", "mock-fallback", birefnet.model_name, "mock-v1", True, True, f"BiRefNet init failed: {exc}")
 
+    mock_foreground_refiner = PassthroughForegroundColorEstimator()
+    foreground_refiner = mock_foreground_refiner
+    real_foreground_refiner = None
+    foreground_refiner_component = component_status(
+        "foreground_refiner",
+        "mock",
+        fast_foreground.model_name,
+        "passthrough-v1",
+        True,
+        True,
+        fast_foreground.detail or "passthrough foreground refinement",
+    )
+    if mode != "mock" and fast_foreground.available:
+        try:
+            foreground_refiner = FastForegroundColorEstimator()
+            real_foreground_refiner = foreground_refiner
+            foreground_refiner_component = component_status(
+                "foreground_refiner",
+                "real",
+                fast_foreground.model_name,
+                fast_foreground.model_version,
+                True,
+                False,
+                "Fast Foreground Colour Estimation backend active",
+            )
+        except Exception as exc:
+            foreground_refiner_component = component_status(
+                "foreground_refiner",
+                "mock-fallback",
+                fast_foreground.model_name,
+                "passthrough-v1",
+                True,
+                True,
+                f"foreground refinement init failed: {exc}",
+            )
+
     components = [
         detector_component,
         geometry_component,
         segmenter_component,
+        foreground_refiner_component,
         component_status("depth_estimator", "mock", depth_anything.model_name, "mock-v1", True, True, "deterministic fallback depth estimator" if not depth_anything.available else "real wrapper scaffold exists"),
         component_status("normal_estimator", "internal", "normal-map-from-depth", "v1", True, False),
         component_status("shadow_generator", "deterministic-stub", "shadow-stub", "v1", True, False),
@@ -93,6 +133,9 @@ def build_runtime(settings: Settings) -> PipelineRuntime:
         segmenter=segmenter,
         mock_segmenter=mock_segmenter,
         real_segmenter=real_segmenter,
+        foreground_refiner=foreground_refiner,
+        mock_foreground_refiner=mock_foreground_refiner,
+        real_foreground_refiner=real_foreground_refiner,
         depth=MockDepthEstimator(),
         normals=NormalFromDepthEstimator(),
         shadow=DeterministicShadowGenerator(),
@@ -108,9 +151,11 @@ __all__ = [
     "RealDetector",
     "RealGeometryEstimator",
     "RealSegmenter",
+    "FastForegroundColorEstimator",
     "build_runtime",
     "probe_birefnet",
     "probe_depth_anything",
+    "probe_fast_foreground_estimation",
     "probe_geocalib",
     "probe_grounding_dino",
 ]

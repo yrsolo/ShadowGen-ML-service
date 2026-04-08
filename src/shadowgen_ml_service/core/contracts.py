@@ -10,6 +10,7 @@ from shadowgen_ml_service.core.models import (
     DepthResult,
     DetectionResult,
     EncodedArtifact,
+    ForegroundRefinementResult,
     GeometryResult,
     NormalResult,
     PreprocessSnapshot,
@@ -33,6 +34,12 @@ class GeometryEstimator(ABC):
 class Segmenter(ABC):
     @abstractmethod
     def segment(self, image: Image.Image) -> SegmentationResult:
+        raise NotImplementedError
+
+
+class ForegroundColorEstimator(ABC):
+    @abstractmethod
+    def refine(self, image: Image.Image, alpha: Image.Image) -> ForegroundRefinementResult:
         raise NotImplementedError
 
 

@@ -24,11 +24,12 @@
 3. Detect main object
 4. Crop, pad, and resize with `preprocess.padding_px`
 5. Segment the prepared working crop
-6. Estimate depth
-7. Compute normals
-8. Generate shadow
-9. Compose final output
-10. Encode artifacts and metrics
+6. Refine semi-transparent foreground colours with Fast Foreground Colour Estimation
+7. Estimate depth
+8. Compute normals
+9. Generate shadow
+10. Compose final output
+11. Encode artifacts and metrics
 
 ## Geometry step
 
@@ -74,3 +75,15 @@
   - `mask`
   - `cutout`
   - stage metadata for mask size and backend mode
+
+## Foreground refinement step
+
+- `foreground_refiner` is a dedicated post-segmentation stage, not logic embedded into the segmenter adapter
+- it takes the prepared working crop plus the segmentation alpha matte and corrects edge colours for semi-transparent pixels
+- the real backend uses the Fast Foreground Colour Estimation method from `Photoroom/fast-foreground-estimation`
+- this stage exists to reduce matte fringing and background colour contamination before depth, shadow, and final composition
+- the fallback backend is a passthrough refiner that preserves the incoming alpha but skips colour correction
+- the playground exposes:
+  - `segmenter_cutout`
+  - `foreground_cutout`
+  - backend metadata for the refinement stage

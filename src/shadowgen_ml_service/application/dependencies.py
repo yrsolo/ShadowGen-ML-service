@@ -7,6 +7,7 @@ from shadowgen_ml_service.core.contracts import (
     Composer,
     DepthEstimator,
     Detector,
+    ForegroundColorEstimator,
     GeometryEstimator,
     NormalEstimator,
     PreprocessCacheRepository,
@@ -28,6 +29,9 @@ class PipelineRuntime:
     segmenter: Segmenter
     mock_segmenter: Segmenter
     real_segmenter: Segmenter | None
+    foreground_refiner: ForegroundColorEstimator
+    mock_foreground_refiner: ForegroundColorEstimator
+    real_foreground_refiner: ForegroundColorEstimator | None
     depth: DepthEstimator
     normals: NormalEstimator
     shadow: ShadowGenerator

@@ -73,6 +73,7 @@ class MetricsResponse(BaseModel):
     geometry_ms: int | None = None
     detection_ms: int | None = None
     segmentation_ms: int | None = None
+    foreground_refinement_ms: int | None = None
     depth_ms: int | None = None
     normals_ms: int | None = None
     shadow_ms: int | None = None

@@ -28,4 +28,5 @@ Update:
 - Put model backends and technical persistence in `infrastructure/`
 - Put FastAPI, schemas, and route handlers in `interfaces/http/`
 - Put playground and debug presentation in `interfaces/dev/`
+- Keep post-processing modules such as foreground colour refinement as standalone stages; do not bury them inside the segmenter implementation
 - Keep legacy root or `pipeline/` modules as compatibility shims only, not as places for new logic
