@@ -1,31 +1,6 @@
---extra-index-url https://download.pytorch.org/whl/cu126
+--index-url https://download.pytorch.org/whl/cu126
+--extra-index-url https://pypi.org/simple
 
 torch
 torchvision
-torchaudio
-
-huggingface_hub
-transformers
-accelerate
-diffusers
-
-numpy
-scipy
-scikit-image
-opencv-python
-Pillow
-tqdm
-
-timm
-einops
-kornia
-
-matplotlib
-seaborn
-plotly
-
-bitsandbytes
-
-prettytable
-tabulate
-ipywidgets
+-e .[ml]

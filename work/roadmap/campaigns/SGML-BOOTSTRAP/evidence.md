@@ -32,6 +32,8 @@
   - HTTP schemas/routes and playground UI are separated from pipeline internals
   - architecture boundary tests now enforce clean-layer imports
 - `python -m pytest` passed after the architecture cut: `37 passed`
+- `pyproject.toml` now carries the actual non-torch ML dependencies for the service (`transformers`, `huggingface_hub`, `safetensors`, `timm`, `einops`, `kornia`, `geocalib`)
+- Local setup docs now require explicit CUDA `torch` / `torchvision` installation before `pip install -e .[dev,ml]`, preventing accidental CPU-only PyTorch environments
 
 ## Pending Follow-Ups
 

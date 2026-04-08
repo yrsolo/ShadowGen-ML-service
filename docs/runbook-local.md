@@ -21,6 +21,35 @@
 .venv/Scripts/python.exe -m pytest
 ```
 
+## Recreate `.venv` with CUDA
+
+`pyproject.toml` now describes the project itself plus the non-torch ML stack.
+CUDA-enabled `torch` is installed separately on purpose, because pip cannot infer the correct NVIDIA wheel from `pyproject.toml` alone.
+
+Recommended Windows / PowerShell flow from the repository root:
+
+```powershell
+Remove-Item -Recurse -Force .venv -ErrorAction SilentlyContinue
+py -3.11 -m venv .venv
+.venv\Scripts\python.exe -m pip install --upgrade pip setuptools wheel
+.venv\Scripts\python.exe -m pip install --index-url https://download.pytorch.org/whl/cu126 torch torchvision
+.venv\Scripts\python.exe -m pip install -e .[dev,ml]
+```
+
+If your NVIDIA driver / CUDA runtime needs a different PyTorch channel, replace `cu126` with the matching one from the official PyTorch install matrix.
+
+Quick verification:
+
+```powershell
+.venv\Scripts\python.exe -c "import torch; print(torch.__version__); print(torch.cuda.is_available()); print(torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'no-cuda')"
+```
+
+Expected result on a healthy GPU environment:
+
+- `torch` version without the `+cpu` suffix
+- `True` for `torch.cuda.is_available()`
+- a real NVIDIA device name
+
 ## Browser playground
 
 After the server starts, open:
@@ -38,9 +67,8 @@ The playground supports:
 ### Optional ML bootstrap
 
 ```powershell
+.venv/Scripts/python.exe -m pip install --index-url https://download.pytorch.org/whl/cu126 torch torchvision
 .venv/Scripts/python.exe -m pip install -e .[ml]
-.venv/Scripts/python.exe -m pip install transformers
-.venv/Scripts/python.exe -m pip install -e "git+https://github.com/cvg/GeoCalib#egg=geocalib"
 ```
 
 If direct GitHub install is blocked, a local fallback also works:
@@ -57,9 +85,10 @@ The real `Geometry` step uses GeoCalib from the active `.venv`.
 
 Expected workflow:
 
-1. Install GeoCalib into the current virtual environment.
-2. Keep heavy weights and artifacts out of git in ignored folders such as `.models/`.
-3. Start the service and inspect `GET /v1/capabilities`.
+1. Install CUDA `torch` / `torchvision` into the current virtual environment.
+2. Install `-e .[ml]` so GeoCalib and the supporting ML packages land in the same `.venv`.
+3. Keep heavy weights and artifacts out of git in ignored folders such as `.models/`.
+4. Start the service and inspect `GET /v1/capabilities`.
 
 Useful env vars:
 
@@ -90,9 +119,10 @@ The real `Detection` step uses `IDEA-Research/grounding-dino-base` through `tran
 
 Expected workflow:
 
-1. Install `transformers` into the active virtual environment.
-2. Start the service and let the model download into the local Hugging Face / torch cache on first initialization.
-3. Inspect `GET /v1/capabilities`.
+1. Install CUDA `torch` / `torchvision` into the active virtual environment.
+2. Install `-e .[ml]` so `transformers` and its supporting packages land in the same `.venv`.
+3. Start the service and let the model download into the local Hugging Face / torch cache on first initialization.
+4. Inspect `GET /v1/capabilities`.
 
 Useful env vars:
 
@@ -150,3 +180,10 @@ In the playground `Segmentation` card:
 
 This repository keeps the code compatible with Python `3.11+`.
 Current local `.venv` may not be the final production baseline for heavy ML dependencies.
+
+Important packaging note:
+
+- `pyproject.toml` intentionally does not pin `torch` there anymore
+- install the CUDA build of `torch` explicitly first
+- then install `-e .[dev,ml]`
+- if you run only `pip install -e .[ml]`, pip may silently choose a CPU-only torch in some environments

@@ -18,6 +18,7 @@
 - [x] Execute hard-cut architecture refactor into `core/application/infrastructure/interfaces/bootstrap`
 - [x] Replace service-centered orchestration with use cases, stage runner, backend selector, preview registry, and composition root
 - [x] Add architecture boundary tests so new code cannot leak FastAPI/Pydantic into core/application again
+- [x] Normalize Python packaging so `pyproject.toml` carries the real non-torch ML dependencies and the local runbook documents the explicit CUDA `torch` install flow
 
 ## Notes
 

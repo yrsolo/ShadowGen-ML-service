@@ -22,8 +22,13 @@ dev = [
   "pytest>=8.3,<9.0",
 ]
 ml = [
-  "torch>=2.5,<3.0",
-  "transformers>=4.51,<5.0",
+  "transformers>=4.48,<5.0",
+  "huggingface_hub>=0.31,<1.0",
+  "safetensors>=0.5,<1.0",
+  "timm>=1.0,<2.0",
+  "einops>=0.8,<1.0",
+  "kornia>=0.8,<1.0",
+  "geocalib @ git+https://github.com/cvg/GeoCalib.git",
 ]
 
 [tool.setuptools.package-dir]

@@ -28,6 +28,9 @@ Quick start:
 .venv/Scripts/python.exe -m pytest
 ```
 
+GPU / ML setup lives in `docs/runbook-local.md`.
+Use the CUDA `torch` install flow from there before `-e .[ml]`, otherwise pip may resolve a CPU-only torch build.
+
 Windows shortcut:
 
 ```cmd

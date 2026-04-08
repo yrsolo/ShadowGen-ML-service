@@ -240,6 +240,23 @@ def render_playground_html() -> str:
       color: var(--muted);
       font-size: 12px;
     }
+    .notice {
+      margin-top: 12px;
+      padding: 12px 14px;
+      border-radius: 18px;
+      background: rgba(29,36,51,0.06);
+      color: var(--muted);
+      white-space: pre-wrap;
+      font-size: 13px;
+    }
+    .notice.warn {
+      background: rgba(255,122,89,0.14);
+      color: #9f4428;
+    }
+    .notice.ok {
+      background: rgba(47,133,90,0.12);
+      color: var(--ok);
+    }
     .error {
       margin-top: 12px;
       padding: 12px 14px;
@@ -373,6 +390,7 @@ def render_playground_html() -> str:
     const state = {
       imageBase64: null,
       mimeType: null,
+      capabilities: {},
       stages: {},
       stageModes: {
         geometry_estimator: "mock",
@@ -422,12 +440,34 @@ def render_playground_html() -> str:
       return state.stageModes[key] || "mock";
     }
 
+    function capabilityFor(key) {
+      return state.capabilities[key] || null;
+    }
+
+    function renderCapabilityNotice(stage, stageState) {
+      const capability = capabilityFor(stage.key);
+      if (!capability) {
+        return "";
+      }
+      if (stageState.actual_mode === "mock-fallback") {
+        return `<div class="notice warn">Запрошен real, но сейчас выполнен mock-fallback.\nПричина: ${capability.detail || "реальный backend недоступен в текущем runtime."}</div>`;
+      }
+      if (stageModeFor(stage.key) === "real" && capability.using_mock) {
+        return `<div class="notice warn">Для этого этапа real backend сейчас не активен.\nПричина: ${capability.detail || "runtime работает через mock backend."}</div>`;
+      }
+      if (stageState.actual_mode === "real") {
+        return `<div class="notice ok">Этап действительно выполнился через real backend.</div>`;
+      }
+      return "";
+    }
+
     function renderCards() {
       pipelineEl.innerHTML = "";
       stageDefinitions.forEach((stage, index) => {
         const card = document.createElement("article");
         card.className = "stage-card";
         const stageState = state.stages[stage.key] || {};
+        const capability = capabilityFor(stage.key);
         card.innerHTML = `
           <div>
             <div class="stage-head">
@@ -451,7 +491,9 @@ def render_playground_html() -> str:
               <div class="chip">requested: ${stageModeFor(stage.key)}</div>
               <div class="chip">actual: ${stageState.actual_mode || "n/a"}</div>
               <div class="chip">time: ${stageState.elapsed_ms != null ? `${stageState.elapsed_ms} ms` : "n/a"}</div>
+              ${capability ? `<div class="chip">runtime: ${capability.implementation}</div>` : ""}
             </div>
+            ${renderCapabilityNotice(stage, stageState)}
             <div class="detail-grid">${renderDetailsMarkup(stageState.details || null)}</div>
             <div class="error" id="error-${stage.key}" style="${stageState.error ? "display:block;" : ""}">${stageState.error || ""}</div>
           </div>
@@ -465,6 +507,10 @@ def render_playground_html() -> str:
           const { stage, mode } = button.dataset;
           if (stage === "decode") { return; }
           state.stageModes[stage] = mode;
+          const capability = capabilityFor(stage);
+          if (mode === "real" && capability && capability.using_mock) {
+            globalNote.textContent = `${stage}: real backend сейчас не активен, поэтому запуск пойдёт через mock-fallback. ${capability.detail || ""}`.trim();
+          }
           renderCards();
         });
       });
@@ -583,7 +629,25 @@ def render_playground_html() -> str:
       });
     }
 
-    renderCards();
+    async function loadCapabilities() {
+      try {
+        const response = await fetch("/v1/capabilities");
+        if (!response.ok) {
+          throw new Error("capabilities request failed");
+        }
+        const payload = await response.json();
+        state.capabilities = Object.fromEntries((payload.components || []).map((component) => [component.name, component]));
+        const segmenterCapability = state.capabilities.segmenter;
+        if (segmenterCapability?.using_mock) {
+          globalNote.textContent = `Segmentation real backend сейчас не активен. ${segmenterCapability.detail || ""}`.trim();
+        }
+      } catch (error) {
+        globalNote.textContent = `Не удалось загрузить runtime capabilities: ${error.message}`;
+      }
+      renderCards();
+    }
+
+    loadCapabilities();
   </script>
 </body>
 </html>

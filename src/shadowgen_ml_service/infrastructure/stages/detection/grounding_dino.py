@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib
+import inspect
 from types import ModuleType
 from typing import Any, ClassVar
 
@@ -39,6 +40,14 @@ def select_primary_detection(candidates: list[tuple[BBox, float]], *, confidence
     if len(close_candidates) == 1:
         return best_bbox, best_score
     return max(close_candidates, key=lambda item: (bbox_area(item[0]), item[1]))
+
+
+def post_process_kwargs(processor: Any, *, box_threshold: float, text_threshold: float) -> dict[str, float]:
+    signature = inspect.signature(processor.post_process_grounded_object_detection)
+    parameters = signature.parameters
+    if "box_threshold" in parameters:
+        return {"box_threshold": box_threshold, "text_threshold": text_threshold}
+    return {"threshold": box_threshold, "text_threshold": text_threshold}
 
 
 class RealDetector(Detector):
@@ -90,9 +99,12 @@ class RealDetector(Detector):
         results = self._processor.post_process_grounded_object_detection(
             outputs,
             input_ids=inputs.get("input_ids"),
-            threshold=self.box_threshold,
-            text_threshold=self.text_threshold,
             target_sizes=[image_rgb.size[::-1]],
+            **post_process_kwargs(
+                self._processor,
+                box_threshold=self.box_threshold,
+                text_threshold=self.text_threshold,
+            ),
         )
         if not results:
             raise ValueError("GroundingDINO returned no detection result")
