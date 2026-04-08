@@ -100,6 +100,7 @@ Useful env vars:
 - `SHADOWGEN_GROUNDING_DINO_PROMPT` to override the zero-shot prompt, default `object.`
 - `SHADOWGEN_GROUNDING_DINO_BOX_THRESHOLD` to change the box confidence threshold
 - `SHADOWGEN_GROUNDING_DINO_TEXT_THRESHOLD` to change the text threshold used by post-processing
+- `SHADOWGEN_WORKING_CONTENT_SCALE` to control how much of the square working canvas the detected crop may occupy; lower values leave more outer margin for shadow projection
 
 What to verify:
 
@@ -110,10 +111,40 @@ What to verify:
 In the playground `Detection` card:
 
 - `detection_overlay` shows the selected bbox on the source image
-- `crop_for_resize` shows the working crop that will go to segmentation
+- `crop_for_resize` shows the working crop that will go to segmentation, including the new outer margin reserved for shadows
 - stage details expose bbox coordinates, confidence, backend mode, and prompt
 
 If GroundingDINO is unavailable or fails to initialize, the service falls back to the mock detector and the playground shows `mock-fallback`.
+
+## BiRefNet bring-up
+
+The real `Segmentation` step uses `ZhengPeng7/BiRefNet_lite-matting`.
+
+Useful env vars:
+
+- `SHADOWGEN_BIREFNET_MODEL_ID` to switch the segmenter checkpoint
+- `SHADOWGEN_BIREFNET_RESOLUTION` to control the internal BiRefNet inference size
+- `SHADOWGEN_BIREFNET_MASK_THRESHOLD` to control matte-to-mask binarization
+- `SHADOWGEN_BIREFNET_ALLOW_CPU=true` to opt into CPU execution
+
+Default runtime behavior:
+
+- if CUDA is available, `auto` mode can activate the real segmenter
+- if CUDA is not available, the service stays on mock segmentation by default
+- CPU execution is possible only with explicit opt-in because BiRefNet is too slow for the normal interactive path on this machine
+
+What to verify:
+
+- `components[].name == "segmenter"`
+- `implementation == "real"` only when CUDA is available or CPU mode was explicitly enabled
+- `using_mock == false` when the real backend is active
+
+In the playground `Segmentation` card:
+
+- `working_crop` shows the padded square crop passed into segmentation
+- `mask` shows the binary foreground mask
+- `cutout` shows the RGBA cutout after matting
+- stage details expose mask size, bbox, and backend mode
 
 ## Note on Python
 

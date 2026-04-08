@@ -60,7 +60,7 @@ def estimate_foreground_mask(image: Image.Image) -> Image.Image:
         rx = max(arr.shape[1] * 0.28, 1)
         ry = max(arr.shape[0] * 0.28, 1)
         mask = (((xx - cx) / rx) ** 2 + ((yy - cy) / ry) ** 2) <= 1
-    return Image.fromarray((mask.astype(np.uint8) * 255), mode="L")
+    return Image.fromarray(mask.astype(np.uint8) * 255)
 
 
 def bbox_from_mask(mask: Image.Image, padding_px: int) -> tuple[int, int, int, int]:
@@ -84,14 +84,22 @@ def crop_to_bbox(image: Image.Image, bbox: tuple[int, int, int, int]) -> Image.I
     return image.crop(bbox)
 
 
-def prepare_working_crop(image: Image.Image, bbox: tuple[int, int, int, int], size: int) -> Image.Image:
+def prepare_working_crop(
+    image: Image.Image,
+    bbox: tuple[int, int, int, int],
+    size: int,
+    *,
+    content_scale: float = 1.0,
+) -> Image.Image:
     crop = crop_to_bbox(image, bbox)
-    canvas, _ = fit_to_square(crop, Image.new("L", crop.size, 255), size)
+    canvas, _ = fit_to_square(crop, Image.new("L", crop.size, 255), size, content_scale=content_scale)
     return canvas
 
 
-def fit_to_square(image: Image.Image, mask: Image.Image, size: int) -> tuple[Image.Image, Image.Image]:
-    ratio = min(size / image.width, size / image.height)
+def fit_to_square(image: Image.Image, mask: Image.Image, size: int, content_scale: float = 1.0) -> tuple[Image.Image, Image.Image]:
+    content_scale = max(0.1, min(content_scale, 1.0))
+    target_size = max(1, int(round(size * content_scale)))
+    ratio = min(target_size / image.width, target_size / image.height)
     new_width = max(1, int(image.width * ratio))
     new_height = max(1, int(image.height * ratio))
     resized_rgba = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
@@ -238,7 +246,7 @@ def depth_from_mask(mask: Image.Image) -> Image.Image:
     height = arr.shape[0]
     gradient = np.linspace(0.2, 1.0, height, dtype=np.float32)[:, None]
     depth = np.clip(arr * gradient, 0.0, 1.0)
-    return Image.fromarray((depth * 255).astype(np.uint8), mode="L")
+    return Image.fromarray((depth * 255).astype(np.uint8))
 
 
 def normals_from_depth(depth_map: Image.Image) -> Image.Image:
@@ -256,7 +264,7 @@ def normals_from_depth(depth_map: Image.Image) -> Image.Image:
         ],
         axis=-1,
     )
-    return Image.fromarray((normal * 255).astype(np.uint8), mode="RGB")
+    return Image.fromarray((normal * 255).astype(np.uint8))
 
 
 def generate_shadow_layer(

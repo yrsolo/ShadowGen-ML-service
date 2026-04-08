@@ -37,6 +37,7 @@
 - the real backend is `IDEA-Research/grounding-dino-base` through the Hugging Face `transformers` implementation
 - the detector uses a fixed prompt, currently `object.`, to find the primary foreground object
 - candidate boxes are ranked by confidence, and when scores are close the larger area wins
+- the downstream crop is fitted into the square working canvas with a configurable content scale, so the object no longer touches the output edges and there is room for shadow projection
 - the normalized result is:
   - `bbox`
   - `confidence`
@@ -44,3 +45,22 @@
   - `detection_overlay` with the selected bbox
   - `crop_for_resize` preview for the downstream working crop
   - numeric bbox coordinates and backend metadata
+
+## Segmentation step
+
+- `segmenter` runs after crop / pad / resize on the prepared working crop, not on the full source image
+- the real backend is `ZhengPeng7/BiRefNet_lite-matting` through Hugging Face remote code
+- preprocessing follows the model reference path:
+  - resize to the configured BiRefNet resolution
+  - convert to tensor
+  - normalize with ImageNet statistics
+- postprocessing returns:
+  - `mask`
+  - `cutout_rgba`
+  - `bbox`
+- the binary mask keeps only the largest connected component to suppress small noise islands
+- the playground exposes:
+  - `working_crop`
+  - `mask`
+  - `cutout`
+  - stage metadata for mask size and backend mode

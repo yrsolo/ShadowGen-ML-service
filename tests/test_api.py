@@ -127,6 +127,26 @@ class ApiTests(unittest.TestCase):
         self.assertIn("details", geometry_stage)
         preview_names = {preview["name"] for preview in geometry_stage["previews"]}
         self.assertIn("geometry_overlay", preview_names)
+        detection_stage = next(item for item in payload["stages"] if item["stage_key"] == "detector")
+        detection_preview_names = {preview["name"] for preview in detection_stage["previews"]}
+        self.assertIn("crop_for_resize", detection_preview_names)
+
+    def test_debug_pipeline_segmenter_real_smoke(self) -> None:
+        response = self.client.post(
+            "/v1/dev/pipeline/run-stage/segmenter",
+            json={"render_request": make_request(), "stage_modes": {"segmenter": "real"}},
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        segmenter = payload["stages"][-1]
+        self.assertEqual(segmenter["stage_key"], "segmenter")
+        self.assertEqual(segmenter["status"], "completed")
+        self.assertIn(segmenter["actual_mode"], {"real", "mock-fallback"})
+        self.assertIn("mask_width", segmenter["details"])
+        preview_names = {preview["name"] for preview in segmenter["previews"]}
+        self.assertIn("working_crop", preview_names)
+        self.assertIn("cutout", preview_names)
+        self.assertIn("mask", preview_names)
 
     def test_debug_pipeline_detector_real_smoke(self) -> None:
         response = self.client.post(
@@ -159,7 +179,7 @@ class ApiTests(unittest.TestCase):
         if geometry["actual_mode"] == "real":
             self.assertEqual(geometry["details"]["backend"], "real")
         else:
-            self.assertEqual(geometry["details"]["backend"], "mock")
+            self.assertIn(geometry["details"]["backend"], {"mock", "mock-fallback"})
 
     def test_debug_pipeline_geometry_real_smoke(self) -> None:
         response = self.client.post(
@@ -226,6 +246,39 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(geometry["actual_mode"], "mock")
         self.assertEqual(geometry["details"]["camera_fov"], 11.0)
         self.assertEqual(geometry["details"]["backend"], "mock")
+
+    def test_debug_pipeline_segmenter_mock_uses_mock_adapter_even_when_real_is_available(self) -> None:
+        app = create_app(Settings())
+
+        class BombSegmenter:
+            def segment(self, image):
+                raise AssertionError("real segmenter should not run in mock mode")
+
+        class StubMockSegmenter:
+            def segment(self, image):
+                mask = Image.new("L", image.size, 255)
+                cutout = image.copy()
+                cutout.putalpha(mask)
+                return SegmentationResult(
+                    bbox=(0, 0, image.width, image.height),
+                    mask=mask,
+                    cutout_rgba=cutout,
+                    crop_rgba=image,
+                )
+
+        app.state.render_service.runtime.real_segmenter = BombSegmenter()
+        app.state.render_service.runtime.segmenter = BombSegmenter()
+        app.state.render_service.runtime.mock_segmenter = StubMockSegmenter()
+        client = TestClient(app)
+
+        response = client.post(
+            "/v1/dev/pipeline/run-stage/segmenter",
+            json={"render_request": make_request(), "stage_modes": {"segmenter": "mock"}},
+        )
+        self.assertEqual(response.status_code, 200)
+        segmenter = response.json()["stages"][-1]
+        self.assertEqual(segmenter["actual_mode"], "mock")
+        self.assertEqual(segmenter["details"]["backend"], "mock")
 
     def test_segmentation_runs_after_crop_and_resize(self) -> None:
         temp_dir = Path("var/cache/test-preprocess") / uuid4().hex

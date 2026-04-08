@@ -16,6 +16,7 @@ from shadowgen_ml_service.adapters.mock import (
 from shadowgen_ml_service.adapters.real import (
     RealDetector,
     RealGeometryEstimator,
+    RealSegmenter,
     probe_birefnet,
     probe_depth_anything,
     probe_geocalib,
@@ -36,6 +37,8 @@ class PipelineRuntime:
     mock_geometry: GeometryEstimator
     real_geometry: Optional[GeometryEstimator]
     segmenter: Segmenter
+    mock_segmenter: Segmenter
+    real_segmenter: Optional[Segmenter]
     depth: DepthEstimator
     normals: NormalEstimator
     shadow: ShadowGenerator
@@ -77,7 +80,7 @@ def build_runtime(settings: Settings) -> PipelineRuntime:
     mode = settings.runtime_mode.lower()
     grounding = probe_grounding_dino()
     geocalib = probe_geocalib()
-    birefnet = probe_birefnet()
+    birefnet = probe_birefnet(allow_cpu=settings.birefnet_allow_cpu)
     depth_anything = probe_depth_anything()
 
     mock_detector = MockDetector()
@@ -86,7 +89,9 @@ def build_runtime(settings: Settings) -> PipelineRuntime:
     mock_geometry = MockGeometryEstimator()
     geometry: GeometryEstimator = mock_geometry
     real_geometry: GeometryEstimator | None = None
-    segmenter = MockSegmenter()
+    mock_segmenter = MockSegmenter()
+    segmenter = mock_segmenter
+    real_segmenter: Segmenter | None = None
     depth = MockDepthEstimator()
     normals = MockNormalEstimator()
     shadow = MockShadowGenerator()
@@ -180,15 +185,7 @@ def build_runtime(settings: Settings) -> PipelineRuntime:
     components = [
         detector_component,
         geometry_component,
-        _component_status(
-            "segmenter",
-            "mock",
-            birefnet.model_name,
-            "mock-v1",
-            True,
-            True,
-            "deterministic fallback matting stage" if not birefnet.available else "real wrapper scaffold exists",
-        ),
+        None,
         _component_status(
             "depth_estimator",
             "mock",
@@ -204,7 +201,50 @@ def build_runtime(settings: Settings) -> PipelineRuntime:
         _component_status("artifact_encoder", "python", "artifact-encoder", "v1", True, False),
     ]
 
-    fallback_needed = any(component.using_mock for component in components if component.name in {"detector", "geometry_estimator", "segmenter", "depth_estimator"})
+    segmenter_component = _component_status(
+        "segmenter",
+        "mock",
+        birefnet.model_name,
+        "mock-v1",
+        True,
+        True,
+        birefnet.detail or ("deterministic fallback matting stage" if not birefnet.available else "real wrapper scaffold exists"),
+    )
+    if mode != "mock" and birefnet.available:
+        try:
+            segmenter = RealSegmenter(
+                model_id=settings.birefnet_model_id,
+                resolution=settings.birefnet_resolution,
+                mask_threshold=settings.birefnet_mask_threshold,
+            )
+            real_segmenter = segmenter
+            segmenter_component = _component_status(
+                "segmenter",
+                "real",
+                birefnet.model_name,
+                birefnet.model_version,
+                True,
+                False,
+                (
+                    "BiRefNet backend active "
+                    f"(model_id={settings.birefnet_model_id}, resolution={settings.birefnet_resolution}, "
+                    f"mask_threshold={settings.birefnet_mask_threshold}, "
+                    f"allow_cpu={settings.birefnet_allow_cpu})"
+                ),
+            )
+        except Exception as exc:
+            segmenter_component = _component_status(
+                "segmenter",
+                "mock-fallback",
+                birefnet.model_name,
+                "mock-v1",
+                True,
+                True,
+                f"BiRefNet init failed: {exc}",
+            )
+
+    components[2] = segmenter_component
+    fallback_needed = any(component.using_mock for component in components if component is not None and component.name in {"detector", "geometry_estimator", "segmenter", "depth_estimator"})
     if mode == "mock":
         active_mode = "mock"
         degraded = False
@@ -229,6 +269,8 @@ def build_runtime(settings: Settings) -> PipelineRuntime:
         mock_geometry=mock_geometry,
         real_geometry=real_geometry,
         segmenter=segmenter,
+        mock_segmenter=mock_segmenter,
+        real_segmenter=real_segmenter,
         depth=depth,
         normals=normals,
         shadow=shadow,

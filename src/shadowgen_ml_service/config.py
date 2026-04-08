@@ -32,6 +32,7 @@ class Settings:
     model_cache_dir: Path = Path(os.getenv("SHADOWGEN_MODEL_CACHE_DIR", ".models"))
     preprocess_cache_dir: Path = Path(os.getenv("SHADOWGEN_PREPROCESS_CACHE_DIR", "var/cache/preprocess"))
     artifact_dir: Path = Path(os.getenv("SHADOWGEN_ARTIFACT_DIR", "artifacts"))
+    working_content_scale: float = float(os.getenv("SHADOWGEN_WORKING_CONTENT_SCALE", "0.82"))
     geocalib_weights: str = os.getenv("SHADOWGEN_GEOCALIB_WEIGHTS", "pinhole")
     geocalib_camera_model: str = os.getenv("SHADOWGEN_GEOCALIB_CAMERA_MODEL", "pinhole")
     geocalib_shared_intrinsics: bool = _as_bool("SHADOWGEN_GEOCALIB_SHARED_INTRINSICS", False)
@@ -39,6 +40,10 @@ class Settings:
     grounding_dino_prompt: str = os.getenv("SHADOWGEN_GROUNDING_DINO_PROMPT", "object.")
     grounding_dino_box_threshold: float = float(os.getenv("SHADOWGEN_GROUNDING_DINO_BOX_THRESHOLD", "0.25"))
     grounding_dino_text_threshold: float = float(os.getenv("SHADOWGEN_GROUNDING_DINO_TEXT_THRESHOLD", "0.25"))
+    birefnet_model_id: str = os.getenv("SHADOWGEN_BIREFNET_MODEL_ID", "ZhengPeng7/BiRefNet_lite-matting")
+    birefnet_resolution: int = _as_int("SHADOWGEN_BIREFNET_RESOLUTION", 1024)
+    birefnet_mask_threshold: float = float(os.getenv("SHADOWGEN_BIREFNET_MASK_THRESHOLD", "0.5"))
+    birefnet_allow_cpu: bool = _as_bool("SHADOWGEN_BIREFNET_ALLOW_CPU", False)
 
     def ensure_local_dirs(self) -> None:
         for path in (self.model_cache_dir, self.preprocess_cache_dir, self.artifact_dir):

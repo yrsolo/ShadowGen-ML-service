@@ -21,6 +21,10 @@
 - GroundingDINO was installed into the active `.venv` and `GET /v1/capabilities` now reports `detector` with `implementation=real`
 - Real detector smoke path now runs end-to-end with bbox details plus `detection_overlay` and `crop_for_resize` previews
 - Debug/playground stage overrides now execute real mock adapters for `detector` and `geometry_estimator`, instead of only relabeling the active backend
+- The prepared working crop now preserves outer margins via `SHADOWGEN_WORKING_CONTENT_SCALE`, so the detected object no longer fills the entire square and shadow projection has room
+- Stage 5 segmentation is now wired with a real `ZhengPeng7/BiRefNet_lite-matting` adapter, deterministic mock fallback, and playground previews for `working_crop`, `mask`, and `cutout`
+- On this workstation, BiRefNet real mode is intentionally kept on mock by default because CUDA is unavailable; CPU execution requires explicit opt-in through `SHADOWGEN_BIREFNET_ALLOW_CPU=true`
+- `python -m pytest` passed: `34 passed`
 
 ## Pending Follow-Ups
 

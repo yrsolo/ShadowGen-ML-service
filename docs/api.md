@@ -85,3 +85,19 @@ Detection previews include:
 
 - `detection_overlay`
 - `crop_for_resize`
+
+For `segmenter`, each stage entry may include:
+
+- `details.bbox_left`
+- `details.bbox_top`
+- `details.bbox_right`
+- `details.bbox_bottom`
+- `details.mask_width`
+- `details.mask_height`
+- `details.backend`
+
+Segmentation previews include:
+
+- `working_crop`
+- `mask`
+- `cutout`

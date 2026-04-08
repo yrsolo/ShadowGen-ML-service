@@ -134,6 +134,7 @@ class RenderService:
                 source_rgba,
                 detection_timed.value.bbox,
                 self.settings.working_size,
+                content_scale=self.settings.working_content_scale,
             )
             segmentation_timed = self._timed(lambda: self.runtime.segmenter.segment(working_crop))
             metrics["segmentation_ms"] = segmentation_timed.elapsed_ms
@@ -286,7 +287,12 @@ class RenderService:
             action=lambda: self._detector_for_mode(payload.stage_modes.detector).detect(source_rgba, request.preprocess.padding_px),
             previews_factory=lambda value: {
                 "detection_overlay": draw_detection_overlay(source_rgba, value.bbox, value.confidence),
-                "crop_for_resize": prepare_working_crop(source_rgba, value.bbox, self.settings.working_size),
+                "crop_for_resize": prepare_working_crop(
+                    source_rgba,
+                    value.bbox,
+                    self.settings.working_size,
+                    content_scale=self.settings.working_content_scale,
+                ),
             },
             details_factory=lambda value, actual_mode: {
                 "bbox_left": value.bbox[0],
@@ -307,15 +313,25 @@ class RenderService:
             source_rgba,
             detection["value"].bbox,
             self.settings.working_size,
+            content_scale=self.settings.working_content_scale,
         )
         segmentation = self._run_stage_with_mode(
             stage_key="segmenter",
             requested_mode=payload.stage_modes.segmenter,
-            action=lambda: self.runtime.segmenter.segment(working_crop),
+            action=lambda: self._segmenter_for_mode(payload.stage_modes.segmenter).segment(working_crop),
             previews_factory=lambda value: {
                 "working_crop": value.crop_rgba,
                 "cutout": value.cutout_rgba,
                 "mask": value.mask,
+            },
+            details_factory=lambda value, actual_mode: {
+                "bbox_left": value.bbox[0],
+                "bbox_top": value.bbox[1],
+                "bbox_right": value.bbox[2],
+                "bbox_bottom": value.bbox[3],
+                "backend": actual_mode,
+                "mask_width": value.mask.width,
+                "mask_height": value.mask.height,
             },
             warnings=warnings,
         )
@@ -408,6 +424,11 @@ class RenderService:
             return self.runtime.mock_geometry
         return self.runtime.real_geometry or self.runtime.mock_geometry
 
+    def _segmenter_for_mode(self, requested_mode: str):
+        if requested_mode == "mock":
+            return self.runtime.mock_segmenter
+        return self.runtime.real_segmenter or self.runtime.mock_segmenter
+
     def _run_stage_with_mode(self, stage_key: str, requested_mode: str, action, previews_factory, warnings: list[str], details_factory=None) -> dict:
         actual_mode = self._resolve_stage_mode(stage_key, requested_mode)
         if requested_mode == "real" and actual_mode == "unavailable":
@@ -456,6 +477,8 @@ class RenderService:
             if stage_key == "detector" and component.available and component.using_mock:
                 return "mock-fallback"
             if stage_key == "geometry_estimator" and component.available and component.using_mock:
+                return "mock-fallback"
+            if stage_key == "segmenter" and component.available and component.using_mock:
                 return "mock-fallback"
             return "unavailable"
         return "mock"

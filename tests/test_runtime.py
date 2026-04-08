@@ -62,6 +62,29 @@ class RuntimeTests(unittest.TestCase):
                 self.assertTrue(detector_component.using_mock)
                 self.assertEqual(detector_component.implementation, "mock-fallback")
 
+    def test_auto_runtime_uses_real_segmenter_when_available(self) -> None:
+        with patch("shadowgen_ml_service.pipeline.runtime.probe_birefnet") as probe_birefnet:
+            with patch("shadowgen_ml_service.pipeline.runtime.RealSegmenter") as real_segmenter:
+                probe_birefnet.return_value.model_name = "ZhengPeng7/BiRefNet_lite-matting"
+                probe_birefnet.return_value.model_version = "bootstrap-probe"
+                probe_birefnet.return_value.available = True
+                runtime = build_runtime(Settings(runtime_mode="auto"))
+                segmenter_component = next(item for item in runtime.descriptor.components if item.name == "segmenter")
+                self.assertFalse(segmenter_component.using_mock)
+                self.assertEqual(segmenter_component.implementation, "real")
+                real_segmenter.assert_called_once()
+
+    def test_real_runtime_falls_back_to_mock_segmenter_when_init_fails(self) -> None:
+        with patch("shadowgen_ml_service.pipeline.runtime.probe_birefnet") as probe_birefnet:
+            with patch("shadowgen_ml_service.pipeline.runtime.RealSegmenter", side_effect=RuntimeError("init failed")):
+                probe_birefnet.return_value.model_name = "ZhengPeng7/BiRefNet_lite-matting"
+                probe_birefnet.return_value.model_version = "bootstrap-probe"
+                probe_birefnet.return_value.available = True
+                runtime = build_runtime(Settings(runtime_mode="real"))
+                segmenter_component = next(item for item in runtime.descriptor.components if item.name == "segmenter")
+                self.assertTrue(segmenter_component.using_mock)
+                self.assertEqual(segmenter_component.implementation, "mock-fallback")
+
 
 if __name__ == "__main__":
     unittest.main()

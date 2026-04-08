@@ -74,6 +74,20 @@ class FakeTransformersModule:
     GroundingDinoForObjectDetection = FakeModel
 
 
+class FakeNoGrad:
+    def __enter__(self):
+        return None
+
+    def __exit__(self, exc_type, exc, tb):
+        return False
+
+
+class FakeTorch:
+    @staticmethod
+    def no_grad():
+        return FakeNoGrad()
+
+
 class DetectorTests(unittest.TestCase):
     def test_select_primary_detection_prefers_larger_area_when_scores_are_close(self) -> None:
         bbox, score = select_primary_detection(
@@ -88,6 +102,7 @@ class DetectorTests(unittest.TestCase):
     def test_real_detector_returns_primary_bbox(self) -> None:
         detector = RealDetector(
             transformers_module=FakeTransformersModule,
+            torch_module=FakeTorch(),
             model_id="IDEA-Research/grounding-dino-base",
             prompt="object.",
             box_threshold=0.25,

@@ -13,6 +13,8 @@
 - [x] Improve Geometry preview with floor-grid overlay and expose GeoCalib runtime settings in debug details
 - [x] Implement real/mocked Detection step wiring with GroundingDINO, runtime fallback, and bbox debug previews
 - [x] Fix playground stage-mode switching so `mock` really executes mock adapters for Geometry and Detection
+- [x] Keep outer margins in the post-detection working crop so shadows have room instead of stretching the object to the full square
+- [x] Implement stage 5 segmentation with real/mocked BiRefNet wiring, fallback behavior, and playground mask previews
 
 ## Notes
 
