@@ -43,123 +43,58 @@ def _extract_shadow_rgba(predicted_rgb: np.ndarray, foreground_mask_rgb: np.ndar
     return shadow_rgba
 
 
-class Block:
-    def __init__(self, nn_module: Any, in_channels: int, out_channels: int, *, dropout: bool = False, norm: bool = True, relu: bool = True) -> None:
-        layers = [
-            nn_module.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=1),
-        ]
-        if norm:
-            layers.append(nn_module.BatchNorm2d(out_channels))
-        if relu:
-            layers.append(nn_module.ReLU(inplace=True))
-        if dropout:
-            layers.append(nn_module.Dropout(0.5))
-        self.block = nn_module.Sequential(*layers)
+def build_generator(torch_module: Any) -> Any:
+    nn_module = import_module("torch.nn")
 
-    def __call__(self, x):
-        return self.block(x)
+    class Block(nn_module.Module):
+        def __init__(self, in_channels: int, out_channels: int, dropout: bool = False, norm: bool = True, relu: bool = True):
+            super().__init__()
+            layers = [nn_module.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=1)]
+            if norm:
+                layers.append(nn_module.BatchNorm2d(out_channels))
+            if relu:
+                layers.append(nn_module.ReLU(inplace=True))
+            if dropout:
+                layers.append(nn_module.Dropout(0.5))
+            self.block = nn_module.Sequential(*layers)
 
+        def forward(self, x):
+            return self.block(x)
 
-class GeneratorModule:
-    def __init__(self, torch_module: Any, nn_module: Any) -> None:
-        self._torch = torch_module
-        self._nn = nn_module
-        self.enc1 = Block(nn_module, 6, 64, norm=False).block
-        self.enc2 = Block(nn_module, 64, 128).block
-        self.enc3 = Block(nn_module, 128, 256).block
-        self.enc4 = Block(nn_module, 256, 256).block
-        self.enc5 = Block(nn_module, 256, 256).block
-        self.enc6 = Block(nn_module, 256, 256, dropout=True).block
-        self.downsample = nn_module.MaxPool2d(2)
-        self.dec6 = Block(nn_module, 256, 256).block
-        self.dec5 = Block(nn_module, 256 * 2, 256).block
-        self.dec4 = Block(nn_module, 256 * 2, 256).block
-        self.dec3 = Block(nn_module, 256 * 2, 128).block
-        self.dec2 = Block(nn_module, 128 * 2, 64).block
-        self.dec1 = Block(nn_module, 64 * 2, 3, norm=False, relu=False).block
-        self.upsample = nn_module.Upsample(scale_factor=2, mode="bilinear", align_corners=True)
+    class Generator(nn_module.Module):
+        def __init__(self):
+            super().__init__()
+            self.enc1 = Block(6, 64, norm=False)
+            self.enc2 = Block(64, 128)
+            self.enc3 = Block(128, 256)
+            self.enc4 = Block(256, 256)
+            self.enc5 = Block(256, 256)
+            self.enc6 = Block(256, 256, dropout=True)
+            self.downsample = nn_module.MaxPool2d(2)
+            self.dec6 = Block(256, 256)
+            self.dec5 = Block(256 * 2, 256)
+            self.dec4 = Block(256 * 2, 256)
+            self.dec3 = Block(256 * 2, 128)
+            self.dec2 = Block(128 * 2, 64)
+            self.dec1 = Block(64 * 2, 3, norm=False, relu=False)
+            self.upsample = nn_module.Upsample(scale_factor=2, mode="bilinear", align_corners=True)
 
-    def load_state_dict(self, *args, **kwargs):
-        return self._module.load_state_dict(*args, **kwargs)
-
-    def eval(self):
-        self._module.eval()
-        return self
-
-    def to(self, *args, **kwargs):
-        self._module.to(*args, **kwargs)
-        return self
-
-    def parameters(self):
-        return self._module.parameters()
-
-    @property
-    def device(self):
-        try:
-            return next(self._module.parameters()).device
-        except Exception:
-            return "cpu"
-
-    def __call__(self, x):
-        return self.forward(x)
-
-    def forward(self, x):
-        enc1 = self.enc1(x)
-        enc2 = self.enc2(self.downsample(enc1))
-        enc3 = self.enc3(self.downsample(enc2))
-        enc4 = self.enc4(self.downsample(enc3))
-        enc5 = self.enc5(self.downsample(enc4))
-        enc6 = self.enc6(self.downsample(enc5))
-        dec6 = self.dec6(enc6)
-        dec5 = self.dec5(self._torch.cat([enc5, self.upsample(dec6)], dim=1))
-        dec4 = self.dec4(self._torch.cat([enc4, self.upsample(dec5)], dim=1))
-        dec3 = self.dec3(self._torch.cat([enc3, self.upsample(dec4)], dim=1))
-        dec2 = self.dec2(self._torch.cat([enc2, self.upsample(dec3)], dim=1))
-        dec1 = self.dec1(self._torch.cat([enc1, self.upsample(dec2)], dim=1))
-        return self._torch.tanh(dec1)
-
-    def bind(self, nn_module_model: Any):
-        self._module = nn_module_model
-        return self
-
-
-class _GeneratorWrapper:
-    def __init__(self, torch_module: Any) -> None:
-        nn_module = import_module("torch.nn")
-        model = GeneratorModule(torch_module, nn_module)
-        module = nn_module.Module()
-        module.enc1 = model.enc1
-        module.enc2 = model.enc2
-        module.enc3 = model.enc3
-        module.enc4 = model.enc4
-        module.enc5 = model.enc5
-        module.enc6 = model.enc6
-        module.downsample = model.downsample
-        module.dec6 = model.dec6
-        module.dec5 = model.dec5
-        module.dec4 = model.dec4
-        module.dec3 = model.dec3
-        module.dec2 = model.dec2
-        module.dec1 = model.dec1
-        module.upsample = model.upsample
-
-        def forward(x):
-            enc1 = module.enc1(x)
-            enc2 = module.enc2(module.downsample(enc1))
-            enc3 = module.enc3(module.downsample(enc2))
-            enc4 = module.enc4(module.downsample(enc3))
-            enc5 = module.enc5(module.downsample(enc4))
-            enc6 = module.enc6(module.downsample(enc5))
-            dec6 = module.dec6(enc6)
-            dec5 = module.dec5(torch_module.cat([enc5, module.upsample(dec6)], dim=1))
-            dec4 = module.dec4(torch_module.cat([enc4, module.upsample(dec5)], dim=1))
-            dec3 = module.dec3(torch_module.cat([enc3, module.upsample(dec4)], dim=1))
-            dec2 = module.dec2(torch_module.cat([enc2, module.upsample(dec3)], dim=1))
-            dec1 = module.dec1(torch_module.cat([enc1, module.upsample(dec2)], dim=1))
+        def forward(self, x):
+            enc1 = self.enc1(x)
+            enc2 = self.enc2(self.downsample(enc1))
+            enc3 = self.enc3(self.downsample(enc2))
+            enc4 = self.enc4(self.downsample(enc3))
+            enc5 = self.enc5(self.downsample(enc4))
+            enc6 = self.enc6(self.downsample(enc5))
+            dec6 = self.dec6(enc6)
+            dec5 = self.dec5(torch_module.cat([enc5, self.upsample(dec6)], dim=1))
+            dec4 = self.dec4(torch_module.cat([enc4, self.upsample(dec5)], dim=1))
+            dec3 = self.dec3(torch_module.cat([enc3, self.upsample(dec4)], dim=1))
+            dec2 = self.dec2(torch_module.cat([enc2, self.upsample(dec3)], dim=1))
+            dec1 = self.dec1(torch_module.cat([enc1, self.upsample(dec2)], dim=1))
             return torch_module.tanh(dec1)
 
-        module.forward = forward
-        self.module = module
+    return Generator()
 
 
 class Pix2PixShadowGenerator(ShadowGenerator):
@@ -219,8 +154,7 @@ class Pix2PixShadowGenerator(ShadowGenerator):
     def _load_generator(self):
         if not self.weights_path.exists():
             raise FileNotFoundError(f"shadow generator weights not found: {self.weights_path}")
-        nn_module = import_module("torch.nn")
-        generator = _GeneratorWrapper(self._torch).module
+        generator = build_generator(self._torch)
         averaged = self._torch.optim.swa_utils.AveragedModel(
             generator,
             multi_avg_fn=self._torch.optim.swa_utils.get_ema_multi_avg_fn(0.999),
