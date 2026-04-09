@@ -155,9 +155,9 @@ class DebugPipelineUseCase:
 
         shadow = self._run_stage(
             "shadow_generator",
-            command.stage_modes.get("shadow_generator", "real"),
+            command.stage_modes.get("shadow_generator", "v1-gan"),
             context,
-            lambda: self._shadow_backend(command.stage_modes.get("shadow_generator", "real")).generate(
+            lambda: self._shadow_backend(command.stage_modes.get("shadow_generator", "v1-gan")).generate(
                 cutout_rgba=context.segmentation.cutout_rgba,
                 mask=context.segmentation.mask,
                 depth_map=context.depth.depth_map,
@@ -166,7 +166,8 @@ class DebugPipelineUseCase:
                 shadow=command.render.shadow,
             ),
             lambda value, actual_mode: {
-                "backend": str(getattr(self._shadow_backend(command.stage_modes.get("shadow_generator", "real")), "backend_name", actual_mode)),
+                "backend": str(getattr(self._shadow_backend(command.stage_modes.get("shadow_generator", "v1-gan")), "backend_name", actual_mode)),
+                "variant": str(getattr(self._shadow_backend(command.stage_modes.get("shadow_generator", "v1-gan")), "model_variant", "mock")),
             },
         )
         stages.append(shadow)
@@ -188,7 +189,7 @@ class DebugPipelineUseCase:
         return DebugPipelineOutcome(request_id=command.render.request_id, stages=stages, warnings=context.warnings)
 
     def _run_stage(self, stage_key: str, requested_mode: str, context: PipelineContext, action, details_factory=None) -> StageExecution:
-        selection = self.selector.select_for_debug(stage_key, requested_mode)
+        selection = self.selector.select_shadow_variant_for_debug(requested_mode) if stage_key == "shadow_generator" else self.selector.select_for_debug(stage_key, requested_mode)
         value, execution = self.stage_runner.execute(
             stage_key=stage_key,
             selection=selection,
@@ -268,7 +269,11 @@ class DebugPipelineUseCase:
         return self.runtime.mock_normals if requested_mode == "mock" else (self.runtime.real_normals or self.runtime.mock_normals)
 
     def _shadow_backend(self, requested_mode: str):
-        return self.runtime.mock_shadow if requested_mode == "mock" else (self.runtime.real_shadow or self.runtime.mock_shadow)
+        if requested_mode == "mock":
+            return self.runtime.mock_shadow
+        if requested_mode == "v2-diff":
+            return self.runtime.shadow_v2_diff or self.runtime.mock_shadow
+        return self.runtime.shadow_v1_gan or self.runtime.real_shadow or self.runtime.mock_shadow
 
     def _device_label_for_stage(self, stage_key: str, requested_mode: str, actual_mode: str) -> str:
         if actual_mode in {"mock", "mock-fallback", "internal"}:

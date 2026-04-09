@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any, ClassVar
 
 import numpy as np
-from PIL import Image, ImageFilter
+from PIL import Image
 
 from shadowgen_ml_service.core.commands import ShadowSpec
 from shadowgen_ml_service.core.contracts import ShadowGenerator
@@ -36,8 +36,6 @@ def _extract_shadow_rgba(predicted_rgb: np.ndarray, foreground_mask_rgb: np.ndar
     shadow_strength = np.clip(1.0 - grayscale, 0.0, 1.0) * background_mask
     shadow_alpha = np.clip(shadow_strength * float(shadow.opacity), 0.0, 1.0)
     alpha_image = Image.fromarray((shadow_alpha * 255.0).astype(np.uint8), mode="L")
-    if shadow.softness > 0:
-        alpha_image = alpha_image.filter(ImageFilter.GaussianBlur(radius=max(0.5, float(shadow.softness) * 10.0)))
     shadow_rgba = Image.new("RGBA", alpha_image.size, (0, 0, 0, 0))
     shadow_rgba.putalpha(alpha_image)
     return shadow_rgba
@@ -110,7 +108,8 @@ class Pix2PixShadowGenerator(ShadowGenerator):
         self._torch = torch_module or import_module("torch")
         self.weights_path = Path(weights_path)
         self.target_device = target_device
-        self.backend_name = "pix2pix-shadow"
+        self.backend_name = "v1-gan"
+        self.model_variant = "V1-GAN"
         self.device_label = self._resolve_device_label()
         cache_key = (str(self.weights_path.resolve()), self.device_label)
         if torch_module is not None:
@@ -182,11 +181,11 @@ class Pix2PixShadowGenerator(ShadowGenerator):
 
 def probe_shadow_pix2pix(weights_path: str | Path, *, target_device: str = "cuda") -> RealAdapterProbe:
     if not module_available("torch"):
-        return RealAdapterProbe("legacy-shadow-pix2pix", "bootstrap-probe", False, "requires torch")
+        return RealAdapterProbe("V1-GAN", "bootstrap-probe", False, "requires torch")
     weights = Path(weights_path)
     if not weights.exists():
-        return RealAdapterProbe("legacy-shadow-pix2pix", "bootstrap-probe", False, f"weights not found: {weights}")
+        return RealAdapterProbe("V1-GAN", "bootstrap-probe", False, f"weights not found: {weights}")
     torch_module = import_module("torch")
     has_cuda = bool(getattr(getattr(torch_module, "cuda", None), "is_available", lambda: False)())
     detail = "CUDA runtime detected" if has_cuda and str(target_device).startswith("cuda") else "running on cpu"
-    return RealAdapterProbe("legacy-shadow-pix2pix", "bootstrap-probe", True, detail)
+    return RealAdapterProbe("V1-GAN", "bootstrap-probe", True, detail)

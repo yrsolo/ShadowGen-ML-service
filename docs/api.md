@@ -139,6 +139,7 @@ Normals previews include:
 For `shadow_generator`, each stage entry may include:
 
 - `details.backend`
+- `details.variant`
 
 Shadow previews include:
 

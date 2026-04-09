@@ -113,14 +113,21 @@
 ## Shadow step
 
 - `shadow_generator` is a dedicated runtime stage with explicit `mock` and `real` backends
-- the current real backend is the legacy pix2pix generator migrated from the older ShadowGEN project
+- the current production-ready real backend is `V1-GAN`, migrated from the older ShadowGEN pix2pix generator
+- `V2-DIFF` already has a dedicated runtime slot and a recommended model-class scaffold, but its inference backend is intentionally still unimplemented
 - only the minimum inference code and a single generator checkpoint are carried forward; discriminator and training code are intentionally excluded
-- the real backend consumes:
+- the model-facing shadow inputs are now explicit:
   - refined foreground cutout
   - foreground mask
+  - depth map
+  - normal map
   - azimuth / `shadow.angle_deg`
+  - elevation / `shadow.elevation_deg`
+  - softness / `shadow.softness`
+  - reflection / `shadow.reflection`
 - the model predicts a shadowed composite on white, and the service converts that prediction into the standalone RGBA shadow layer used by the composer
+- `softness` is no longer applied as a post-blur on real model outputs; coarse blur remains only in the mock shadow generator
 - if the pix2pix backend or local weights are unavailable, the stage falls back to the deterministic analytical shadow stub
 - the playground exposes:
   - `shadow`
-  - backend and device metadata
+  - backend, variant, and device metadata

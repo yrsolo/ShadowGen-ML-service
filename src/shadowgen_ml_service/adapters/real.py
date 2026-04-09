@@ -6,6 +6,7 @@ from shadowgen_ml_service.infrastructure.stages.normals.from_depth import Normal
 from shadowgen_ml_service.infrastructure.stages.normals.stable_normal import StableNormalEstimator, probe_stable_normal
 from shadowgen_ml_service.infrastructure.stages.segmentation.birefnet import RealSegmenter, probe_birefnet
 from shadowgen_ml_service.infrastructure.stages.shadow.pix2pix import Pix2PixShadowGenerator, probe_shadow_pix2pix
+from shadowgen_ml_service.infrastructure.stages.shadow.v2_diff import V2DiffShadowGenerator
 from shadowgen_ml_service.infrastructure.stages.shared.model_support import import_module as _import_module
 
 __all__ = [
@@ -17,6 +18,7 @@ __all__ = [
     "StableNormalEstimator",
     "RealSegmenter",
     "Pix2PixShadowGenerator",
+    "V2DiffShadowGenerator",
     "_import_module",
     "probe_birefnet",
     "probe_depth_anything",

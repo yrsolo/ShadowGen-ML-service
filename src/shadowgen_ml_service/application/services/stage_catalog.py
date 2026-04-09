@@ -11,7 +11,7 @@ STAGE_CATALOG = [
     StageDefinition("foreground_refiner", "Foreground", "Correct semi-transparent foreground colours after matting."),
     StageDefinition("depth_estimator", "Depth", "Estimate the relative depth map for the foreground crop."),
     StageDefinition("normal_estimator", "Normals", "Predict surface normals from the refined foreground crop, with depth-derived fallback."),
-    StageDefinition("shadow_generator", "Shadow", "Generate the shadow layer with the legacy pix2pix model, with deterministic fallback."),
+    StageDefinition("shadow_generator", "Shadow", "Generate the shadow layer with V1-GAN or the future V2-DIFF model, with deterministic fallback."),
     StageDefinition("composer", "Composition", "Composite the object and shadow on the target background."),
 ]
 

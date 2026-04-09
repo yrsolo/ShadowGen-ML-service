@@ -117,7 +117,7 @@ class ApiTests(unittest.TestCase):
     def test_debug_pipeline_run_all(self) -> None:
         response = self.client.post(
             "/v1/dev/pipeline/run-all",
-            json={"render_request": make_request(), "stage_modes": {"shadow_generator": "real", "composer": "real"}},
+            json={"render_request": make_request(), "stage_modes": {"shadow_generator": "v1-gan", "composer": "real"}},
         )
         self.assertEqual(response.status_code, 200)
         payload = response.json()
@@ -214,7 +214,7 @@ class ApiTests(unittest.TestCase):
     def test_debug_pipeline_shadow_real_smoke(self) -> None:
         response = self.client.post(
             "/v1/dev/pipeline/run-stage/shadow_generator",
-            json={"render_request": make_request(), "stage_modes": {"shadow_generator": "real"}},
+            json={"render_request": make_request(), "stage_modes": {"shadow_generator": "v1-gan"}},
         )
         self.assertEqual(response.status_code, 200)
         payload = response.json()
@@ -223,8 +223,22 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(shadow["status"], "completed")
         self.assertIn(shadow["actual_mode"], {"real", "mock-fallback"})
         self.assertIn("backend", shadow["details"])
+        self.assertIn("variant", shadow["details"])
         preview_names = {preview["name"] for preview in shadow["previews"]}
         self.assertIn("shadow", preview_names)
+
+    def test_debug_pipeline_shadow_v2_diff_reports_unavailable(self) -> None:
+        response = self.client.post(
+            "/v1/dev/pipeline/run-stage/shadow_generator",
+            json={"render_request": make_request(), "stage_modes": {"shadow_generator": "v2-diff"}},
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        shadow = payload["stages"][-1]
+        self.assertEqual(shadow["stage_key"], "shadow_generator")
+        self.assertEqual(shadow["status"], "failed")
+        self.assertEqual(shadow["actual_mode"], "unavailable")
+        self.assertIn("V2-DIFF", shadow["error"])
 
     def test_debug_pipeline_geometry_real_uses_mock_fallback(self) -> None:
         response = self.client.post(

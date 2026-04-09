@@ -46,6 +46,8 @@ class PipelineRuntime:
     cache: PreprocessCacheRepository
     previews: PreviewBuilderRegistry
     descriptor: RuntimeDescriptor
+    shadow_v1_gan: ShadowGenerator | None = None
+    shadow_v2_diff: ShadowGenerator | None = None
 
     @property
     def signature(self) -> str:

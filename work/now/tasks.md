@@ -23,6 +23,7 @@
 - [x] Implement stage 06 `Depth` with real `Depth Anything V2` wiring and stage 07 `Normals` as a proper runtime-selectable module with mock/real behavior
 - [x] Upgrade stage 07 `Normals` with a neural `StableNormal` backend while keeping the explicit `from-depth` fallback as a separate runtime module
 - [x] Add the legacy pix2pix shadow model as the stage 08 real `shadow_generator` backend while keeping the deterministic stub as the mock/fallback path
+- [x] Prepare multi-model shadow wiring with `mock`, `V1-GAN`, and scaffolded `V2-DIFF`, and stop applying post-blur softness to real model outputs
 
 ## Notes
 

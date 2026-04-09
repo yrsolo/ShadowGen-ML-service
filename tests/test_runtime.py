@@ -137,7 +137,7 @@ class RuntimeTests(unittest.TestCase):
     def test_auto_runtime_uses_real_shadow_when_weights_exist(self) -> None:
         with patch("shadowgen_ml_service.pipeline.runtime.probe_shadow_pix2pix") as probe_shadow:
             with patch("shadowgen_ml_service.pipeline.runtime.Pix2PixShadowGenerator") as real_shadow:
-                probe_shadow.return_value.model_name = "legacy-shadow-pix2pix"
+                probe_shadow.return_value.model_name = "V1-GAN"
                 probe_shadow.return_value.model_version = "bootstrap-probe"
                 probe_shadow.return_value.available = True
                 probe_shadow.return_value.detail = "CUDA runtime detected"
@@ -146,11 +146,13 @@ class RuntimeTests(unittest.TestCase):
                 self.assertFalse(shadow_component.using_mock)
                 self.assertEqual(shadow_component.implementation, "real")
                 real_shadow.assert_called_once()
+                self.assertIsNotNone(runtime.shadow_v1_gan)
+                self.assertIsNone(runtime.shadow_v2_diff)
 
     def test_real_runtime_falls_back_to_stub_shadow_when_init_fails(self) -> None:
         with patch("shadowgen_ml_service.pipeline.runtime.probe_shadow_pix2pix") as probe_shadow:
             with patch("shadowgen_ml_service.pipeline.runtime.Pix2PixShadowGenerator", side_effect=RuntimeError("init failed")):
-                probe_shadow.return_value.model_name = "legacy-shadow-pix2pix"
+                probe_shadow.return_value.model_name = "V1-GAN"
                 probe_shadow.return_value.model_version = "bootstrap-probe"
                 probe_shadow.return_value.available = True
                 probe_shadow.return_value.detail = "CUDA runtime detected"

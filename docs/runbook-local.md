@@ -264,7 +264,19 @@ In the playground `Normals` card:
 
 ## Legacy pix2pix shadow bring-up
 
-The `Shadow` stage can now use the legacy pix2pix generator migrated from:
+The `Shadow` stage now supports three model selections in the playground:
+
+- `mock`
+- `V1-GAN`
+- `V2-DIFF`
+
+Current implementation status:
+
+- `mock` is the deterministic analytical shadow generator
+- `V1-GAN` is the migrated legacy pix2pix generator
+- `V2-DIFF` is scaffolded in code but not connected to inference yet
+
+`V1-GAN` was migrated from:
 
 - `N:\PROJECTS\python\STUDY\ShadowGEN\SHADOW\pix2pix.py`
 
@@ -287,25 +299,29 @@ Local weights location:
 
 Useful env vars:
 
+- `SHADOWGEN_SHADOW_MODEL_VARIANT` to choose the default backend for the public render path, currently `v1-gan` or `mock`
 - `SHADOWGEN_SHADOW_PIX2PIX_WEIGHTS_PATH` to point the service at a different local checkpoint
 - `SHADOWGEN_TARGET_DEVICE` to control whether inference targets `cuda`, `cuda:0`, or `cpu`
 
 Runtime behavior:
 
-- `real` mode uses the migrated pix2pix generator when the checkpoint is present
-- `mock` mode uses the deterministic analytical shadow generator
+- `V1-GAN` uses the migrated pix2pix generator when the checkpoint is present
+- `V2-DIFF` currently reports itself as unavailable by design until its model backend lands
+- `mock` uses the deterministic analytical shadow generator
 - if the pix2pix backend fails to initialize, the service falls back to the deterministic stub and reports that in capabilities/debug metadata
+- `softness` is passed into real model backends as a model input and is no longer implemented as a post-blur there
+- only the mock shadow backend keeps the coarse blur behavior
 
 What to verify:
 
 - `components[].name == "shadow_generator"`
-- `implementation == "real"` when the checkpoint is present and the backend initializes successfully
+- `implementation == "real"` when `V1-GAN` is active and the backend initializes successfully
 - `using_mock == false` when pix2pix is active
 
 In the playground `Shadow` card:
 
 - `shadow` shows the generated standalone RGBA shadow layer
-- stage details expose backend mode and execution device
+- stage details expose backend mode, selected variant, and execution device
 
 ## Note on Python
 

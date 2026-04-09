@@ -37,7 +37,7 @@ class StageRunner(Generic[T]):
         started = perf_counter()
         value = action()
         elapsed_ms = int((perf_counter() - started) * 1000)
-        if selection.requested_mode == "real" and selection.actual_mode == "mock-fallback":
+        if selection.requested_mode != "mock" and selection.actual_mode == "mock-fallback":
             context.warnings.append(f"{stage_key}_mock_fallback")
         execution = StageExecution(
             stage_key=stage_key,

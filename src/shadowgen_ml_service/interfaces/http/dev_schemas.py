@@ -14,7 +14,7 @@ class StageModesPayload(BaseModel):
     foreground_refiner: Literal["mock", "real"] = "real"
     depth_estimator: Literal["mock", "real"] = "mock"
     normal_estimator: Literal["mock", "real"] = "real"
-    shadow_generator: Literal["mock", "real"] = "real"
+    shadow_generator: Literal["mock", "v1-gan", "v2-diff"] = "v1-gan"
     composer: Literal["mock", "real"] = "real"
 
 
@@ -34,7 +34,7 @@ class StageExecutionResponse(BaseModel):
     title: str
     description: str
     status: Literal["completed", "failed", "skipped"]
-    requested_mode: Literal["mock", "real"]
+    requested_mode: str
     actual_mode: str
     elapsed_ms: int | None = None
     error: str | None = None

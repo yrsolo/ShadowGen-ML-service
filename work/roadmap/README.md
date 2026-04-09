@@ -9,6 +9,7 @@
   - depth estimation and normals are now first-class pipeline stages with runtime selection, previews, and diagnostics
   - `normal_estimator` now prefers a neural `StableNormal` backend and falls back to an explicit `from-depth` backend instead of hiding that logic inside depth
   - `shadow_generator` now has a migrated legacy pix2pix backend with local checkpoint storage in `.models/`, while preserving the deterministic stub as the mock/fallback path
+  - shadow generation is now explicitly prepared for the next model generation split: `mock`, `V1-GAN`, and scaffolded `V2-DIFF`
 
 ## Next Likely Campaigns
 

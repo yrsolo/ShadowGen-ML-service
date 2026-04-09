@@ -46,3 +46,24 @@ class BackendSelector:
         if component.using_mock:
             return "mock-fallback" if component.implementation == "mock-fallback" else "mock"
         return component.implementation
+
+    def select_shadow_variant_for_debug(self, requested_mode: str) -> StageBackendSelection:
+        if requested_mode == "mock":
+            return StageBackendSelection(requested_mode=requested_mode, actual_mode="mock")
+        if requested_mode == "v1-gan":
+            if self.runtime.shadow_v1_gan is not None:
+                return StageBackendSelection(requested_mode=requested_mode, actual_mode="real")
+            return StageBackendSelection(
+                requested_mode=requested_mode,
+                actual_mode="mock-fallback",
+                unavailable_message="V1-GAN is unavailable. Falling back to the mock shadow generator.",
+            )
+        if requested_mode == "v2-diff":
+            if self.runtime.shadow_v2_diff is not None:
+                return StageBackendSelection(requested_mode=requested_mode, actual_mode="real")
+            return StageBackendSelection(
+                requested_mode=requested_mode,
+                actual_mode="unavailable",
+                unavailable_message="V2-DIFF is not connected yet. The model scaffold exists, but the inference backend is not implemented.",
+            )
+        return StageBackendSelection(requested_mode=requested_mode, actual_mode="unavailable", unavailable_message="Unknown shadow backend requested.")

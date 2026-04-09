@@ -379,7 +379,7 @@ def render_playground_html() -> str:
       { key: "foreground_refiner", title: "Foreground", description: "Коррекция цвета полупрозрачных пикселей после matting." },
       { key: "depth_estimator", title: "Depth", description: "Построение карты глубины на вырезанном объекте." },
       { key: "normal_estimator", title: "Normals", description: "Предсказание карты нормалей по refined cutout с fallback через depth." },
-      { key: "shadow_generator", title: "Shadow", description: "Генерация тени через legacy pix2pix по cutout, маске и azimuth." },
+      { key: "shadow_generator", title: "Shadow", description: "Генерация тени через V1-GAN или будущий V2-DIFF по img, mask, depth, normal и light controls." },
       { key: "composer", title: "Composition", description: "Композит объекта и тени на выбранный фон." }
     ];
 
@@ -400,7 +400,7 @@ def render_playground_html() -> str:
         foreground_refiner: "real",
         depth_estimator: "mock",
         normal_estimator: "real",
-        shadow_generator: "real",
+        shadow_generator: "v1-gan",
         composer: "real"
       }
     };
@@ -483,10 +483,7 @@ def render_playground_html() -> str:
               <div class="status-pill ${stageState.status || ""}" id="status-${stage.key}">${stageState.status || "idle"}</div>
             </div>
             <div class="stage-controls">
-              <div class="mode-toggle">
-                <button type="button" data-stage="${stage.key}" data-mode="mock" class="${stageModeFor(stage.key) === "mock" ? "active" : ""}" ${stage.modeLocked ? "disabled" : ""}>mock</button>
-                <button type="button" data-stage="${stage.key}" data-mode="real" class="${stageModeFor(stage.key) === "real" ? "active" : ""}">real</button>
-              </div>
+              <div class="mode-toggle">${renderModeButtons(stage)}</div>
               <button class="ghost" data-rerun="${stage.key}">Перезапустить этап</button>
             </div>
             <div class="meta">
@@ -496,7 +493,7 @@ def render_playground_html() -> str:
               ${stageState.details?.device ? `<div class="chip">device: ${stageState.details.device}</div>` : ""}
               ${capability ? `<div class="chip">runtime: ${capability.implementation}</div>` : ""}
             </div>
-            ${renderCapabilityNotice(stage, stageState)}
+            ${renderStageNotice(stage, stageState)}
             <div class="detail-grid">${renderDetailsMarkup(stageState.details || null)}</div>
             <div class="error" id="error-${stage.key}" style="${stageState.error ? "display:block;" : ""}">${stageState.error || ""}</div>
           </div>
@@ -533,6 +530,43 @@ def render_playground_html() -> str:
           <strong>${typeof value === "number" ? Number(value).toFixed(key.includes("confidence") ? 3 : 2) : value}</strong>
         </div>
       `).join("");
+    }
+
+    function renderStageNotice(stage, stageState) {
+      const capability = capabilityFor(stage.key);
+      if (!capability) {
+        return "";
+      }
+      if (stageState.actual_mode === "mock-fallback") {
+        return `<div class="notice warn">Запрошенный backend сейчас недоступен, поэтому выполнен mock-fallback.\nПричина: ${capability.detail || "реальный backend недоступен в текущем runtime."}</div>`;
+      }
+      if (stageModeFor(stage.key) !== "mock" && capability.using_mock) {
+        return `<div class="notice warn">Для этого этапа запрошенный backend сейчас не активен.\nПричина: ${capability.detail || "runtime работает через fallback backend."}</div>`;
+      }
+      if (stageState.actual_mode === "real") {
+        return `<div class="notice ok">Этап действительно выполнился через выбранный model backend.</div>`;
+      }
+      return "";
+    }
+
+    function renderModeButtons(stage) {
+      if (stage.key === "decode") {
+        return `<button type="button" data-stage="${stage.key}" data-mode="real" class="active" disabled>real</button>`;
+      }
+      if (stage.key === "shadow_generator") {
+        const modes = [
+          ["mock", "mock"],
+          ["v1-gan", "V1-GAN"],
+          ["v2-diff", "V2-DIFF"]
+        ];
+        return modes.map(([value, label]) => `
+          <button type="button" data-stage="${stage.key}" data-mode="${value}" class="${stageModeFor(stage.key) === value ? "active" : ""}">${label}</button>
+        `).join("");
+      }
+      return `
+        <button type="button" data-stage="${stage.key}" data-mode="mock" class="${stageModeFor(stage.key) === "mock" ? "active" : ""}" ${stage.modeLocked ? "disabled" : ""}>mock</button>
+        <button type="button" data-stage="${stage.key}" data-mode="real" class="${stageModeFor(stage.key) === "real" ? "active" : ""}">real</button>
+      `;
     }
 
     function renderPreviewMarkup(previews) {

@@ -20,6 +20,7 @@ from shadowgen_ml_service.infrastructure.stages.segmentation.birefnet import Rea
 from shadowgen_ml_service.infrastructure.stages.segmentation.mock import MockSegmenter
 from shadowgen_ml_service.infrastructure.stages.shadow.pix2pix import Pix2PixShadowGenerator, probe_shadow_pix2pix
 from shadowgen_ml_service.infrastructure.stages.shadow.stub import DeterministicShadowGenerator
+from shadowgen_ml_service.infrastructure.stages.shadow.v2_diff import V2DiffShadowGenerator
 
 
 def build_runtime(settings: Settings) -> PipelineRuntime:
@@ -190,25 +191,28 @@ def build_runtime(settings: Settings) -> PipelineRuntime:
     mock_shadow = DeterministicShadowGenerator()
     shadow = mock_shadow
     real_shadow = None
+    shadow_v1_gan = None
+    shadow_v2_diff = None
     shadow_component = component_status(
         "shadow_generator",
         "mock",
-        shadow_pix2pix.model_name,
+        "V1-GAN|V2-DIFF",
         "stub-v1",
         True,
         True,
-        shadow_pix2pix.detail or "deterministic fallback shadow generator",
+        shadow_pix2pix.detail or "shadow variants: mock, V1-GAN, V2-DIFF (scaffold only)",
     )
     if mode != "mock" and shadow_pix2pix.available:
         try:
-            shadow = Pix2PixShadowGenerator(
+            shadow_v1_gan = Pix2PixShadowGenerator(
                 weights_path=settings.shadow_pix2pix_weights_path,
                 target_device=settings.target_device,
             )
-            real_shadow = shadow
-            shadow_component = component_status("shadow_generator", "real", shadow_pix2pix.model_name, "AveragedModel", True, False, "legacy pix2pix shadow backend active")
+            real_shadow = shadow_v1_gan
+            shadow = shadow_v1_gan if settings.shadow_model_variant.lower() != "mock" else mock_shadow
+            shadow_component = component_status("shadow_generator", "real", "V1-GAN|V2-DIFF", "V1-GAN-ready; V2-DIFF-scaffold", True, False, f"active={getattr(shadow, 'model_variant', 'mock')}; V1-GAN ready; V2-DIFF scaffold prepared")
         except Exception as exc:
-            shadow_component = component_status("shadow_generator", "mock-fallback", shadow_pix2pix.model_name, "stub-v1", True, True, f"pix2pix shadow init failed: {exc}")
+            shadow_component = component_status("shadow_generator", "mock-fallback", "V1-GAN|V2-DIFF", "stub-v1", True, True, f"pix2pix shadow init failed: {exc}")
 
     components = [
         detector_component,
@@ -243,6 +247,8 @@ def build_runtime(settings: Settings) -> PipelineRuntime:
         shadow=shadow,
         mock_shadow=mock_shadow,
         real_shadow=real_shadow,
+        shadow_v1_gan=shadow_v1_gan,
+        shadow_v2_diff=shadow_v2_diff,
         composer=PythonComposer(),
         encoder=DefaultArtifactEncoder(),
         cache=FilesystemPreprocessCacheRepository(settings.preprocess_cache_dir),
@@ -259,6 +265,7 @@ __all__ = [
     "RealDepthEstimator",
     "StableNormalEstimator",
     "Pix2PixShadowGenerator",
+    "V2DiffShadowGenerator",
     "build_runtime",
     "probe_birefnet",
     "probe_depth_anything",

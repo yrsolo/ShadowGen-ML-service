@@ -48,6 +48,7 @@ class Settings:
     stable_normal_variant: str = os.getenv("SHADOWGEN_STABLE_NORMAL_VARIANT", "StableNormal_turbo")
     stable_normal_resolution: int = _as_int("SHADOWGEN_STABLE_NORMAL_RESOLUTION", 1024)
     stable_normal_allow_cpu: bool = _as_bool("SHADOWGEN_STABLE_NORMAL_ALLOW_CPU", False)
+    shadow_model_variant: str = os.getenv("SHADOWGEN_SHADOW_MODEL_VARIANT", "v1-gan")
     shadow_pix2pix_weights_path: Path = Path(os.getenv("SHADOWGEN_SHADOW_PIX2PIX_WEIGHTS_PATH", ".models/shadow/AveragedModel.pth"))
 
     def ensure_local_dirs(self) -> None:

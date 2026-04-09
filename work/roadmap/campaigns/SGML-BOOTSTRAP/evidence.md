@@ -46,6 +46,10 @@
 - Local shadow checkpoint is stored in the ignored `.models/shadow/AveragedModel.pth` path
 - `shadow_generator` now supports proper `mock` and `real` runtime selection in debug/playground instead of always behaving like an internal stage
 - `py -3.11 -m pytest tests/test_runtime.py tests/test_api.py` passed after landing pix2pix shadow wiring: `40 passed`
+- Shadow stage wiring now exposes explicit model variants `mock`, `V1-GAN`, and `V2-DIFF` in the playground/API layer instead of a single overloaded `real` toggle
+- `V2-DIFF` now has a dedicated recommended class scaffold and request contract (`img`, `mask`, `depth`, `normal`, `angle`, `elevation`, `softness`, `reflection`) but remains intentionally unimplemented
+- `softness` is no longer implemented as a post-blur for real model outputs; coarse blur remains only in the mock shadow backend
+- `py -3.11 -m pytest tests/test_api.py tests/test_runtime.py` passed after landing multi-model shadow wiring: `41 passed`
 - `python -m pytest` passed after landing depth/normals: `47 passed`
 
 ## Pending Follow-Ups
