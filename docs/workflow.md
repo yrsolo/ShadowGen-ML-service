@@ -2,34 +2,118 @@
 
 ## Branching
 
-- Default working branch: `dev`
-- Small reversible changes
-- Tests for changed areas before commit
+- default branch for active work: `dev`
+- do not merge to `main` without explicit approval
+- keep changes small, testable, and reversible
 
 ## Tracking
 
-Update:
+Keep these files updated during meaningful work:
 
-- `work/now/tasks.md`
-- `work/roadmap/README.md`
-- `work/roadmap/campaigns/SGML-BOOTSTRAP/evidence.md`
+- [work/now/tasks.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/work/now/tasks.md)
+- [work/roadmap/README.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/work/roadmap/README.md)
+- [evidence.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/work/roadmap/campaigns/SGML-BOOTSTRAP/evidence.md)
 
-## Git hygiene
+## Commit Discipline
 
-- Track only code, docs, configs, and tests
-- Keep model weights, caches, images, and generated artifacts in ignored directories
-- Do not commit secrets
-- Use `var/cache`, `var/tmp`, `artifacts`, `.models`, and `data/*` for local-only runtime data
+Before commit:
 
-## Structure discipline
+- run tests for changed areas
+- update docs if behavior changed
+- do not commit secrets
+- do not commit model weights, caches, or generated artifacts
 
-- Put business commands, models, and ports in `core/`
-- Put orchestration only in `application/`
-- Put model backends and technical persistence in `infrastructure/`
-- Put FastAPI, schemas, and route handlers in `interfaces/http/`
-- Put playground and debug presentation in `interfaces/dev/`
-- Keep post-processing modules such as foreground colour refinement as standalone stages; do not bury them inside the segmenter implementation
-- Keep neural and analytic backends split inside each stage package, for example `normals/stable_normal.py` vs `normals/from_depth.py`
-- When one stage has multiple model families, expose them as explicit named variants such as `V1-GAN` and `V2-DIFF`, not as an overloaded generic `real`
-- When reusing legacy ML code, import only the isolated inference path and checkpoint, never the old training stack or app-specific helpers wholesale
-- Keep legacy root or `pipeline/` modules as compatibility shims only, not as places for new logic
+## Folder Discipline
+
+### Put code here
+
+- `core/`
+  internal contracts, commands, typed models, service errors
+
+- `application/`
+  orchestration, stage runner, backend selection, pipeline state
+
+- `bootstrap/`
+  runtime wiring, probes, capability assembly
+
+- `infrastructure/`
+  concrete model adapters, cache, encoding, preview logic
+
+- `interfaces/http/`
+  FastAPI routes, schemas, HTTP mappers
+
+- `interfaces/dev/`
+  playground UI
+
+### Do not put new logic here
+
+- `pipeline/`
+- `adapters/`
+- root compatibility exports like `web_ui.py` and `schemas.py`
+
+These are transition shims, not the architectural center.
+
+## Stage Design Rules
+
+- each stage should have a clear interface
+- each stage should have explicit mock and real behavior when practical
+- stage-specific logic should live in that stage package
+- do not bury one stage’s responsibility inside another
+
+Examples:
+
+- foreground colour correction is a standalone stage, not segmentation internals
+- normals have their own stage and fallback path
+- shadow model families are explicit named variants, not a vague single `real`
+
+## Model Integration Rules
+
+When integrating a new model:
+
+1. add or update contracts only if the public or internal stage interface truly changed
+2. add the model inside the correct `infrastructure/stages/<stage>/` package
+3. keep training code out of this repo unless explicitly needed
+4. import only the minimum inference path from legacy projects
+5. put weights in ignored local storage such as `.models/`
+6. wire the backend in `bootstrap/container.py`
+7. expose useful runtime metadata in capabilities and debug UI
+8. add tests
+9. update docs
+
+## Shadow-Specific Rule
+
+For shadow generation:
+
+- keep model families explicit:
+  - `mock`
+  - `V1-GAN`
+  - `V2-DIFF`
+- real models should consume `softness` as model input
+- coarse post-blur softness is allowed only in the mock shadow backend
+
+## Local-Only Data
+
+Use ignored directories for local runtime data:
+
+- `.models/`
+- `.cache/`
+- `var/cache/`
+- `var/tmp/`
+- `artifacts/`
+- `data/input/`
+- `data/output/`
+- `data/debug/`
+
+## Documentation Rule
+
+After changing architecture, module ownership, model lineup, runtime behavior, or workflow:
+
+- update [README.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/README.md)
+- update [docs/README.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/README.md)
+- update the relevant detailed docs
+
+The docs should stay useful for:
+
+- a fast first read
+- a teammate onboarding into the repo
+- a future refactor that needs to understand the current boundaries

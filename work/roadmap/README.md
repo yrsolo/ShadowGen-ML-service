@@ -2,18 +2,28 @@
 
 ## Current Campaigns
 
-- `SGML-BOOTSTRAP`: bootstrap the new ML service repository, API contract, local workflow, and first executable pipeline skeleton.
-  - hard-cut architecture refactor completed inside this campaign to establish the long-term layered service structure before more real-model stages land
-  - packaging/runbook normalized so CUDA `torch` installation is explicit and `pyproject.toml` only owns the project and non-torch ML stack
-  - foreground colour refinement is now a standalone post-segmentation stage instead of being hidden inside matting backends
-  - depth estimation and normals are now first-class pipeline stages with runtime selection, previews, and diagnostics
-  - `normal_estimator` now prefers a neural `StableNormal` backend and falls back to an explicit `from-depth` backend instead of hiding that logic inside depth
-  - `shadow_generator` now has a migrated legacy pix2pix backend with local checkpoint storage in `.models/`, while preserving the deterministic stub as the mock/fallback path
-  - shadow generation is now explicitly prepared for the next model generation split: `mock`, `V1-GAN`, and scaffolded `V2-DIFF`
+- `SGML-BOOTSTRAP`
+  Build the repository, service architecture, local workflow, playground UI, and first working model stack.
+
+  Current result inside this campaign:
+  - layered service architecture is in place
+  - major pipeline stages already exist with runtime wiring
+  - shadow stage is prepared for named model generations:
+    - `mock`
+    - `V1-GAN`
+    - `V2-DIFF`
+  - documentation now has both a fast overview and deeper module-level reference
 
 ## Next Likely Campaigns
 
-- Docker packaging and container runtime
-- Real model bring-up on target NVIDIA hardware
-- Worker adapter integration
-- Performance profiling and cache tuning
+- `SGML-SHADOW-V2`
+  Implement the real `V2-DIFF` shadow backend and add stage-specific debug inputs/outputs.
+
+- `SGML-CLEANUP`
+  Remove remaining compatibility shims and simplify import paths.
+
+- `SGML-DEPLOY`
+  Add Docker packaging, deployment docs, and environment hardening.
+
+- `SGML-PERF`
+  Profile runtime hot paths and tune cache and model initialization behavior.

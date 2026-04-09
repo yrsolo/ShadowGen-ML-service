@@ -1,58 +1,91 @@
 # SGML-BOOTSTRAP Evidence
 
-## In Progress
+## Scope Achieved
 
-- Repository initialized locally with branch `dev`
-- Bootstrap tracking files created
+- repository initialized on `dev`
+- layered architecture established
+- service API implemented
+- playground UI implemented
+- multiple ML stages wired with mock and real paths
+- project docs rewritten into a usable current-state reference set
 
 ## Captured Evidence
 
-- `python -m compileall src tests` passed
-- `python -m pytest` passed: `26 passed`
-- FastAPI app exposes `/health`, `/v1/capabilities`, `/v1/render`
-- FastAPI app exposes `/playground`, `/v1/dev/pipeline/run-all`, `/v1/dev/pipeline/run-stage/{stage_key}`
-- Request contract updated with `preprocess.padding_px`
-- Browser playground added for stage-by-stage testing with previews and `mock/real` mode switches
-- `geometry_estimator` now has a real GeoCalib adapter path, runtime fallback behavior, and stage-level debug metadata
-- Playground `Geometry` card now shows numeric camera data and `geometry_overlay` preview
-- GeoCalib was installed into the active `.venv` and `GET /v1/capabilities` now reports `geometry_estimator` with `implementation=real`
-- Real geometry smoke path now runs end-to-end with preview overlays and numeric camera metadata
-- Geometry overlay now includes a synthetic floor grid, and debug metadata exposes active GeoCalib runtime settings (`weights`, `camera_model`, `shared_intrinsics`)
-- GroundingDINO was installed into the active `.venv` and `GET /v1/capabilities` now reports `detector` with `implementation=real`
-- Real detector smoke path now runs end-to-end with bbox details plus `detection_overlay` and `crop_for_resize` previews
-- Debug/playground stage overrides now execute real mock adapters for `detector` and `geometry_estimator`, instead of only relabeling the active backend
-- The prepared working crop now preserves outer margins via `SHADOWGEN_WORKING_CONTENT_SCALE`, so the detected object no longer fills the entire square and shadow projection has room
-- Stage 5 segmentation is now wired with a real `ZhengPeng7/BiRefNet_lite-matting` adapter, deterministic mock fallback, and playground previews for `working_crop`, `mask`, and `cutout`
-- On this workstation, BiRefNet real mode is intentionally kept on mock by default because CUDA is unavailable; CPU execution requires explicit opt-in through `SHADOWGEN_BIREFNET_ALLOW_CPU=true`
-- `python -m pytest` passed: `34 passed`
-- Hard-cut architecture refactor completed:
-  - `core/`, `application/`, `infrastructure/`, `interfaces/`, and `bootstrap/` now exist as the primary code layout
-  - render/debug orchestration moved out of the old service module into dedicated use cases
-  - stage adapters are split per stage package instead of living in multi-stage `real.py` / `mock.py` implementations
-  - HTTP schemas/routes and playground UI are separated from pipeline internals
-  - architecture boundary tests now enforce clean-layer imports
-- `python -m pytest` passed after the architecture cut: `37 passed`
-- `pyproject.toml` now carries the actual non-torch ML dependencies for the service (`transformers`, `huggingface_hub`, `safetensors`, `timm`, `einops`, `kornia`, `geocalib`)
-- Local setup docs now require explicit CUDA `torch` / `torchvision` installation before `pip install -e .[dev,ml]`, preventing accidental CPU-only PyTorch environments
-- A dedicated `foreground_refiner` stage now runs after segmentation using the Fast Foreground Colour Estimation method, so semi-transparent edge colour correction is no longer embedded inside the segmenter implementation
-- The preprocess cache now stores the refined cutout, and the playground exposes before/after previews (`segmenter_cutout` vs `foreground_cutout`)
-- Stage 06 `depth_estimator` now has a real `Depth Anything V2 Small` backend with runtime fallback, device reporting, and debug previews
-- Stage 07 `normal_estimator` is now a proper runtime-selectable module with real depth-derived normals and a flat mock fallback for playground/debug work
-- Stage 07 `normal_estimator` now prefers the neural `Stable-X/StableNormal` backend, while keeping the previous depth-derived implementation as an explicit fallback backend instead of removing it
-- Playground/debug metadata for `Normals` now exposes backend kind and variant so it is clear whether the stage ran through `stable-normal` or `from-depth`
-- `py -3.11 -m pytest` passed after landing neural normals wiring: `40 passed`
-- Stage 08 `shadow_generator` now has a migrated legacy pix2pix backend based on the old `ShadowGEN/SHADOW/pix2pix.py` inference path
-- Only the minimum generator inference code and one checkpoint were imported; discriminator, training path, and unrelated old-project helpers were intentionally left behind
-- Local shadow checkpoint is stored in the ignored `.models/shadow/AveragedModel.pth` path
-- `shadow_generator` now supports proper `mock` and `real` runtime selection in debug/playground instead of always behaving like an internal stage
-- `py -3.11 -m pytest tests/test_runtime.py tests/test_api.py` passed after landing pix2pix shadow wiring: `40 passed`
-- Shadow stage wiring now exposes explicit model variants `mock`, `V1-GAN`, and `V2-DIFF` in the playground/API layer instead of a single overloaded `real` toggle
-- `V2-DIFF` now has a dedicated recommended class scaffold and request contract (`img`, `mask`, `depth`, `normal`, `angle`, `elevation`, `softness`, `reflection`) but remains intentionally unimplemented
-- `softness` is no longer implemented as a post-blur for real model outputs; coarse blur remains only in the mock shadow backend
-- `py -3.11 -m pytest tests/test_api.py tests/test_runtime.py` passed after landing multi-model shadow wiring: `41 passed`
-- `python -m pytest` passed after landing depth/normals: `47 passed`
+- `GET /health`, `GET /v1/capabilities`, `POST /v1/render` are implemented
+- `GET /playground`, `POST /v1/dev/pipeline/run-all`, and `POST /v1/dev/pipeline/run-stage/{stage_key}` are implemented
+- request contract supports `preprocess.padding_px`
+- repository architecture is split into:
+  - `core`
+  - `application`
+  - `bootstrap`
+  - `infrastructure`
+  - `interfaces`
 
-## Pending Follow-Ups
+### Stage Wiring Evidence
 
-- Bring up the remaining real model wrappers against local NVIDIA environment
-- Add Docker packaging and deployment docs
+- `geometry_estimator`
+  - GeoCalib real backend
+  - mock backend
+  - playground overlay and numeric details
+
+- `detector`
+  - GroundingDINO real backend
+  - mock backend
+  - bbox previews and working-crop preview
+
+- `segmenter`
+  - BiRefNet real backend
+  - mock backend
+  - working crop, mask, and cutout previews
+
+- `foreground_refiner`
+  - Fast Foreground Colour Estimation stage is standalone
+  - no longer hidden inside segmentation
+
+- `depth_estimator`
+  - Depth Anything V2 real backend
+  - mock backend
+
+- `normal_estimator`
+  - StableNormal real backend
+  - `from-depth` fallback backend
+  - mock backend
+
+- `shadow_generator`
+  - deterministic mock backend
+  - `V1-GAN` backend migrated from legacy pix2pix inference
+  - `V2-DIFF` scaffold class and runtime slot prepared
+
+### Shadow-Specific Evidence
+
+- local `V1-GAN` checkpoint stored under ignored `.models/shadow/AveragedModel.pth`
+- real shadow backend successfully loaded on local GPU
+- live smoke verified:
+  - backend `Pix2PixShadowGenerator`
+  - device `cuda:0`
+  - debug stage completed successfully
+- real shadow outputs no longer use coarse post-blur softness
+- coarse softness blur remains only in the mock shadow backend
+
+### Documentation Evidence
+
+The active docs now provide:
+
+- quick entry overview in `README.md`
+- docs index in `docs/README.md`
+- system architecture in `docs/architecture.md`
+- codebase map in `docs/modules.md`
+- local runtime and model bring-up notes in `docs/runbook-local.md`
+- API summary in `docs/api.md`
+- repository workflow rules in `docs/workflow.md`
+
+### Validation Evidence
+
+- `py -3.11 -m pytest` passed: `56 passed`
+- earlier live shadow smoke succeeded through the debug endpoint with real `V1-GAN`
+
+## Remaining Bootstrap Gaps
+
+- `V2-DIFF` shadow backend is scaffolded but not implemented
+- compatibility shims still remain in the repository
+- Docker/deployment documentation is not yet part of bootstrap
