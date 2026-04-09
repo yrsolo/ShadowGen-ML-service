@@ -1,121 +1,274 @@
 # Local Runbook
 
-## Target shape
+## Goal
 
-- Local-first development
-- Synchronous HTTP API
-- NVIDIA GPU target for future real-model bring-up
+This runbook describes how to prepare a local environment, start the service, use the playground, and understand the current model bring-up expectations.
 
-## Basic setup
+## Recommended Environment
 
-1. Create a compatible Python environment.
-2. Install base dependencies and dev dependencies.
-3. Start the API server with Uvicorn.
-4. Run tests before commit.
+- OS: Windows workstation
+- Python: `3.11`
+- Runtime target: NVIDIA GPU
+- Package manager: `pip` inside `.venv`
 
-### Commands
+## Local Setup
+
+### 1. Create `.venv`
 
 ```powershell
-.venv/Scripts/python.exe -m pip install -e .[dev]
-.venv/Scripts/python.exe -m uvicorn shadowgen_ml_service.main:app --reload
-.venv/Scripts/python.exe -m pytest
+py -3.11 -m venv .venv
+.venv\Scripts\python.exe -m pip install --upgrade pip setuptools wheel
 ```
 
-## Browser playground
+### 2. Install base project
 
-After the server starts, open:
+```powershell
+.venv\Scripts\python.exe -m pip install -e .[dev]
+```
 
+### 3. Install CUDA PyTorch
+
+Install CUDA-enabled torch explicitly before ML extras:
+
+```powershell
+.venv\Scripts\python.exe -m pip install --index-url https://download.pytorch.org/whl/cu126 torch torchvision
+```
+
+If your machine requires a different CUDA channel, replace `cu126` with the matching one.
+
+### 4. Install ML stack
+
+```powershell
+.venv\Scripts\python.exe -m pip install -e .[dev,ml]
+```
+
+## Verify GPU
+
+```powershell
+.venv\Scripts\python.exe -c "import torch; print(torch.__version__); print(torch.cuda.is_available()); print(torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'no-cuda')"
+```
+
+Healthy result:
+
+- non-CPU torch build
+- `True` for CUDA availability
+- real NVIDIA device name
+
+## Start the Service
+
+### Uvicorn
+
+```powershell
+.venv\Scripts\python.exe -m uvicorn shadowgen_ml_service.main:app --reload
+```
+
+### Windows shortcut
+
+```cmd
+run-service.cmd
+```
+
+Open:
+
+- `http://127.0.0.1:8000/`
 - `http://127.0.0.1:8000/playground`
+
+## Playground Use
 
 The playground supports:
 
-- uploading one source image
-- running the full pipeline or a single stage
-- switching each stage between `mock` and `real`
-- showing stage-local errors and previews
-- adjusting the global preview size
+- image upload
+- contract parameter control
+- full pipeline run
+- per-stage rerun
+- preview scaling
+- explicit backend switching
 
-### Optional ML bootstrap
+Current shadow stage variants in the UI:
+
+- `mock`
+- `V1-GAN`
+- `V2-DIFF`
+
+Current behavior:
+
+- `V1-GAN` is the working migrated legacy shadow model
+- `V2-DIFF` is present as a scaffold and intentionally reports itself as not connected yet
+
+## Model Bring-Up Summary
+
+### Geometry
+
+- Backend: GeoCalib
+- Env vars:
+  - `SHADOWGEN_GEOCALIB_WEIGHTS`
+  - `SHADOWGEN_GEOCALIB_CAMERA_MODEL`
+  - `SHADOWGEN_GEOCALIB_SHARED_INTRINSICS`
+
+### Detection
+
+- Backend: GroundingDINO
+- Env vars:
+  - `SHADOWGEN_GROUNDING_DINO_MODEL_ID`
+  - `SHADOWGEN_GROUNDING_DINO_PROMPT`
+  - `SHADOWGEN_GROUNDING_DINO_BOX_THRESHOLD`
+  - `SHADOWGEN_GROUNDING_DINO_TEXT_THRESHOLD`
+
+### Segmentation
+
+- Backend: BiRefNet
+- Env vars:
+  - `SHADOWGEN_BIREFNET_MODEL_ID`
+  - `SHADOWGEN_BIREFNET_RESOLUTION`
+  - `SHADOWGEN_BIREFNET_MASK_THRESHOLD`
+  - `SHADOWGEN_BIREFNET_ALLOW_CPU`
+
+### Foreground Refinement
+
+- Backend: Fast Foreground Colour Estimation
+- Dependency note:
+  - OpenCV-based stage
+
+### Depth
+
+- Backend: Depth Anything V2 Small
+- Env vars:
+  - `SHADOWGEN_DEPTH_ANYTHING_MODEL_ID`
+  - `SHADOWGEN_TARGET_DEVICE`
+
+### Normals
+
+- Primary backend: StableNormal
+- Fallback backend: `from-depth`
+- Env vars:
+  - `SHADOWGEN_STABLE_NORMAL_VARIANT`
+  - `SHADOWGEN_STABLE_NORMAL_RESOLUTION`
+  - `SHADOWGEN_STABLE_NORMAL_ALLOW_CPU`
+  - `SHADOWGEN_TARGET_DEVICE`
+
+### Shadow
+
+- Variants:
+  - `mock`
+  - `V1-GAN`
+  - `V2-DIFF`
+
+#### `mock`
+
+- deterministic analytical fallback
+- still uses coarse blur for softness emulation
+
+#### `V1-GAN`
+
+- migrated legacy pix2pix generator
+- local weights path:
+  - `.models/shadow/AveragedModel.pth`
+- env vars:
+  - `SHADOWGEN_SHADOW_MODEL_VARIANT`
+  - `SHADOWGEN_SHADOW_PIX2PIX_WEIGHTS_PATH`
+  - `SHADOWGEN_TARGET_DEVICE`
+
+Important:
+
+- real shadow backends receive `softness` as model input
+- real shadow backends do not use post-blur for softness anymore
+
+#### `V2-DIFF`
+
+- scaffold exists in code
+- runtime slot exists
+- backend intentionally not implemented yet
+
+Expected future model inputs:
+
+- `img`
+- `mask`
+- `depth`
+- `normal`
+- `angle`
+- `elevation`
+- `softness`
+- `reflection`
+
+## Local Storage Rules
+
+Ignored local-only paths include:
+
+- `.models/`
+- `.cache/`
+- `var/cache/`
+- `var/tmp/`
+- `artifacts/`
+
+Use them for:
+
+- model checkpoints
+- downloaded weights
+- preprocess cache
+- temporary files
+- generated outputs
+
+## Health Checks
+
+### Service health
 
 ```powershell
-.venv/Scripts/python.exe -m pip install -e .[ml]
-.venv/Scripts/python.exe -m pip install transformers
-.venv/Scripts/python.exe -m pip install -e "git+https://github.com/cvg/GeoCalib#egg=geocalib"
+curl http://127.0.0.1:8000/health
 ```
 
-If direct GitHub install is blocked, a local fallback also works:
+### Runtime capabilities
 
 ```powershell
-Invoke-WebRequest https://github.com/cvg/GeoCalib/archive/refs/heads/main.zip -OutFile var/tmp/geocalib-main.zip
-Expand-Archive var/tmp/geocalib-main.zip -DestinationPath var/tmp/geocalib-src -Force
-.venv/Scripts/python.exe -m pip install -e var/tmp/geocalib-src/GeoCalib-main
+curl http://127.0.0.1:8000/v1/capabilities
 ```
 
-## GeoCalib bring-up
+Check:
 
-The real `Geometry` step uses GeoCalib from the active `.venv`.
+- `active_backend_mode`
+- `degraded`
+- `components[]`
 
-Expected workflow:
+For model bring-up, the most useful fields are:
 
-1. Install GeoCalib into the current virtual environment.
-2. Keep heavy weights and artifacts out of git in ignored folders such as `.models/`.
-3. Start the service and inspect `GET /v1/capabilities`.
+- `name`
+- `implementation`
+- `model_name`
+- `model_version`
+- `using_mock`
+- `detail`
 
-Useful env vars:
+## Troubleshooting
 
-- `SHADOWGEN_MODEL_CACHE_DIR` for local model storage
-- `TORCH_HOME` if you want GeoCalib weights to download into a custom cache directory instead of the default torch cache
-- `SHADOWGEN_GEOCALIB_WEIGHTS` to switch GeoCalib weights (`pinhole`, `distorted`, or a checkpoint path)
-- `SHADOWGEN_GEOCALIB_CAMERA_MODEL` to choose the camera model passed into calibration (`pinhole`, `simple_radial`, `simple_divisional`)
-- `SHADOWGEN_GEOCALIB_SHARED_INTRINSICS` to toggle GeoCalib shared-intrinsics optimization
+### Service uses CPU unexpectedly
 
-GeoCalib downloads its released weights on first initialization. That is expected and should happen only once per cache location.
+Check:
 
-What to verify:
+- CUDA torch is installed in the same `.venv`
+- service was started from that `.venv`
+- stage `details.device` in the playground
 
-- `components[].name == "geometry_estimator"`
-- `implementation == "real"`
-- `using_mock == false`
+### Stage shows `mock-fallback`
 
-In the playground `Geometry` card:
+That means:
 
-- `geometry_overlay` now includes a synthetic floor grid to make the estimated horizon and perspective easier to judge visually
-- stage details also show `camera_model`, `weights`, and `shared_intrinsics` for the active GeoCalib run
+- the stage exists
+- requested backend was not usable at runtime
+- the service fell back to the mock or deterministic path
 
-If GeoCalib is unavailable or fails to initialize, the service falls back to the mock geometry estimator and the playground shows `mock-fallback`.
+Inspect:
 
-## GroundingDINO bring-up
+- `/v1/capabilities`
+- stage details in playground
+- startup logs
 
-The real `Detection` step uses `IDEA-Research/grounding-dino-base` through `transformers`.
+### `V2-DIFF` is unavailable
 
-Expected workflow:
+That is expected right now.
+The scaffold is present by design, but the model backend is not implemented yet.
 
-1. Install `transformers` into the active virtual environment.
-2. Start the service and let the model download into the local Hugging Face / torch cache on first initialization.
-3. Inspect `GET /v1/capabilities`.
+## Related Docs
 
-Useful env vars:
-
-- `SHADOWGEN_GROUNDING_DINO_MODEL_ID` to switch the detector checkpoint
-- `SHADOWGEN_GROUNDING_DINO_PROMPT` to override the zero-shot prompt, default `object.`
-- `SHADOWGEN_GROUNDING_DINO_BOX_THRESHOLD` to change the box confidence threshold
-- `SHADOWGEN_GROUNDING_DINO_TEXT_THRESHOLD` to change the text threshold used by post-processing
-
-What to verify:
-
-- `components[].name == "detector"`
-- `implementation == "real"`
-- `using_mock == false`
-
-In the playground `Detection` card:
-
-- `detection_overlay` shows the selected bbox on the source image
-- `crop_for_resize` shows the working crop that will go to segmentation
-- stage details expose bbox coordinates, confidence, backend mode, and prompt
-
-If GroundingDINO is unavailable or fails to initialize, the service falls back to the mock detector and the playground shows `mock-fallback`.
-
-## Note on Python
-
-This repository keeps the code compatible with Python `3.11+`.
-Current local `.venv` may not be the final production baseline for heavy ML dependencies.
+- [README.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/README.md)
+- [architecture.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/architecture.md)
+- [modules.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/modules.md)
+- [api.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/api.md)

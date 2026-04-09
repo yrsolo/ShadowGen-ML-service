@@ -1,28 +1,91 @@
 # SGML-BOOTSTRAP Evidence
 
-## In Progress
+## Scope Achieved
 
-- Repository initialized locally with branch `dev`
-- Bootstrap tracking files created
+- repository initialized on `dev`
+- layered architecture established
+- service API implemented
+- playground UI implemented
+- multiple ML stages wired with mock and real paths
+- project docs rewritten into a usable current-state reference set
 
 ## Captured Evidence
 
-- `python -m compileall src tests` passed
-- `python -m pytest` passed: `26 passed`
-- FastAPI app exposes `/health`, `/v1/capabilities`, `/v1/render`
-- FastAPI app exposes `/playground`, `/v1/dev/pipeline/run-all`, `/v1/dev/pipeline/run-stage/{stage_key}`
-- Request contract updated with `preprocess.padding_px`
-- Browser playground added for stage-by-stage testing with previews and `mock/real` mode switches
-- `geometry_estimator` now has a real GeoCalib adapter path, runtime fallback behavior, and stage-level debug metadata
-- Playground `Geometry` card now shows numeric camera data and `geometry_overlay` preview
-- GeoCalib was installed into the active `.venv` and `GET /v1/capabilities` now reports `geometry_estimator` with `implementation=real`
-- Real geometry smoke path now runs end-to-end with preview overlays and numeric camera metadata
-- Geometry overlay now includes a synthetic floor grid, and debug metadata exposes active GeoCalib runtime settings (`weights`, `camera_model`, `shared_intrinsics`)
-- GroundingDINO was installed into the active `.venv` and `GET /v1/capabilities` now reports `detector` with `implementation=real`
-- Real detector smoke path now runs end-to-end with bbox details plus `detection_overlay` and `crop_for_resize` previews
-- Debug/playground stage overrides now execute real mock adapters for `detector` and `geometry_estimator`, instead of only relabeling the active backend
+- `GET /health`, `GET /v1/capabilities`, `POST /v1/render` are implemented
+- `GET /playground`, `POST /v1/dev/pipeline/run-all`, and `POST /v1/dev/pipeline/run-stage/{stage_key}` are implemented
+- request contract supports `preprocess.padding_px`
+- repository architecture is split into:
+  - `core`
+  - `application`
+  - `bootstrap`
+  - `infrastructure`
+  - `interfaces`
 
-## Pending Follow-Ups
+### Stage Wiring Evidence
 
-- Bring up the remaining real model wrappers against local NVIDIA environment
-- Add Docker packaging and deployment docs
+- `geometry_estimator`
+  - GeoCalib real backend
+  - mock backend
+  - playground overlay and numeric details
+
+- `detector`
+  - GroundingDINO real backend
+  - mock backend
+  - bbox previews and working-crop preview
+
+- `segmenter`
+  - BiRefNet real backend
+  - mock backend
+  - working crop, mask, and cutout previews
+
+- `foreground_refiner`
+  - Fast Foreground Colour Estimation stage is standalone
+  - no longer hidden inside segmentation
+
+- `depth_estimator`
+  - Depth Anything V2 real backend
+  - mock backend
+
+- `normal_estimator`
+  - StableNormal real backend
+  - `from-depth` fallback backend
+  - mock backend
+
+- `shadow_generator`
+  - deterministic mock backend
+  - `V1-GAN` backend migrated from legacy pix2pix inference
+  - `V2-DIFF` scaffold class and runtime slot prepared
+
+### Shadow-Specific Evidence
+
+- local `V1-GAN` checkpoint stored under ignored `.models/shadow/AveragedModel.pth`
+- real shadow backend successfully loaded on local GPU
+- live smoke verified:
+  - backend `Pix2PixShadowGenerator`
+  - device `cuda:0`
+  - debug stage completed successfully
+- real shadow outputs no longer use coarse post-blur softness
+- coarse softness blur remains only in the mock shadow backend
+
+### Documentation Evidence
+
+The active docs now provide:
+
+- quick entry overview in `README.md`
+- docs index in `docs/README.md`
+- system architecture in `docs/architecture.md`
+- codebase map in `docs/modules.md`
+- local runtime and model bring-up notes in `docs/runbook-local.md`
+- API summary in `docs/api.md`
+- repository workflow rules in `docs/workflow.md`
+
+### Validation Evidence
+
+- `py -3.11 -m pytest` passed: `56 passed`
+- earlier live shadow smoke succeeded through the debug endpoint with real `V1-GAN`
+
+## Remaining Bootstrap Gaps
+
+- `V2-DIFF` shadow backend is scaffolded but not implemented
+- compatibility shims still remain in the repository
+- Docker/deployment documentation is not yet part of bootstrap
