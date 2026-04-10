@@ -5,6 +5,7 @@ import unittest
 from PIL import Image
 
 from shadowgen_ml_service.infrastructure.stages.foreground_refinement.fast_foreground_estimation import FastForegroundColorEstimator
+from shadowgen_ml_service.utils.images import asset_to_pil
 
 
 class ForegroundRefinerTests(unittest.TestCase):
@@ -17,9 +18,10 @@ class ForegroundRefinerTests(unittest.TestCase):
 
         estimator = FastForegroundColorEstimator(coarse_radius=9, refine_radius=3)
         result = estimator.refine(image, alpha)
+        cutout = asset_to_pil(result.cutout_rgba)
 
-        self.assertEqual(result.cutout_rgba.size, image.size)
-        self.assertEqual(result.cutout_rgba.getchannel("A").getextrema(), alpha.getextrema())
+        self.assertEqual(cutout.size, image.size)
+        self.assertEqual(cutout.getchannel("A").getextrema(), alpha.getextrema())
 
 
 if __name__ == "__main__":

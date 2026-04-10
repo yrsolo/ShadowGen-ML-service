@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
-from PIL import Image
+from shadowgen_ml_service.core.assets import RasterAsset
 
 
 BBox = tuple[int, int, int, int]
@@ -28,34 +28,34 @@ class GeometryResult:
 @dataclass(frozen=True)
 class SegmentationResult:
     bbox: BBox
-    mask: Image.Image
-    cutout_rgba: Image.Image
-    crop_rgba: Image.Image
+    mask: RasterAsset
+    cutout_rgba: RasterAsset
+    crop_rgba: RasterAsset
 
 
 @dataclass(frozen=True)
 class ForegroundRefinementResult:
-    cutout_rgba: Image.Image
+    cutout_rgba: RasterAsset
 
 
 @dataclass(frozen=True)
 class DepthResult:
-    depth_map: Image.Image
+    depth_map: RasterAsset
 
 
 @dataclass(frozen=True)
 class NormalResult:
-    normal_map: Image.Image
+    normal_map: RasterAsset
 
 
 @dataclass(frozen=True)
 class ShadowResult:
-    shadow_rgba: Image.Image
+    shadow_rgba: RasterAsset
 
 
 @dataclass(frozen=True)
 class CompositionResult:
-    final_image: Image.Image
+    final_image: RasterAsset
 
 
 @dataclass(frozen=True)

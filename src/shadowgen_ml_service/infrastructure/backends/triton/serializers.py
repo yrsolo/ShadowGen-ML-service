@@ -5,6 +5,9 @@ from typing import Any
 import numpy as np
 from PIL import Image
 
+from shadowgen_ml_service.infrastructure.backends.triton.errors import TritonSchemaMismatchError
+from shadowgen_ml_service.infrastructure.backends.triton.model_registry import TritonTensorBinding
+
 
 TRITON_DTYPE_TO_NUMPY = {
     "BOOL": np.bool_,
@@ -84,6 +87,29 @@ def tensor_map_from_response(response_payload: dict[str, Any]) -> dict[str, np.n
             raise ValueError("Triton response output is missing a valid name")
         result[name] = tensor_from_output(output)
     return result
+
+
+def validate_tensor_against_binding(name: str, tensor: np.ndarray, binding: TritonTensorBinding) -> None:
+    if tensor.dtype != np.dtype(TRITON_DTYPE_TO_NUMPY[binding.datatype]):
+        raise TritonSchemaMismatchError(
+            f"tensor {name} has dtype {tensor.dtype}, expected {binding.datatype}"
+        )
+    if binding.expected_ranks and tensor.ndim not in binding.expected_ranks:
+        raise TritonSchemaMismatchError(
+            f"tensor {name} has rank {tensor.ndim}, expected one of {binding.expected_ranks}"
+        )
+    if binding.shape_policy == "scalar" and tensor.size != 1:
+        raise TritonSchemaMismatchError(f"tensor {name} must contain exactly one scalar value")
+    if binding.shape_policy == "bbox4" and tensor.size < 4:
+        raise TritonSchemaMismatchError(f"tensor {name} must contain at least 4 bbox values")
+    if binding.shape_policy == "channel-first":
+        if tensor.ndim not in {3, 4}:
+            raise TritonSchemaMismatchError(f"tensor {name} must be rank 3 or 4 channel-first image data")
+        channel_axis = 1 if tensor.ndim == 4 else 0
+        if binding.channels is not None and int(tensor.shape[channel_axis]) != binding.channels:
+            raise TritonSchemaMismatchError(
+                f"tensor {name} has {int(tensor.shape[channel_axis])} channels, expected {binding.channels}"
+            )
 
 
 def tensor_to_scalar(tensor: np.ndarray) -> float:

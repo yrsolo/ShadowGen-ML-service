@@ -17,7 +17,7 @@ from shadowgen_ml_service.interfaces.http.public_schemas import (
     RenderJobSubmitResponse,
     RenderResponse,
 )
-from shadowgen_ml_service.utils.images import encode_image
+from shadowgen_ml_service.utils.images import asset_to_base64
 
 
 def backend_descriptor_to_response(backend) -> BackendCapabilities:
@@ -97,8 +97,13 @@ def debug_outcome_to_response(outcome: DebugPipelineOutcome) -> PipelineDebugRes
     for stage in outcome.stages:
         previews = []
         for name, image in stage.previews.items():
-            mime_type, image_base64 = encode_image(image, "png")
-            previews.append(StagePreviewResponse(name=name, mime_type=mime_type, image_base64=image_base64))
+            previews.append(
+                StagePreviewResponse(
+                    name=name,
+                    mime_type=image.mime_type,
+                    image_base64=asset_to_base64(image),
+                )
+            )
         stages.append(
             StageExecutionResponse(
                 stage_key=stage.stage_key,

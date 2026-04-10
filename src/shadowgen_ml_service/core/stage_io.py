@@ -2,37 +2,37 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from PIL import Image
+from shadowgen_ml_service.core.assets import RasterAsset
 
 @dataclass(frozen=True)
 class DetectionInput:
-    image: Image.Image
+    image: RasterAsset
     padding_px: int
 
 
 @dataclass(frozen=True)
 class SegmentationInput:
-    image: Image.Image
+    image: RasterAsset
 
 
 @dataclass(frozen=True)
 class DepthInput:
-    image: Image.Image
-    mask: Image.Image
+    image: RasterAsset
+    mask: RasterAsset
 
 
 @dataclass(frozen=True)
 class NormalsInput:
-    image: Image.Image
-    depth_map: Image.Image | None = None
+    image: RasterAsset
+    depth_map: RasterAsset | None = None
 
 
 @dataclass(frozen=True)
 class ShadowInput:
-    img: Image.Image
-    mask: Image.Image
-    depth: Image.Image
-    normal: Image.Image
+    img: RasterAsset
+    mask: RasterAsset
+    depth: RasterAsset
+    normal: RasterAsset
     angle: float
     elevation: float
     softness: float

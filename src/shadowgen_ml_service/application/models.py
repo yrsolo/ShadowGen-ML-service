@@ -6,6 +6,7 @@ from typing import Any, Literal
 
 from PIL import Image
 
+from shadowgen_ml_service.core.assets import RasterAsset
 from shadowgen_ml_service.core.commands import RenderCommand
 from shadowgen_ml_service.core.models import (
     BackendKind,
@@ -62,7 +63,7 @@ class PipelineContext:
     cache_key: str | None = None
     preprocess_snapshot: PreprocessSnapshot | None = None
     working_crop: Image.Image | None = None
-    pre_refinement_cutout: Image.Image | None = None
+    pre_refinement_cutout: RasterAsset | None = None
     detection: DetectionResult | None = None
     geometry: GeometryResult | None = None
     segmentation: SegmentationResult | None = None
@@ -111,7 +112,7 @@ class StageExecution:
     elapsed_ms: int | None = None
     error: str | None = None
     details: dict[str, str | int | float | bool] | None = None
-    previews: dict[str, Image.Image] = field(default_factory=dict)
+    previews: dict[str, RasterAsset] = field(default_factory=dict)
 
 
 @dataclass

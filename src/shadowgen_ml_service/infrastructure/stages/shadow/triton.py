@@ -12,6 +12,7 @@ from shadowgen_ml_service.infrastructure.backends.triton.serializers import (
     rgba_output_to_image,
     scalar_to_input,
 )
+from shadowgen_ml_service.utils.images import ensure_pil, pil_to_asset
 
 
 class TritonShadowGenerator(ShadowGenerator):
@@ -24,18 +25,21 @@ class TritonShadowGenerator(ShadowGenerator):
         self.model_variant = model_variant
 
     def generate(self, stage_input: ShadowInput) -> ShadowResult:
+        image = ensure_pil(stage_input.img)
+        mask = ensure_pil(stage_input.mask)
+        depth = ensure_pil(stage_input.depth)
+        normal = ensure_pil(stage_input.normal)
         response = self.client.infer(
-            self.binding.model_name,
+            self.binding,
             inputs=[
-                image_to_nchw_float32_input(self.binding.inputs["img"].tensor_name, stage_input.img.convert("RGBA")),
-                grayscale_to_nchw_float32_input(self.binding.inputs["mask"].tensor_name, stage_input.mask.convert("L")),
-                grayscale_to_nchw_float32_input(self.binding.inputs["depth"].tensor_name, stage_input.depth.convert("L")),
-                rgb_to_nchw_float32_input(self.binding.inputs["normal"].tensor_name, stage_input.normal.convert("RGB")),
+                image_to_nchw_float32_input(self.binding.inputs["img"].tensor_name, image.convert("RGBA")),
+                grayscale_to_nchw_float32_input(self.binding.inputs["mask"].tensor_name, mask.convert("L")),
+                grayscale_to_nchw_float32_input(self.binding.inputs["depth"].tensor_name, depth.convert("L")),
+                rgb_to_nchw_float32_input(self.binding.inputs["normal"].tensor_name, normal.convert("RGB")),
                 scalar_to_input(self.binding.inputs["angle"].tensor_name, stage_input.angle),
                 scalar_to_input(self.binding.inputs["elevation"].tensor_name, stage_input.elevation),
                 scalar_to_input(self.binding.inputs["softness"].tensor_name, stage_input.softness),
                 scalar_to_input(self.binding.inputs["reflection"].tensor_name, stage_input.reflection),
             ],
-            outputs=[self.binding.outputs["shadow"].tensor_name],
         )
-        return ShadowResult(shadow_rgba=rgba_output_to_image(response[self.binding.outputs["shadow"].tensor_name]))
+        return ShadowResult(shadow_rgba=pil_to_asset(rgba_output_to_image(response[self.binding.outputs["shadow"].tensor_name])))

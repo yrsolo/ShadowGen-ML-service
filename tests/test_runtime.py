@@ -90,6 +90,7 @@ class RuntimeTests(unittest.TestCase):
             self.assertFalse(normal_component.using_mock)
             self.assertEqual(normal_component.backend_kind, "local")
             self.assertEqual(normal_component.model_name, "normal-map-from-depth")
+            self.assertEqual(normal_component.implementation, "local-fallback")
 
     def test_auto_runtime_uses_local_shadow_when_weights_exist(self) -> None:
         with patch("shadowgen_ml_service.bootstrap.container.probe_shadow_pix2pix") as probe_shadow:

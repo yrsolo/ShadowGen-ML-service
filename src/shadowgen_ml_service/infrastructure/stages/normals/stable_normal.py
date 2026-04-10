@@ -9,6 +9,7 @@ from shadowgen_ml_service.core.contracts import NormalEstimator
 from shadowgen_ml_service.core.models import NormalResult
 from shadowgen_ml_service.core.stage_io import NormalsInput
 from shadowgen_ml_service.infrastructure.stages.shared.model_support import RealAdapterProbe, import_module, module_available
+from shadowgen_ml_service.utils.images import ensure_pil, pil_to_asset
 
 
 class StableNormalEstimator(NormalEstimator):
@@ -52,7 +53,8 @@ class StableNormalEstimator(NormalEstimator):
         self._predictor = predictor
 
     def estimate(self, stage_input: NormalsInput) -> NormalResult:
-        source = stage_input.image if stage_input.image.mode == "RGBA" else stage_input.image.convert("RGBA")
+        source_image = ensure_pil(stage_input.image)
+        source = source_image if source_image.mode == "RGBA" else source_image.convert("RGBA")
         normal_map = self._predictor(
             source,
             resolution=self.resolution,
@@ -63,7 +65,7 @@ class StableNormalEstimator(NormalEstimator):
             normal_map = Image.fromarray(normal_map)
         if normal_map.mode != "RGB":
             normal_map = normal_map.convert("RGB")
-        return NormalResult(normal_map=normal_map)
+        return NormalResult(normal_map=pil_to_asset(normal_map))
 
     def _load_predictor(self):
         kwargs = {

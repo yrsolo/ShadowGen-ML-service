@@ -8,8 +8,10 @@ import numpy as np
 from PIL import Image
 
 from shadowgen_ml_service.core.contracts import GeometryEstimator
+from shadowgen_ml_service.core.assets import RasterAsset
 from shadowgen_ml_service.core.models import GeometryResult
 from shadowgen_ml_service.infrastructure.stages.shared.model_support import RealAdapterProbe, as_degrees, extract_attr, import_module, module_available, tensor_to_float
+from shadowgen_ml_service.utils.images import ensure_pil
 
 
 def camera_to_fov_degrees(camera: Any) -> float:
@@ -73,7 +75,7 @@ class RealGeometryEstimator(GeometryEstimator):
         self._model = self._module.GeoCalib(weights=weights)
         self.device_label = self._infer_device_label()
 
-    def estimate(self, image: Image.Image) -> GeometryResult:
+    def estimate(self, image: RasterAsset) -> GeometryResult:
         prepared = self._prepare_input(image)
         result = self._model.calibrate(prepared, camera_model=self.camera_model, shared_intrinsics=self.shared_intrinsics)
         camera = extract_attr(result, "camera")
@@ -85,8 +87,8 @@ class RealGeometryEstimator(GeometryEstimator):
             confidence=confidence_from_result(result),
         )
 
-    def _prepare_input(self, image: Image.Image) -> Any:
-        image_rgb = image.convert("RGB")
+    def _prepare_input(self, image: RasterAsset) -> Any:
+        image_rgb = ensure_pil(image).convert("RGB")
         if hasattr(self._model, "load_image"):
             for candidate in (image_rgb, np.asarray(image_rgb)):
                 try:

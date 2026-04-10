@@ -8,6 +8,7 @@ from PIL import Image
 from shadowgen_ml_service.core.contracts import ForegroundColorEstimator
 from shadowgen_ml_service.core.models import ForegroundRefinementResult
 from shadowgen_ml_service.infrastructure.stages.shared.model_support import RealAdapterProbe, import_module, module_available
+from shadowgen_ml_service.utils.images import ensure_pil, pil_to_asset
 
 
 def _to_unit_float_rgb(image: Image.Image) -> np.ndarray:
@@ -46,9 +47,11 @@ class FastForegroundColorEstimator(ForegroundColorEstimator):
         self.coarse_radius = coarse_radius
         self.refine_radius = refine_radius
 
-    def refine(self, image: Image.Image, alpha: Image.Image) -> ForegroundRefinementResult:
-        image_array = _to_unit_float_rgb(image)
-        alpha_array = _to_unit_float_alpha(alpha)
+    def refine(self, image, alpha) -> ForegroundRefinementResult:
+        image_pil = ensure_pil(image)
+        alpha_pil = ensure_pil(alpha)
+        image_array = _to_unit_float_rgb(image_pil)
+        alpha_array = _to_unit_float_alpha(alpha_pil)
         coarse_foreground, blurred_background = blur_fusion_foreground_estimator(
             image_array,
             image_array,
@@ -67,8 +70,8 @@ class FastForegroundColorEstimator(ForegroundColorEstimator):
         )
         refined_rgb = Image.fromarray((refined_foreground * 255.0).clip(0, 255).astype(np.uint8), mode="RGB")
         refined_rgba = refined_rgb.convert("RGBA")
-        refined_rgba.putalpha(alpha.convert("L"))
-        return ForegroundRefinementResult(cutout_rgba=refined_rgba)
+        refined_rgba.putalpha(alpha_pil.convert("L"))
+        return ForegroundRefinementResult(cutout_rgba=pil_to_asset(refined_rgba))
 
 
 def probe_fast_foreground_estimation() -> RealAdapterProbe:

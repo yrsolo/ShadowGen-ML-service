@@ -9,7 +9,7 @@ from shadowgen_ml_service.config import Settings
 from shadowgen_ml_service.core.commands import DebugPipelineCommand
 from shadowgen_ml_service.core.errors import UnsupportedInputServiceError, ValidationServiceError
 from shadowgen_ml_service.core.stage_io import DepthInput, DetectionInput, NormalsInput, SegmentationInput, ShadowInput
-from shadowgen_ml_service.utils.images import decode_image, prepare_working_crop
+from shadowgen_ml_service.utils.images import alpha_asset, decode_image, ensure_asset, prepare_working_crop
 
 
 class DebugPipelineUseCase:
@@ -72,6 +72,7 @@ class DebugPipelineUseCase:
             invocation=lambda backend: self._invoke_stage(stage_key, backend, context),
             details_factory=lambda value, stage_selection: self._stage_details(stage_key, value, stage_selection),
             previews_factory=lambda value: self.runtime.previews.build(stage_key, self._assign_stage_value(stage_key, context, value), context),
+            capture_errors=True,
         )
         if execution.status == "completed":
             execution.details = dict(execution.details or {})
@@ -80,13 +81,13 @@ class DebugPipelineUseCase:
 
     def _invoke_stage(self, stage_key: str, backend, context: PipelineContext):
         if stage_key == "geometry_estimator":
-            return backend.estimate(context.source_rgba)
+            return backend.estimate(ensure_asset(context.source_rgba))
         if stage_key == "detector":
             return backend.detect(self._build_detection_input(context))
         if stage_key == "segmenter":
             return backend.segment(self._build_segmentation_input(context))
         if stage_key == "foreground_refiner":
-            return backend.refine(context.segmentation.crop_rgba, context.segmentation.cutout_rgba.getchannel("A"))
+            return backend.refine(context.segmentation.crop_rgba, alpha_asset(context.segmentation.cutout_rgba))
         if stage_key == "depth_estimator":
             return backend.estimate(self._build_depth_input(context))
         if stage_key == "normal_estimator":
@@ -206,10 +207,10 @@ class DebugPipelineUseCase:
         return context.working_crop
 
     def _build_detection_input(self, context: PipelineContext) -> DetectionInput:
-        return DetectionInput(image=context.source_rgba, padding_px=context.command.padding_px)
+        return DetectionInput(image=ensure_asset(context.source_rgba), padding_px=context.command.padding_px)
 
     def _build_segmentation_input(self, context: PipelineContext) -> SegmentationInput:
-        return SegmentationInput(image=self._prepare_working_crop(context))
+        return SegmentationInput(image=ensure_asset(self._prepare_working_crop(context)))
 
     def _build_depth_input(self, context: PipelineContext) -> DepthInput:
         return DepthInput(image=context.segmentation.cutout_rgba, mask=context.segmentation.mask)

@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
-from PIL import Image
-
+from shadowgen_ml_service.core.assets import RasterAsset
 from shadowgen_ml_service.core.commands import BackgroundSpec, OutputSpec, ShadowSpec
 from shadowgen_ml_service.core.models import (
     CompositionResult,
@@ -28,7 +27,7 @@ class Detector(ABC):
 
 class GeometryEstimator(ABC):
     @abstractmethod
-    def estimate(self, image: Image.Image) -> GeometryResult:
+    def estimate(self, image: RasterAsset) -> GeometryResult:
         raise NotImplementedError
 
 
@@ -40,7 +39,7 @@ class Segmenter(ABC):
 
 class ForegroundColorEstimator(ABC):
     @abstractmethod
-    def refine(self, image: Image.Image, alpha: Image.Image) -> ForegroundRefinementResult:
+    def refine(self, image: RasterAsset, alpha: RasterAsset) -> ForegroundRefinementResult:
         raise NotImplementedError
 
 
@@ -66,8 +65,8 @@ class Composer(ABC):
     @abstractmethod
     def compose(
         self,
-        cutout_rgba: Image.Image,
-        shadow_rgba: Image.Image,
+        cutout_rgba: RasterAsset,
+        shadow_rgba: RasterAsset,
         background: BackgroundSpec,
         output: OutputSpec,
     ) -> CompositionResult:
@@ -78,9 +77,9 @@ class ArtifactEncoder(ABC):
     @abstractmethod
     def encode(
         self,
-        final_image: Image.Image,
+        final_image: RasterAsset,
         output_format: str,
-        debug_images: dict[str, Image.Image],
+        debug_images: dict[str, RasterAsset],
         return_debug: bool,
     ) -> list[EncodedArtifact]:
         raise NotImplementedError
@@ -102,5 +101,5 @@ class PreprocessCacheRepository(ABC):
 
 class PreviewBuilderRegistry(ABC):
     @abstractmethod
-    def build(self, stage_key: str, stage_value: object, context: object) -> dict[str, Image.Image]:
+    def build(self, stage_key: str, stage_value: object, context: object) -> dict[str, RasterAsset]:
         raise NotImplementedError

@@ -48,6 +48,9 @@ Main files:
 - [models.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/core/models.py)
   Internal result models and execution-aware runtime metadata.
 
+- [assets.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/core/assets.py)
+  Transport-neutral raster asset contract used by heavy-stage inputs and outputs.
+
 - [stage_io.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/core/stage_io.py)
   Canonical heavy-stage input objects. This is the real boundary between orchestration and executors.
 
@@ -101,7 +104,7 @@ Purpose:
   Selects `mock`, `local`, or `triton` plus the effective model variant.
 
 - [stage_runner.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/application/services/stage_runner.py)
-  Shared stage execution wrapper with metadata capture.
+  Shared stage execution wrapper with metadata capture and normalized stage-level error handling.
 
 - [stage_catalog.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/application/services/stage_catalog.py)
   Source of truth for stage order and human-facing names.
@@ -133,6 +136,9 @@ Main files:
 
 - [container.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/bootstrap/container.py)
   Composition root. Registers backends per stage and chooses defaults.
+
+- [triton_bindings.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/bootstrap/triton_bindings.py)
+  Centralized Triton model binding schemas with tensor-name, dtype, rank, and layout expectations.
 
 - [probes.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/bootstrap/probes.py)
   Lightweight backend availability probes.
@@ -171,7 +177,7 @@ Main files:
   Mapping from stage and model variant to Triton model identifiers plus tensor binding schemas.
 
 - [serializers.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/infrastructure/backends/triton/serializers.py)
-  Tensor serialization and response decoding helpers for the standard Triton tensor protocol.
+  Tensor serialization, response decoding, and schema validation helpers for the standard Triton tensor protocol.
 
 - [errors.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/infrastructure/backends/triton/errors.py)
   Triton-specific error types.
@@ -349,6 +355,7 @@ Main file:
 Purpose:
 
 - shared image decoding
+- `RasterAsset <-> PIL` conversion helpers
 - crop preparation
 - overlays
 - encoding helpers

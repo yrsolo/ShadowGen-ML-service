@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-from PIL import Image
-
+from shadowgen_ml_service.core.assets import RasterAsset
 from shadowgen_ml_service.core.contracts import GeometryEstimator
 from shadowgen_ml_service.core.models import GeometryResult
 
 
 class MockGeometryEstimator(GeometryEstimator):
-    def estimate(self, image: Image.Image) -> GeometryResult:
+    def estimate(self, image: RasterAsset) -> GeometryResult:
         aspect = image.width / max(image.height, 1)
         fov = 42.0 + min(aspect, 2.0) * 8.0
         pitch = -4.0 if image.height >= image.width else -2.0

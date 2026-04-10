@@ -11,6 +11,7 @@ from shadowgen_ml_service.core.contracts import Segmenter
 from shadowgen_ml_service.core.models import SegmentationResult
 from shadowgen_ml_service.core.stage_io import SegmentationInput
 from shadowgen_ml_service.infrastructure.stages.shared.model_support import RealAdapterProbe, import_module, module_available
+from shadowgen_ml_service.utils.images import ensure_pil, pil_to_asset
 
 
 def load_transformers_auto_classes() -> tuple[type[Any], type[Any]]:
@@ -115,7 +116,7 @@ class RealSegmenter(Segmenter):
         self.device_label = self._infer_device_label()
 
     def segment(self, stage_input: SegmentationInput) -> SegmentationResult:
-        image = stage_input.image
+        image = ensure_pil(stage_input.image)
         image_rgb = image.convert("RGB")
         image_tensor = self._transform_image(image_rgb).unsqueeze(0)
         if hasattr(image_tensor, "to"):
@@ -133,9 +134,9 @@ class RealSegmenter(Segmenter):
         cutout_rgba.putalpha(alpha_image)
         return SegmentationResult(
             bbox=(0, 0, image.width, image.height),
-            mask=mask_image,
-            cutout_rgba=cutout_rgba,
-            crop_rgba=image,
+            mask=pil_to_asset(mask_image),
+            cutout_rgba=pil_to_asset(cutout_rgba),
+            crop_rgba=pil_to_asset(image),
         )
 
     def _infer_device_label(self) -> str:

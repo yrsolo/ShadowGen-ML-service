@@ -6,6 +6,7 @@ from shadowgen_ml_service.core.stage_io import NormalsInput
 from shadowgen_ml_service.infrastructure.backends.triton.client import TritonInferenceClient
 from shadowgen_ml_service.infrastructure.backends.triton.model_registry import TritonModelBinding
 from shadowgen_ml_service.infrastructure.backends.triton.serializers import grayscale_to_nchw_float32_input, image_to_nchw_float32_input, rgb_output_to_image
+from shadowgen_ml_service.utils.images import ensure_pil, pil_to_asset
 
 
 class TritonNormalEstimator(NormalEstimator):
@@ -18,12 +19,12 @@ class TritonNormalEstimator(NormalEstimator):
         self.model_variant = binding.model_variant
 
     def estimate(self, stage_input: NormalsInput) -> NormalResult:
-        inputs = [image_to_nchw_float32_input(self.binding.inputs["image"].tensor_name, stage_input.image.convert("RGB"))]
+        source = ensure_pil(stage_input.image)
+        inputs = [image_to_nchw_float32_input(self.binding.inputs["image"].tensor_name, source.convert("RGB"))]
         if stage_input.depth_map is not None and "depth" in self.binding.inputs:
-            inputs.append(grayscale_to_nchw_float32_input(self.binding.inputs["depth"].tensor_name, stage_input.depth_map.convert("L")))
+            inputs.append(grayscale_to_nchw_float32_input(self.binding.inputs["depth"].tensor_name, ensure_pil(stage_input.depth_map).convert("L")))
         response = self.client.infer(
-            self.binding.model_name,
+            self.binding,
             inputs=inputs,
-            outputs=[self.binding.outputs["normal"].tensor_name],
         )
-        return NormalResult(normal_map=rgb_output_to_image(response[self.binding.outputs["normal"].tensor_name]))
+        return NormalResult(normal_map=pil_to_asset(rgb_output_to_image(response[self.binding.outputs["normal"].tensor_name])))

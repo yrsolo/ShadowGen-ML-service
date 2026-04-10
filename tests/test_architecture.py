@@ -24,9 +24,11 @@ class ArchitectureTests(unittest.TestCase):
     def test_core_does_not_depend_on_http_or_frameworks(self) -> None:
         for path in (SRC_ROOT / "core").rglob("*.py"):
             imports = module_imports(path)
+            self.assertFalse(any(item.startswith("PIL") for item in imports), path)
             self.assertFalse(any(item.startswith("fastapi") for item in imports), path)
             self.assertFalse(any(item.startswith("pydantic") for item in imports), path)
             self.assertFalse(any(item.startswith("shadowgen_ml_service.interfaces") for item in imports), path)
+            self.assertFalse(any(item.startswith("shadowgen_ml_service.infrastructure.backends.triton") for item in imports), path)
 
     def test_application_does_not_import_interface_modules(self) -> None:
         for path in (SRC_ROOT / "application").rglob("*.py"):

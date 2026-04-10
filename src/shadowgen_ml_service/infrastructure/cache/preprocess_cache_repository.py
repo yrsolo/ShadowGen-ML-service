@@ -5,10 +5,9 @@ import hashlib
 import json
 from pathlib import Path
 
-from PIL import Image
-
 from shadowgen_ml_service.core.contracts import PreprocessCacheRepository
 from shadowgen_ml_service.core.models import DepthResult, DetectionResult, ForegroundRefinementResult, GeometryResult, NormalResult, PreprocessSnapshot, SegmentationResult
+from shadowgen_ml_service.utils.images import asset_from_file
 
 
 class FilesystemPreprocessCacheRepository(PreprocessCacheRepository):
@@ -35,18 +34,18 @@ class FilesystemPreprocessCacheRepository(PreprocessCacheRepository):
         metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
         segmentation = SegmentationResult(
             bbox=tuple(metadata["segmentation"]["bbox"]),
-            mask=Image.open(cache_dir / "mask.png").convert("L"),
-            cutout_rgba=Image.open(cache_dir / "cutout.png").convert("RGBA"),
-            crop_rgba=Image.open(cache_dir / "crop.png").convert("RGBA"),
+            mask=asset_from_file(cache_dir / "mask.png"),
+            cutout_rgba=asset_from_file(cache_dir / "cutout.png"),
+            crop_rgba=asset_from_file(cache_dir / "crop.png"),
         )
         return PreprocessSnapshot(
             detection=DetectionResult(**metadata["detection"]),
             geometry=GeometryResult(**metadata["geometry"]),
             segmentation=segmentation,
-            depth=DepthResult(depth_map=Image.open(cache_dir / "depth.png").convert("L")),
-            normals=NormalResult(normal_map=Image.open(cache_dir / "normals.png").convert("RGB")),
+            depth=DepthResult(depth_map=asset_from_file(cache_dir / "depth.png")),
+            normals=NormalResult(normal_map=asset_from_file(cache_dir / "normals.png")),
             foreground_refinement=(
-                ForegroundRefinementResult(cutout_rgba=Image.open(cache_dir / "foreground-cutout.png").convert("RGBA"))
+                ForegroundRefinementResult(cutout_rgba=asset_from_file(cache_dir / "foreground-cutout.png"))
                 if (cache_dir / "foreground-cutout.png").exists()
                 else None
             ),
@@ -62,10 +61,10 @@ class FilesystemPreprocessCacheRepository(PreprocessCacheRepository):
             "segmentation": {"bbox": list(snapshot.segmentation.bbox)},
         }
         (cache_dir / "metadata.json").write_text(json.dumps(metadata, indent=2), encoding="utf-8")
-        snapshot.segmentation.mask.save(cache_dir / "mask.png", format="PNG")
-        snapshot.segmentation.cutout_rgba.save(cache_dir / "cutout.png", format="PNG")
-        snapshot.segmentation.crop_rgba.save(cache_dir / "crop.png", format="PNG")
+        (cache_dir / "mask.png").write_bytes(snapshot.segmentation.mask.data)
+        (cache_dir / "cutout.png").write_bytes(snapshot.segmentation.cutout_rgba.data)
+        (cache_dir / "crop.png").write_bytes(snapshot.segmentation.crop_rgba.data)
         if snapshot.foreground_refinement is not None:
-            snapshot.foreground_refinement.cutout_rgba.save(cache_dir / "foreground-cutout.png", format="PNG")
-        snapshot.depth.depth_map.save(cache_dir / "depth.png", format="PNG")
-        snapshot.normals.normal_map.save(cache_dir / "normals.png", format="PNG")
+            (cache_dir / "foreground-cutout.png").write_bytes(snapshot.foreground_refinement.cutout_rgba.data)
+        (cache_dir / "depth.png").write_bytes(snapshot.depth.depth_map.data)
+        (cache_dir / "normals.png").write_bytes(snapshot.normals.normal_map.data)

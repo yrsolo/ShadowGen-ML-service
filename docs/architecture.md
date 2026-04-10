@@ -164,6 +164,12 @@ Each stage execution is described by:
 
 Compatibility fields such as `requested_mode` and `actual_mode` still exist in dev responses, but they are now derived from the execution-aware model.
 
+This derivation is now strict:
+
+- variant fallback within the same backend kind still counts as fallback
+- `actual_mode` is compatibility-only and no longer acts as source of truth
+- the source of truth is `actual_backend_kind + actual_variant + fallback_reason`
+
 ## Registry-Based Runtime
 
 The runtime is now registry-based rather than field-based.
@@ -201,6 +207,8 @@ This matters because Triton adapters should not leak transport details into orch
 
 The orchestrator works in terms of semantic stage inputs and outputs. Serialization to tensors or bytes happens inside adapters or Triton serializers.
 
+For heavy stages, the canonical payload is now a neutral `RasterAsset` value object. `PIL` remains inside local adapters, preview generation, and image utilities, but it is no longer the contract type carried through `core/stage_io`.
+
 ## Triton Subsystem
 
 Triton integration is a first-class subsystem under `infrastructure/backends/triton/`.
@@ -214,6 +222,12 @@ Main responsibilities:
 - response deserialization
 - transport-level timeout and mismatch handling
 - batching capability metadata
+- tensor schema validation for dtype, rank, and channel/layout sanity
+
+If a stage faults at runtime:
+
+- public sync execution raises normalized service errors
+- debug/dev execution returns a structured failed stage with execution metadata and error text
 
 Stage-specific Triton adapters live under the relevant stage package and depend on this subsystem.
 

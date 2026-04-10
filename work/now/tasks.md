@@ -20,6 +20,11 @@
   - [x] switch Triton transport to standard tensor infer payloads
   - [x] make `stage_io` the actual heavy-stage boundary
   - [x] tighten fallback and architecture tests
+- [x] Harden Triton-ready execution boundaries:
+  - [x] convert heavy-stage contracts to real `RasterAsset` payloads
+  - [x] normalize stage runtime faults into debug-safe failed-stage executions
+  - [x] validate Triton tensor schema rank/layout metadata
+  - [x] derive compatibility `actual_mode` strictly from execution outcome
 - [x] Add async render job API and in-memory job backend
 - [x] Update project documentation to match the Triton-ready repository state
 

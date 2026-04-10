@@ -9,11 +9,13 @@ from PIL import Image
 
 from shadowgen_ml_service.infrastructure.backends.triton.client import TritonInferenceClient
 from shadowgen_ml_service.infrastructure.backends.triton.config import TritonBackendSettings
+from shadowgen_ml_service.infrastructure.backends.triton.errors import TritonSchemaMismatchError
 from shadowgen_ml_service.infrastructure.backends.triton.model_registry import TritonModelBinding, TritonTensorBinding
 from shadowgen_ml_service.infrastructure.backends.triton.serializers import (
     image_to_nchw_float32_input,
     scalar_to_input,
     tensor_map_from_response,
+    validate_tensor_against_binding,
 )
 
 
@@ -61,6 +63,16 @@ class TritonTransportTests(unittest.TestCase):
         settings = TritonBackendSettings(url="http://triton.local", protocol="http", timeout_ms=1000)
         client = TritonInferenceClient(settings)
         captured: dict[str, object] = {}
+        binding = TritonModelBinding(
+            stage_key="detector",
+            model_variant="grounding-dino",
+            model_name="detector",
+            inputs={"image": TritonTensorBinding("image", "FP32", expected_ranks=(4,), shape_policy="channel-first", channels=3)},
+            outputs={
+                "bbox": TritonTensorBinding("bbox", "FP32", expected_ranks=(2,), shape_policy="bbox4"),
+                "confidence": TritonTensorBinding("confidence", "FP32", expected_ranks=(1,), shape_policy="scalar"),
+            },
+        )
 
         def fake_urlopen(req, timeout):
             captured["url"] = req.full_url
@@ -77,9 +89,8 @@ class TritonTransportTests(unittest.TestCase):
 
         with patch("shadowgen_ml_service.infrastructure.backends.triton.client.request.urlopen", side_effect=fake_urlopen):
             tensors = client.infer(
-                "detector",
+                binding,
                 inputs=[{"name": "image", "datatype": "FP32", "shape": [1, 3, 6, 8], "data": [0.0] * (1 * 3 * 6 * 8)}],
-                outputs=["bbox", "confidence"],
             )
 
         self.assertEqual(captured["url"], "http://triton.local/v2/models/detector/infer")
@@ -92,11 +103,18 @@ class TritonTransportTests(unittest.TestCase):
             stage_key="shadow_generator",
             model_variant="v2-diff",
             model_name="shadow-v2",
-            inputs={"img": TritonTensorBinding("img", "FP32")},
-            outputs={"shadow": TritonTensorBinding("shadow", "FP32")},
+            inputs={"img": TritonTensorBinding("img", "FP32", expected_ranks=(4,), shape_policy="channel-first", channels=4)},
+            outputs={"shadow": TritonTensorBinding("shadow", "FP32", expected_ranks=(4,), shape_policy="channel-first", channels=4)},
         )
         self.assertEqual(binding.inputs["img"].tensor_name, "img")
         self.assertEqual(binding.outputs["shadow"].datatype, "FP32")
+        self.assertEqual(binding.outputs["shadow"].channels, 4)
+
+    def test_schema_validation_rejects_wrong_channel_count(self) -> None:
+        binding = TritonTensorBinding("mask", "FP32", expected_ranks=(4,), shape_policy="channel-first", channels=1)
+        tensor = np.zeros((1, 3, 16, 16), dtype=np.float32)
+        with self.assertRaises(TritonSchemaMismatchError):
+            validate_tensor_against_binding("mask", tensor, binding)
 
 
 if __name__ == "__main__":

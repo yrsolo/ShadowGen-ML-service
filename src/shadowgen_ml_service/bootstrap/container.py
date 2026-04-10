@@ -11,11 +11,12 @@ from shadowgen_ml_service.bootstrap.probes import (
     probe_shadow_pix2pix,
 )
 from shadowgen_ml_service.bootstrap.runtime_descriptor import backend_descriptor, build_runtime_descriptor, component_status
+from shadowgen_ml_service.bootstrap.triton_bindings import build_triton_model_registry
 from shadowgen_ml_service.config import Settings
 from shadowgen_ml_service.core.models import ComponentStatus, StageBackendId
 from shadowgen_ml_service.infrastructure.backends.triton.client import TritonInferenceClient
 from shadowgen_ml_service.infrastructure.backends.triton.config import TritonBackendSettings
-from shadowgen_ml_service.infrastructure.backends.triton.model_registry import TritonModelBinding, TritonModelRegistry, TritonTensorBinding
+from shadowgen_ml_service.infrastructure.backends.triton.model_registry import TritonModelRegistry
 from shadowgen_ml_service.infrastructure.cache.preprocess_cache_repository import FilesystemPreprocessCacheRepository
 from shadowgen_ml_service.infrastructure.encoding.default import DefaultArtifactEncoder
 from shadowgen_ml_service.infrastructure.presentation.preview_registry import DefaultPreviewBuilderRegistry
@@ -57,71 +58,7 @@ def build_runtime(settings: Settings) -> PipelineRuntime:
     )
     triton_client = TritonInferenceClient(triton_settings)
     triton_ready = triton_client.ping()
-    triton_models = TritonModelRegistry(
-        [
-            TritonModelBinding(
-                "detector",
-                "grounding-dino",
-                settings.triton_detector_model,
-                inputs={
-                    "image": TritonTensorBinding("image", "FP32"),
-                    "padding_px": TritonTensorBinding("padding_px", "INT32"),
-                },
-                outputs={
-                    "bbox": TritonTensorBinding("bbox", "FP32"),
-                    "confidence": TritonTensorBinding("confidence", "FP32"),
-                },
-            ),
-            TritonModelBinding(
-                "segmenter",
-                "birefnet",
-                settings.triton_segmenter_model,
-                inputs={"image": TritonTensorBinding("image", "FP32")},
-                outputs={
-                    "bbox": TritonTensorBinding("bbox", "FP32"),
-                    "mask": TritonTensorBinding("mask", "FP32"),
-                    "cutout": TritonTensorBinding("cutout", "FP32"),
-                    "crop": TritonTensorBinding("crop", "FP32"),
-                },
-            ),
-            TritonModelBinding(
-                "depth_estimator",
-                "depth-anything-v2-small",
-                settings.triton_depth_model,
-                inputs={
-                    "image": TritonTensorBinding("image", "FP32"),
-                    "mask": TritonTensorBinding("mask", "FP32"),
-                },
-                outputs={"depth": TritonTensorBinding("depth", "FP32")},
-            ),
-            TritonModelBinding(
-                "normal_estimator",
-                "stable-normal",
-                settings.triton_normals_model,
-                inputs={
-                    "image": TritonTensorBinding("image", "FP32"),
-                    "depth": TritonTensorBinding("depth", "FP32"),
-                },
-                outputs={"normal": TritonTensorBinding("normal", "FP32")},
-            ),
-            TritonModelBinding(
-                "shadow_generator",
-                "v2-diff",
-                settings.triton_shadow_v2_model,
-                inputs={
-                    "img": TritonTensorBinding("img", "FP32"),
-                    "mask": TritonTensorBinding("mask", "FP32"),
-                    "depth": TritonTensorBinding("depth", "FP32"),
-                    "normal": TritonTensorBinding("normal", "FP32"),
-                    "angle": TritonTensorBinding("angle", "FP32"),
-                    "elevation": TritonTensorBinding("elevation", "FP32"),
-                    "softness": TritonTensorBinding("softness", "FP32"),
-                    "reflection": TritonTensorBinding("reflection", "FP32"),
-                },
-                outputs={"shadow": TritonTensorBinding("shadow", "FP32")},
-            ),
-        ]
-    )
+    triton_models = build_triton_model_registry(settings)
 
     _register_detector(settings, registry, triton_client, triton_models, triton_ready)
     _register_geometry(settings, registry)
@@ -794,11 +731,13 @@ def _component_from_active_backend(
 ) -> ComponentStatus:
     descriptor = active_backend.descriptor
     using_mock = descriptor.backend_kind == "mock"
-    implementation = descriptor.backend_kind
-    if descriptor.backend_kind == "mock" and preferred_backend_kind != "mock":
-        implementation = "mock-fallback"
-    elif descriptor.backend_kind == "local" and preferred_backend_kind == "triton":
-        implementation = "local-fallback"
+    implementation = _derive_implementation(
+        actual_backend_kind=descriptor.backend_kind,
+        preferred_backend_kind=preferred_backend_kind,
+        preferred_variant=preferred_variant,
+        actual_variant=descriptor.model_variant,
+        fallback_reason=fallback_reason,
+    )
     return component_status(
         name=stage_key,
         implementation=implementation,
@@ -816,3 +755,18 @@ def _component_from_active_backend(
         fallback_reason=fallback_reason,
         backends=[item.descriptor for item in stage_backends],
     )
+
+
+def _derive_implementation(
+    *,
+    actual_backend_kind: str,
+    preferred_backend_kind: str,
+    preferred_variant: str,
+    actual_variant: str,
+    fallback_reason: str | None,
+) -> str:
+    if not fallback_reason and actual_backend_kind == preferred_backend_kind and actual_variant == preferred_variant:
+        return actual_backend_kind
+    if actual_backend_kind == "mock":
+        return "mock-fallback" if preferred_backend_kind != "mock" or fallback_reason else "mock"
+    return f"{actual_backend_kind}-fallback" if fallback_reason or actual_variant != preferred_variant else actual_backend_kind

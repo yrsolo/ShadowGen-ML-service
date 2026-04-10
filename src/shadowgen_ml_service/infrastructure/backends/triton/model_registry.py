@@ -7,6 +7,9 @@ from dataclasses import dataclass, field
 class TritonTensorBinding:
     tensor_name: str
     datatype: str
+    expected_ranks: tuple[int, ...] = field(default_factory=tuple)
+    shape_policy: str | None = None
+    channels: int | None = None
 
 
 @dataclass(frozen=True)

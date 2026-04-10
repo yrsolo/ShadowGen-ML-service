@@ -17,6 +17,7 @@ from shadowgen_ml_service.config import Settings
 from shadowgen_ml_service.pipeline.types import DetectionResult, ForegroundRefinementResult, GeometryResult
 from shadowgen_ml_service.pipeline.types import SegmentationResult
 from shadowgen_ml_service.pipeline.service import TimeoutServiceError
+from shadowgen_ml_service.utils.images import asset_to_pil, pil_to_asset
 
 
 def make_image_base64(image_format: str = "PNG") -> tuple[str, str]:
@@ -349,15 +350,15 @@ class ApiTests(unittest.TestCase):
 
         class StubMockSegmenter:
             def segment(self, stage_input):
-                image = stage_input.image
+                image = asset_to_pil(stage_input.image)
                 mask = Image.new("L", image.size, 255)
                 cutout = image.copy()
                 cutout.putalpha(mask)
                 return SegmentationResult(
                     bbox=(0, 0, image.width, image.height),
-                    mask=mask,
-                    cutout_rgba=cutout,
-                    crop_rgba=image,
+                    mask=pil_to_asset(mask),
+                    cutout_rgba=pil_to_asset(cutout),
+                    crop_rgba=pil_to_asset(image),
                 )
 
         app.state.render_service.runtime.real_segmenter = BombSegmenter()
@@ -443,9 +444,9 @@ class ApiTests(unittest.TestCase):
 
         class StubMockForegroundRefiner:
             def refine(self, image, alpha):
-                cutout = image.convert("RGBA")
-                cutout.putalpha(alpha)
-                return ForegroundRefinementResult(cutout_rgba=cutout)
+                cutout = asset_to_pil(image).convert("RGBA")
+                cutout.putalpha(asset_to_pil(alpha))
+                return ForegroundRefinementResult(cutout_rgba=pil_to_asset(cutout))
 
         app.state.render_service.runtime.real_foreground_refiner = BombForegroundRefiner()
         app.state.render_service.runtime.foreground_refiner = BombForegroundRefiner()
@@ -472,16 +473,16 @@ class ApiTests(unittest.TestCase):
                     self.seen_size = None
 
                 def segment(self, stage_input):
-                    image = stage_input.image
+                    image = asset_to_pil(stage_input.image)
                     self.seen_size = image.size
                     mask = Image.new("L", image.size, 255)
                     cutout = image.copy()
                     cutout.putalpha(mask)
                     return SegmentationResult(
                         bbox=(0, 0, image.width, image.height),
-                        mask=mask,
-                        cutout_rgba=cutout,
-                        crop_rgba=image,
+                        mask=pil_to_asset(mask),
+                        cutout_rgba=pil_to_asset(cutout),
+                        crop_rgba=pil_to_asset(image),
                     )
 
             recorder = RecordingSegmenter()

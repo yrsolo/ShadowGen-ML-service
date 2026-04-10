@@ -11,6 +11,7 @@ from shadowgen_ml_service.core.contracts import Detector
 from shadowgen_ml_service.core.models import BBox, DetectionResult
 from shadowgen_ml_service.core.stage_io import DetectionInput
 from shadowgen_ml_service.infrastructure.stages.shared.model_support import RealAdapterProbe, import_module, module_available, tensor_to_float, to_flat_floats
+from shadowgen_ml_service.utils.images import ensure_pil
 
 
 def load_grounding_dino_classes() -> tuple[type[Any], type[Any]]:
@@ -98,7 +99,7 @@ class RealDetector(Detector):
         self.device_label = self._infer_device_label()
 
     def detect(self, stage_input: DetectionInput) -> DetectionResult:
-        image_rgb = stage_input.image.convert("RGB")
+        image_rgb = ensure_pil(stage_input.image).convert("RGB")
         inputs = self._processor(images=image_rgb, text=self.prompt, return_tensors="pt")
         if hasattr(inputs, "to"):
             inputs = inputs.to(self.device_label)

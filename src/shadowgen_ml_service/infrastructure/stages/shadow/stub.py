@@ -3,7 +3,7 @@ from __future__ import annotations
 from shadowgen_ml_service.core.contracts import ShadowGenerator
 from shadowgen_ml_service.core.models import ShadowResult
 from shadowgen_ml_service.core.stage_io import ShadowInput
-from shadowgen_ml_service.utils.images import generate_shadow_layer
+from shadowgen_ml_service.utils.images import ensure_pil, generate_shadow_layer, pil_to_asset
 
 
 class DeterministicShadowGenerator(ShadowGenerator):
@@ -13,7 +13,7 @@ class DeterministicShadowGenerator(ShadowGenerator):
 
     def generate(self, stage_input: ShadowInput) -> ShadowResult:
         shadow_rgba = generate_shadow_layer(
-            mask=stage_input.mask,
+            mask=ensure_pil(stage_input.mask),
             angle_deg=stage_input.angle,
             elevation_deg=stage_input.elevation,
             softness=stage_input.softness,
@@ -21,4 +21,4 @@ class DeterministicShadowGenerator(ShadowGenerator):
             reflection=stage_input.reflection,
             camera_pitch=0.0,
         )
-        return ShadowResult(shadow_rgba=shadow_rgba)
+        return ShadowResult(shadow_rgba=pil_to_asset(shadow_rgba))

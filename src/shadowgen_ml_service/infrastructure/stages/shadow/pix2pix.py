@@ -9,6 +9,7 @@ from shadowgen_ml_service.core.contracts import ShadowGenerator
 from shadowgen_ml_service.core.models import ShadowResult
 from shadowgen_ml_service.core.stage_io import ShadowInput
 from shadowgen_ml_service.infrastructure.stages.shared.model_support import RealAdapterProbe, import_module, module_available
+from shadowgen_ml_service.utils.images import ensure_pil, pil_to_asset
 
 
 def _to_numpy_rgb(image: Image.Image) -> np.ndarray:
@@ -122,14 +123,14 @@ class Pix2PixShadowGenerator(ShadowGenerator):
         self.device_label = self._infer_device_label()
 
     def generate(self, stage_input: ShadowInput) -> ShadowResult:
-        colors_on_white, foreground_mask = _compose_input(stage_input.img)
+        colors_on_white, foreground_mask = _compose_input(ensure_pil(stage_input.img))
         input_tensor = self._build_input_tensor(colors_on_white, foreground_mask, stage_input.angle)
         with self._torch.inference_mode():
             predicted = self._generator(input_tensor)[0]
         predicted_rgb = predicted.detach().float().cpu().permute(1, 2, 0).numpy()
         predicted_rgb = np.clip(predicted_rgb, 0.0, 1.0)
         shadow_rgba = _extract_shadow_rgba(predicted_rgb, foreground_mask, stage_input.opacity)
-        return ShadowResult(shadow_rgba=shadow_rgba)
+        return ShadowResult(shadow_rgba=pil_to_asset(shadow_rgba))
 
     def _build_input_tensor(self, colors_on_white: np.ndarray, foreground_mask: np.ndarray, angle_deg: float):
         background_mask = 1.0 - foreground_mask

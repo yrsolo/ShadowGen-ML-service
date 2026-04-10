@@ -54,6 +54,8 @@
 - shared Triton subsystem exists under `infrastructure/backends/triton/`
 - Triton transport now uses the standard tensor infer payload with explicit `inputs` and `outputs`
 - stage/model bindings now include tensor schema metadata, not only model names
+- heavy-stage canonical inputs now carry neutral `RasterAsset` payloads instead of implicit `PIL.Image` objects
+- stage runtime faults are normalized into structured failed-stage executions for dev/debug and service errors for public sync execution
 - stage-specific Triton adapters exist for:
   - `detector`
   - `segmenter`
@@ -131,7 +133,7 @@ The active docs now provide:
 
 ### Validation Evidence
 
-- `.venv\Scripts\python.exe -m pytest` passed: `58 passed`
+- `.venv\Scripts\python.exe -m pytest` passed: `61 passed`
 - `python -m compileall src tests` passed
 
 ## Remaining Bootstrap Gaps
