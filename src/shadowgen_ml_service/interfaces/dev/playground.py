@@ -10,301 +10,172 @@ def render_playground_html() -> str:
   <title>ShadowGen Pipeline Playground</title>
   <style>
     :root {
-      --bg-a: #f5efe6;
-      --bg-b: #dbe6f6;
-      --card: rgba(255,255,255,0.72);
-      --card-strong: rgba(255,255,255,0.9);
-      --line: rgba(34,43,69,0.12);
-      --text: #1d2433;
-      --muted: #5a6478;
-      --accent: #ff7a59;
-      --accent-soft: #ffd7cd;
+      --bg-a: #f4efe8;
+      --bg-b: #dfe8f6;
+      --card: rgba(255,255,255,0.76);
+      --card-strong: rgba(255,255,255,0.92);
+      --line: rgba(27, 35, 59, 0.12);
+      --text: #1a2233;
+      --muted: #5d677d;
+      --accent: #f07b5a;
       --ok: #2f855a;
+      --warn: #b86b22;
       --err: #c53030;
-      --shadow: 0 18px 48px rgba(43, 52, 69, 0.12);
       --preview-width: 320px;
-      --radius: 26px;
+      --shadow: 0 18px 42px rgba(34, 43, 69, 0.12);
     }
     * { box-sizing: border-box; }
     body {
       margin: 0;
       min-height: 100vh;
-      font-family: "Segoe UI", "Inter", sans-serif;
+      font-family: "Segoe UI", sans-serif;
       color: var(--text);
       background:
-        radial-gradient(circle at top left, rgba(255,255,255,0.9), transparent 30%),
+        radial-gradient(circle at top left, rgba(255,255,255,0.94), transparent 28%),
         linear-gradient(135deg, var(--bg-a), var(--bg-b));
     }
-    .shell {
-      width: min(1440px, calc(100vw - 32px));
-      margin: 20px auto 48px;
-    }
+    .shell { width: min(1440px, calc(100vw - 28px)); margin: 16px auto 40px; }
     .hero, .stage-card {
-      backdrop-filter: blur(20px);
+      backdrop-filter: blur(18px);
       background: var(--card);
       border: 1px solid rgba(255,255,255,0.52);
       box-shadow: var(--shadow);
     }
-    .hero {
-      padding: 28px;
-      border-radius: 32px;
-    }
-    .hero h1 {
-      margin: 0 0 10px;
-      font-size: clamp(28px, 4vw, 42px);
-      line-height: 1;
-      letter-spacing: -0.04em;
-    }
-    .hero p {
-      margin: 0 0 18px;
-      color: var(--muted);
-      max-width: 820px;
-    }
+    .hero { border-radius: 30px; padding: 24px; }
+    h1 { margin: 0 0 10px; font-size: clamp(28px, 4vw, 42px); letter-spacing: -0.04em; }
+    p { margin: 0; color: var(--muted); }
     .hero-grid {
+      margin-top: 18px;
       display: grid;
       grid-template-columns: repeat(12, 1fr);
       gap: 14px;
     }
     .panel {
+      grid-column: span 4;
       background: var(--card-strong);
       border: 1px solid var(--line);
       border-radius: 24px;
       padding: 16px;
     }
-    .panel.span-4 { grid-column: span 4; }
-    .panel.span-3 { grid-column: span 3; }
-    .panel.span-2 { grid-column: span 2; }
-    .panel.span-6 { grid-column: span 6; }
+    .panel.wide { grid-column: span 6; }
     .panel h2 {
       margin: 0 0 12px;
-      font-size: 14px;
+      font-size: 13px;
       text-transform: uppercase;
       letter-spacing: 0.14em;
       color: var(--muted);
     }
-    .field { display: grid; gap: 6px; margin-bottom: 10px; }
+    .field { display: grid; gap: 6px; margin-bottom: 12px; }
     .field label { font-size: 13px; color: var(--muted); }
-    .field input[type="range"] { width: 100%; accent-color: var(--accent); }
-    .field input[type="file"],
-    .field input[type="text"],
-    .field input[type="number"],
-    .field input[type="color"],
-    .field select {
+    .field input, .field select {
       width: 100%;
-      border: 1px solid var(--line);
-      border-radius: 14px;
       padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
       background: white;
       color: var(--text);
     }
-    .value-row {
-      display: flex;
-      justify-content: space-between;
-      font-size: 12px;
-      color: var(--muted);
+    .field input[type="range"] {
+      padding: 0;
+      accent-color: var(--accent);
+      border: 0;
+      background: transparent;
     }
-    .actions {
-      display: flex;
-      align-items: flex-end;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
+    .value-row { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
+    .actions { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
     button {
       border: 0;
       border-radius: 999px;
-      padding: 12px 18px;
-      font-weight: 600;
+      padding: 11px 18px;
       cursor: pointer;
-      transition: transform .18s ease, box-shadow .18s ease;
+      font-weight: 600;
     }
-    button:hover { transform: translateY(-1px); }
-    .primary {
-      background: linear-gradient(135deg, var(--accent), #ff9d80);
-      color: white;
-      box-shadow: 0 12px 24px rgba(255, 122, 89, 0.25);
+    .primary { background: linear-gradient(135deg, var(--accent), #f79c7f); color: white; }
+    .ghost { background: rgba(255,255,255,0.9); color: var(--text); border: 1px solid var(--line); }
+    .note {
+      margin-top: 14px;
+      padding: 12px 14px;
+      border-radius: 18px;
+      background: rgba(27, 35, 59, 0.06);
+      color: var(--muted);
+      white-space: pre-wrap;
     }
-    .ghost {
-      background: rgba(255,255,255,0.85);
-      color: var(--text);
-      border: 1px solid var(--line);
-    }
-    .pipeline {
-      margin-top: 20px;
-      display: grid;
-      gap: 14px;
-    }
+    .pipeline { margin-top: 18px; display: grid; gap: 14px; }
     .stage-card {
-      border-radius: var(--radius);
+      border-radius: 26px;
       padding: 18px;
       display: grid;
-      grid-template-columns: minmax(280px, 0.9fr) minmax(360px, 1.1fr);
+      grid-template-columns: minmax(320px, 0.92fr) minmax(360px, 1.08fr);
       gap: 20px;
-      align-items: start;
     }
-    .stage-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 8px;
-    }
-    .stage-title {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
+    .stage-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+    .stage-title { display: flex; gap: 12px; align-items: center; }
     .badge {
-      min-width: 42px;
-      height: 42px;
-      display: inline-grid;
-      place-items: center;
-      border-radius: 16px;
-      background: linear-gradient(135deg, rgba(255,122,89,0.16), rgba(255,180,102,0.22));
-      color: #8e492f;
-      font-weight: 700;
+      width: 42px; height: 42px; border-radius: 16px; display: grid; place-items: center;
+      background: linear-gradient(135deg, rgba(240,123,90,0.16), rgba(255,184,102,0.2));
+      color: #8f4b31; font-weight: 700;
     }
-    .stage-title h3 { margin: 0; font-size: 22px; }
-    .stage-title p { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
-    .status-pill {
-      border-radius: 999px;
-      padding: 8px 12px;
-      font-size: 12px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      background: rgba(90,100,120,0.12);
-      color: var(--muted);
+    .stage-title h3 { margin: 0; font-size: 24px; letter-spacing: -0.02em; }
+    .stage-title p { margin-top: 4px; font-size: 14px; }
+    .status {
+      padding: 8px 12px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.08em;
+      font-size: 12px; font-weight: 700; background: rgba(93,103,125,0.12); color: var(--muted);
     }
-    .status-pill.completed { background: rgba(47,133,90,0.14); color: var(--ok); }
-    .status-pill.failed { background: rgba(197,48,48,0.12); color: var(--err); }
-    .status-pill.running { background: rgba(255,122,89,0.16); color: #b34d2e; }
-    .stage-controls {
-      margin-top: 14px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      align-items: center;
-    }
+    .status.completed { background: rgba(47,133,90,0.14); color: var(--ok); }
+    .status.failed { background: rgba(197,48,48,0.12); color: var(--err); }
+    .status.running { background: rgba(240,123,90,0.14); color: var(--warn); }
+    .controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 14px; }
     .mode-toggle {
-      display: inline-flex;
-      background: rgba(255,255,255,0.9);
-      border: 1px solid var(--line);
-      border-radius: 999px;
-      padding: 4px;
-      gap: 4px;
+      display: inline-flex; gap: 4px; border: 1px solid var(--line); background: rgba(255,255,255,0.9);
+      border-radius: 999px; padding: 4px;
     }
-    .mode-toggle button {
-      padding: 8px 12px;
-      background: transparent;
-      color: var(--muted);
-      box-shadow: none;
-    }
-    .mode-toggle button.active {
-      background: #1d2433;
-      color: white;
-    }
-    .meta {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      margin-top: 12px;
+    .mode-toggle button { background: transparent; color: var(--muted); box-shadow: none; padding: 8px 12px; }
+    .mode-toggle button.active { background: #1e2638; color: white; }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .chip {
+      padding: 8px 12px; border-radius: 999px; background: rgba(27,35,59,0.06); color: var(--muted); font-size: 12px;
     }
     .detail-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-      gap: 8px;
-      margin-top: 12px;
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); gap: 8px; margin-top: 12px;
     }
-    .detail-card {
-      border-radius: 18px;
-      padding: 10px 12px;
-      background: rgba(255,255,255,0.82);
-      border: 1px solid var(--line);
+    .detail {
+      padding: 10px 12px; border-radius: 18px; background: rgba(255,255,255,0.84); border: 1px solid var(--line);
     }
-    .detail-card small {
-      display: block;
-      color: var(--muted);
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      margin-bottom: 4px;
+    .detail small {
+      display: block; color: var(--muted); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 4px;
     }
-    .detail-card strong {
-      font-size: 15px;
-      color: var(--text);
+    .detail strong { font-size: 15px; }
+    .notice, .error {
+      margin-top: 12px; padding: 12px 14px; border-radius: 18px; white-space: pre-wrap; font-size: 13px;
     }
-    .chip {
-      border-radius: 999px;
-      padding: 8px 12px;
-      background: rgba(29,36,51,0.06);
-      color: var(--muted);
-      font-size: 12px;
-    }
-    .notice {
-      margin-top: 12px;
-      padding: 12px 14px;
-      border-radius: 18px;
-      background: rgba(29,36,51,0.06);
-      color: var(--muted);
-      white-space: pre-wrap;
-      font-size: 13px;
-    }
-    .notice.warn {
-      background: rgba(255,122,89,0.14);
-      color: #9f4428;
-    }
-    .notice.ok {
-      background: rgba(47,133,90,0.12);
-      color: var(--ok);
-    }
-    .error {
-      margin-top: 12px;
-      padding: 12px 14px;
-      border-radius: 18px;
-      background: rgba(197,48,48,0.08);
-      color: var(--err);
-      display: none;
-      white-space: pre-wrap;
-    }
+    .notice { background: rgba(27,35,59,0.06); color: var(--muted); }
+    .notice.ok { background: rgba(47,133,90,0.12); color: var(--ok); }
+    .notice.warn { background: rgba(240,123,90,0.12); color: #9f4f26; }
+    .error { background: rgba(197,48,48,0.09); color: var(--err); }
     .previews {
       display: grid;
       gap: 12px;
       grid-template-columns: repeat(auto-fit, minmax(min(var(--preview-width), 100%), 1fr));
     }
     .preview {
-      background: rgba(255,255,255,0.86);
+      background: rgba(255,255,255,0.88);
       border: 1px solid var(--line);
       border-radius: 20px;
       padding: 12px;
     }
     .preview strong {
-      display: block;
-      margin-bottom: 8px;
-      font-size: 13px;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
+      display: block; margin-bottom: 8px; color: var(--muted); font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em;
     }
     .preview img {
-      width: 100%;
-      display: block;
-      border-radius: 14px;
+      width: 100%; display: block; border-radius: 14px;
       background:
         linear-gradient(45deg, rgba(0,0,0,0.04) 25%, transparent 25%, transparent 75%, rgba(0,0,0,0.04) 75%),
         linear-gradient(45deg, rgba(0,0,0,0.04) 25%, transparent 25%, transparent 75%, rgba(0,0,0,0.04) 75%);
       background-size: 18px 18px;
       background-position: 0 0, 9px 9px;
     }
-    .global-note {
-      margin-top: 14px;
-      padding: 12px 16px;
-      border-radius: 18px;
-      background: rgba(29,36,51,0.06);
-      color: var(--muted);
-      font-size: 14px;
-    }
     @media (max-width: 1100px) {
-      .panel.span-4, .panel.span-3, .panel.span-2, .panel.span-6 { grid-column: span 12; }
+      .panel, .panel.wide { grid-column: span 12; }
       .stage-card { grid-template-columns: 1fr; }
     }
   </style>
@@ -313,9 +184,9 @@ def render_playground_html() -> str:
   <div class="shell">
     <section class="hero">
       <h1>ShadowGen Pipeline Playground</h1>
-      <p>Загружайте изображение, крутите параметры контракта и прогоняйте весь pipeline или отдельные этапы. Каждый модуль можно переключать между <strong>mock</strong> и <strong>real</strong> режимом.</p>
+      <p>Локальный отладчик pipeline: загрузка изображения, per-stage rerun, выбор execution backend и model variant без изменения HTTP paths.</p>
       <div class="hero-grid">
-        <div class="panel span-4">
+        <div class="panel">
           <h2>Source</h2>
           <div class="field">
             <label for="imageFile">Изображение</label>
@@ -331,40 +202,34 @@ def render_playground_html() -> str:
             <div class="value-row"><span>поля вокруг объекта</span><span id="paddingPxValue">100 px</span></div>
           </div>
         </div>
-        <div class="panel span-4">
+        <div class="panel">
           <h2>Shadow</h2>
-          <div class="field"><label>Angle</label><input id="angleDeg" type="range" min="0" max="360" value="45" /><div class="value-row"><span>direction</span><span id="angleDegValue">45°</span></div></div>
-          <div class="field"><label>Elevation</label><input id="elevationDeg" type="range" min="0" max="90" value="35" /><div class="value-row"><span>height</span><span id="elevationDegValue">35°</span></div></div>
-          <div class="field"><label>Softness</label><input id="softness" type="range" min="0" max="1" step="0.01" value="0.5" /><div class="value-row"><span>blur</span><span id="softnessValue">0.50</span></div></div>
+          <div class="field"><label>Angle</label><input id="angleDeg" type="range" min="0" max="360" value="45" /><div class="value-row"><span>azimuth</span><span id="angleDegValue">45°</span></div></div>
+          <div class="field"><label>Elevation</label><input id="elevationDeg" type="range" min="0" max="90" value="35" /><div class="value-row"><span>light height</span><span id="elevationDegValue">35°</span></div></div>
+          <div class="field"><label>Softness</label><input id="softness" type="range" min="0" max="1" step="0.01" value="0.5" /><div class="value-row"><span>model input</span><span id="softnessValue">0.50</span></div></div>
           <div class="field"><label>Opacity</label><input id="opacity" type="range" min="0" max="1" step="0.01" value="0.65" /><div class="value-row"><span>density</span><span id="opacityValue">0.65</span></div></div>
-          <div class="field"><label>Reflection</label><input id="reflection" type="range" min="0" max="1" step="0.01" value="0.10" /><div class="value-row"><span>gloss</span><span id="reflectionValue">0.10</span></div></div>
+          <div class="field"><label>Reflection</label><input id="reflection" type="range" min="0" max="1" step="0.01" value="0.10" /><div class="value-row"><span>reserved input</span><span id="reflectionValue">0.10</span></div></div>
         </div>
-        <div class="panel span-4">
+        <div class="panel">
           <h2>Output</h2>
+          <div class="field"><label for="backgroundColor">Background</label><input id="backgroundColor" type="color" value="#ffffff" /></div>
+          <div class="field"><label for="outputFormat">Format</label><select id="outputFormat"><option value="png">png</option><option value="webp">webp</option></select></div>
+          <div class="field"><label for="returnDebug">Debug artifacts</label><select id="returnDebug"><option value="true">true</option><option value="false">false</option></select></div>
           <div class="field">
-            <label for="backgroundColor">Background color</label>
-            <input id="backgroundColor" type="color" value="#ffffff" />
-          </div>
-          <div class="field">
-            <label for="outputFormat">Format</label>
-            <select id="outputFormat"><option value="png">png</option><option value="webp">webp</option></select>
-          </div>
-          <div class="field">
-            <label for="returnDebug">Debug artifacts</label>
-            <select id="returnDebug"><option value="true">true</option><option value="false">false</option></select>
-          </div>
-          <div class="field">
-            <label for="previewSize">Размер превью</label>
+            <label for="previewSize">Preview size</label>
             <input id="previewSize" type="range" min="180" max="520" value="320" />
-            <div class="value-row"><span>global preview width</span><span id="previewSizeValue">320 px</span></div>
+            <div class="value-row"><span>global width</span><span id="previewSizeValue">320 px</span></div>
           </div>
           <div class="actions">
             <button class="primary" id="runAllBtn">Запустить всё</button>
-            <button class="ghost" id="clearBtn">Очистить результаты</button>
+            <button class="ghost" id="clearBtn">Очистить</button>
           </div>
         </div>
+        <div class="panel wide">
+          <h2>Runtime</h2>
+          <div class="note" id="globalNote">Сервис готов. Загрузите изображение и запускайте pipeline.</div>
+        </div>
       </div>
-      <div class="global-note" id="globalNote">Сервис готов. Загрузите изображение и запустите pipeline.</div>
     </section>
 
     <section class="pipeline" id="pipeline"></section>
@@ -372,15 +237,15 @@ def render_playground_html() -> str:
 
   <script>
     const stageDefinitions = [
-      { key: "decode", title: "Decode", description: "Декодирование и базовая валидация входного изображения.", modeLocked: true },
-      { key: "geometry_estimator", title: "Geometry", description: "Оценка камеры и общей геометрии сцены." },
-      { key: "detector", title: "Detection", description: "Поиск главного объекта и подготовка рамки кропа." },
-      { key: "segmenter", title: "Segmentation", description: "Маска объекта, cutout и кроп для дальнейших модулей." },
-      { key: "foreground_refiner", title: "Foreground", description: "Коррекция цвета полупрозрачных пикселей после matting." },
-      { key: "depth_estimator", title: "Depth", description: "Построение карты глубины на вырезанном объекте." },
-      { key: "normal_estimator", title: "Normals", description: "Предсказание карты нормалей по refined cutout с fallback через depth." },
-      { key: "shadow_generator", title: "Shadow", description: "Генерация тени через V1-GAN или будущий V2-DIFF по img, mask, depth, normal и light controls." },
-      { key: "composer", title: "Composition", description: "Композит объекта и тени на выбранный фон." }
+      { key: "decode", title: "Decode", description: "Декодирование входного изображения.", backendKinds: ["internal"], variants: ["internal"] },
+      { key: "geometry_estimator", title: "Geometry", description: "Оценка геометрии сцены по исходному изображению.", backendKinds: ["mock", "local"], variants: ["geocalib"] },
+      { key: "detector", title: "Detection", description: "Поиск основного объекта на полном изображении.", backendKinds: ["mock", "local", "triton"], variants: ["grounding-dino"] },
+      { key: "segmenter", title: "Segmentation", description: "Сегментация после crop/pad/resize.", backendKinds: ["mock", "local", "triton"], variants: ["birefnet"] },
+      { key: "foreground_refiner", title: "Foreground", description: "Коррекция цвета полупрозрачных пикселей.", backendKinds: ["mock", "local"], variants: ["fast-foreground-estimation"] },
+      { key: "depth_estimator", title: "Depth", description: "Карта глубины на working crop.", backendKinds: ["mock", "local", "triton"], variants: ["depth-anything-v2-small"] },
+      { key: "normal_estimator", title: "Normals", description: "Normals через neural backend или fallback от depth.", backendKinds: ["mock", "local", "triton"], variants: ["stable-normal"] },
+      { key: "shadow_generator", title: "Shadow", description: "Тень через mock, V1-GAN или Triton-ready V2-DIFF.", backendKinds: ["mock", "local", "triton"], variants: ["mock", "v1-gan", "v2-diff"] },
+      { key: "composer", title: "Composition", description: "Композиция объекта и тени на фоне.", backendKinds: ["mock", "local"], variants: ["python-composer"] }
     ];
 
     const pipelineEl = document.getElementById("pipeline");
@@ -393,15 +258,25 @@ def render_playground_html() -> str:
       mimeType: null,
       capabilities: {},
       stages: {},
-      stageModes: {
-        geometry_estimator: "mock",
-        detector: "mock",
-        segmenter: "mock",
-        foreground_refiner: "real",
-        depth_estimator: "mock",
-        normal_estimator: "real",
+      stageBackendKinds: {
+        geometry_estimator: "local",
+        detector: "local",
+        segmenter: "local",
+        foreground_refiner: "local",
+        depth_estimator: "local",
+        normal_estimator: "local",
+        shadow_generator: "local",
+        composer: "local"
+      },
+      stageVariants: {
+        geometry_estimator: "geocalib",
+        detector: "grounding-dino",
+        segmenter: "birefnet",
+        foreground_refiner: "fast-foreground-estimation",
+        depth_estimator: "depth-anything-v2-small",
+        normal_estimator: "stable-normal",
         shadow_generator: "v1-gan",
-        composer: "real"
+        composer: "python-composer"
       }
     };
 
@@ -428,7 +303,7 @@ def render_playground_html() -> str:
 
     imageFile.addEventListener("change", async (event) => {
       const file = event.target.files?.[0];
-      if (!file) { return; }
+      if (!file) return;
       state.mimeType = file.type || "image/png";
       state.imageBase64 = await fileToBase64(file);
       globalNote.textContent = `Загружено: ${file.name}. Можно запускать pipeline.`;
@@ -437,39 +312,13 @@ def render_playground_html() -> str:
     document.getElementById("runAllBtn").addEventListener("click", () => runPipeline());
     document.getElementById("clearBtn").addEventListener("click", clearResults);
 
-    function stageModeFor(key) {
-      if (key === "decode") { return "real"; }
-      return state.stageModes[key] || "mock";
-    }
-
-    function capabilityFor(key) {
-      return state.capabilities[key] || null;
-    }
-
-    function renderCapabilityNotice(stage, stageState) {
-      const capability = capabilityFor(stage.key);
-      if (!capability) {
-        return "";
-      }
-      if (stageState.actual_mode === "mock-fallback") {
-        return `<div class="notice warn">Запрошен real, но сейчас выполнен mock-fallback.\nПричина: ${capability.detail || "реальный backend недоступен в текущем runtime."}</div>`;
-      }
-      if (stageModeFor(stage.key) === "real" && capability.using_mock) {
-        return `<div class="notice warn">Для этого этапа real backend сейчас не активен.\nПричина: ${capability.detail || "runtime работает через mock backend."}</div>`;
-      }
-      if (stageState.actual_mode === "real") {
-        return `<div class="notice ok">Этап действительно выполнился через real backend.</div>`;
-      }
-      return "";
-    }
-
     function renderCards() {
       pipelineEl.innerHTML = "";
       stageDefinitions.forEach((stage, index) => {
+        const stageState = state.stages[stage.key] || {};
+        const capability = state.capabilities[stage.key] || null;
         const card = document.createElement("article");
         card.className = "stage-card";
-        const stageState = state.stages[stage.key] || {};
-        const capability = capabilityFor(stage.key);
         card.innerHTML = `
           <div>
             <div class="stage-head">
@@ -480,96 +329,110 @@ def render_playground_html() -> str:
                   <p>${stage.description}</p>
                 </div>
               </div>
-              <div class="status-pill ${stageState.status || ""}" id="status-${stage.key}">${stageState.status || "idle"}</div>
+              <div class="status ${stageState.status || ""}">${stageState.status || "idle"}</div>
             </div>
-            <div class="stage-controls">
-              <div class="mode-toggle">${renderModeButtons(stage)}</div>
-              <button class="ghost" data-rerun="${stage.key}">Перезапустить этап</button>
+            <div class="controls">
+              ${renderBackendKindSelector(stage)}
+              ${renderVariantSelector(stage)}
+              ${stage.key !== "decode" ? `<button class="ghost" data-rerun="${stage.key}">Перезапустить этап</button>` : ""}
             </div>
-            <div class="meta">
-              <div class="chip">requested: ${stageModeFor(stage.key)}</div>
+            <div class="chips">
+              <div class="chip">requested: ${requestedLabel(stage.key)}</div>
               <div class="chip">actual: ${stageState.actual_mode || "n/a"}</div>
+              <div class="chip">variant: ${stageState.model_variant || state.stageVariants[stage.key] || "n/a"}</div>
               <div class="chip">time: ${stageState.elapsed_ms != null ? `${stageState.elapsed_ms} ms` : "n/a"}</div>
-              ${stageState.details?.device ? `<div class="chip">device: ${stageState.details.device}</div>` : ""}
-              ${capability ? `<div class="chip">runtime: ${capability.implementation}</div>` : ""}
+              ${stageState.device ? `<div class="chip">device: ${stageState.device}</div>` : ""}
+              ${stageState.endpoint ? `<div class="chip">endpoint: ${stageState.endpoint}</div>` : ""}
+              ${stageState.cache_status ? `<div class="chip">cache: ${stageState.cache_status}</div>` : ""}
             </div>
-            ${renderStageNotice(stage, stageState)}
-            <div class="detail-grid">${renderDetailsMarkup(stageState.details || null)}</div>
-            <div class="error" id="error-${stage.key}" style="${stageState.error ? "display:block;" : ""}">${stageState.error || ""}</div>
+            ${renderStageNotice(stage, stageState, capability)}
+            <div class="detail-grid">${renderDetails(stageState)}</div>
+            ${stageState.error ? `<div class="error">${stageState.error}</div>` : ""}
           </div>
-          <div class="previews" id="previews-${stage.key}">${renderPreviewMarkup(stageState.previews || [])}</div>
+          <div class="previews">${renderPreviews(stageState.previews || [])}</div>
         `;
         pipelineEl.appendChild(card);
       });
 
-      pipelineEl.querySelectorAll("[data-mode]").forEach((button) => {
+      pipelineEl.querySelectorAll("[data-backend-kind]").forEach((button) => {
         button.addEventListener("click", () => {
-          const { stage, mode } = button.dataset;
-          if (stage === "decode") { return; }
-          state.stageModes[stage] = mode;
-          const capability = capabilityFor(stage);
-          if (mode === "real" && capability && capability.using_mock) {
-            globalNote.textContent = `${stage}: real backend сейчас не активен, поэтому запуск пойдёт через mock-fallback. ${capability.detail || ""}`.trim();
-          }
+          state.stageBackendKinds[button.dataset.stage] = button.dataset.backendKind;
           renderCards();
         });
       });
-
+      pipelineEl.querySelectorAll("[data-variant]").forEach((button) => {
+        button.addEventListener("click", () => {
+          state.stageVariants[button.dataset.stage] = button.dataset.variant;
+          renderCards();
+        });
+      });
       pipelineEl.querySelectorAll("[data-rerun]").forEach((button) => {
         button.addEventListener("click", () => runPipeline(button.dataset.rerun));
       });
     }
 
-    function renderDetailsMarkup(details) {
-      if (!details) {
-        return "";
-      }
-      return Object.entries(details).map(([key, value]) => `
-        <div class="detail-card">
-          <small>${key.replaceAll("_", " ")}</small>
-          <strong>${typeof value === "number" ? Number(value).toFixed(key.includes("confidence") ? 3 : 2) : value}</strong>
+    function renderBackendKindSelector(stage) {
+      if (stage.key === "decode") return "";
+      return `
+        <div class="mode-toggle">
+          ${stage.backendKinds.map((backendKind) => `
+            <button type="button" data-stage="${stage.key}" data-backend-kind="${backendKind}" class="${state.stageBackendKinds[stage.key] === backendKind ? "active" : ""}">${backendKind}</button>
+          `).join("")}
         </div>
-      `).join("");
+      `;
     }
 
-    function renderStageNotice(stage, stageState) {
-      const capability = capabilityFor(stage.key);
-      if (!capability) {
-        return "";
+    function renderVariantSelector(stage) {
+      if (stage.variants.length <= 1 || stage.key === "decode") return "";
+      return `
+        <div class="mode-toggle">
+          ${stage.variants.map((variant) => `
+            <button type="button" data-stage="${stage.key}" data-variant="${variant}" class="${state.stageVariants[stage.key] === variant ? "active" : ""}">${variant}</button>
+          `).join("")}
+        </div>
+      `;
+    }
+
+    function renderStageNotice(stage, stageState, capability) {
+      if (stageState.error) return "";
+      if (stageState.fallback_reason) {
+        return `<div class="notice warn">fallback: ${stageState.fallback_reason}</div>`;
       }
-      if (stageState.actual_mode === "mock-fallback") {
-        return `<div class="notice warn">Запрошенный backend сейчас недоступен, поэтому выполнен mock-fallback.\nПричина: ${capability.detail || "реальный backend недоступен в текущем runtime."}</div>`;
+      if (stageState.actual_backend_kind === "triton") {
+        return `<div class="notice ok">Этап исполнился через Triton backend.</div>`;
       }
-      if (stageModeFor(stage.key) !== "mock" && capability.using_mock) {
-        return `<div class="notice warn">Для этого этапа запрошенный backend сейчас не активен.\nПричина: ${capability.detail || "runtime работает через fallback backend."}</div>`;
+      if (stageState.actual_backend_kind === "local") {
+        return `<div class="notice ok">Этап исполнился через local backend.</div>`;
       }
-      if (stageState.actual_mode === "real") {
-        return `<div class="notice ok">Этап действительно выполнился через выбранный model backend.</div>`;
+      if (stageState.actual_backend_kind === "mock") {
+        return `<div class="notice warn">Этап исполнился через mock backend.</div>`;
+      }
+      if (capability && capability.fallback_reason) {
+        return `<div class="notice warn">${capability.fallback_reason}</div>`;
       }
       return "";
     }
 
-    function renderModeButtons(stage) {
-      if (stage.key === "decode") {
-        return `<button type="button" data-stage="${stage.key}" data-mode="real" class="active" disabled>real</button>`;
-      }
-      if (stage.key === "shadow_generator") {
-        const modes = [
-          ["mock", "mock"],
-          ["v1-gan", "V1-GAN"],
-          ["v2-diff", "V2-DIFF"]
-        ];
-        return modes.map(([value, label]) => `
-          <button type="button" data-stage="${stage.key}" data-mode="${value}" class="${stageModeFor(stage.key) === value ? "active" : ""}">${label}</button>
-        `).join("");
-      }
-      return `
-        <button type="button" data-stage="${stage.key}" data-mode="mock" class="${stageModeFor(stage.key) === "mock" ? "active" : ""}" ${stage.modeLocked ? "disabled" : ""}>mock</button>
-        <button type="button" data-stage="${stage.key}" data-mode="real" class="${stageModeFor(stage.key) === "real" ? "active" : ""}">real</button>
-      `;
+    function renderDetails(stageState) {
+      const details = stageState.details || {};
+      const items = [
+        ["backend_kind", stageState.actual_backend_kind || null],
+        ["model_name", stageState.model_name || null],
+        ["model_version", stageState.model_version || null],
+        ["device", stageState.device || null],
+        ["endpoint", stageState.endpoint || null],
+        ...Object.entries(details)
+      ].filter(([, value]) => value !== null && value !== undefined && value !== "");
+
+      return items.map(([key, value]) => `
+        <div class="detail">
+          <small>${String(key).replaceAll("_", " ")}</small>
+          <strong>${typeof value === "number" ? Number(value).toFixed(String(key).includes("confidence") ? 3 : 2) : value}</strong>
+        </div>
+      `).join("");
     }
 
-    function renderPreviewMarkup(previews) {
+    function renderPreviews(previews) {
       if (!previews.length) {
         return `<div class="preview"><strong>preview</strong><div style="color:var(--muted);font-size:14px;">Нет данных для показа.</div></div>`;
       }
@@ -579,6 +442,13 @@ def render_playground_html() -> str:
           <img alt="${preview.name}" src="data:${preview.mime_type};base64,${preview.image_base64}" />
         </div>
       `).join("");
+    }
+
+    function requestedLabel(stageKey) {
+      const kind = state.stageBackendKinds[stageKey];
+      const variant = state.stageVariants[stageKey];
+      if (!kind) return "internal";
+      return variant ? `${kind}/${variant}` : kind;
     }
 
     async function runPipeline(stopAfter = null) {
@@ -594,33 +464,7 @@ def render_playground_html() -> str:
       }
       renderCards();
 
-      const body = {
-        render_request: {
-          request_id: document.getElementById("requestId").value || null,
-          pipeline_version: "ml-shadowgen-v1",
-          source: { mime_type: state.mimeType, image_base64: state.imageBase64 },
-          preprocess: { padding_px: Number(document.getElementById("paddingPx").value) },
-          shadow: {
-            angle_deg: Number(document.getElementById("angleDeg").value),
-            elevation_deg: Number(document.getElementById("elevationDeg").value),
-            softness: Number(document.getElementById("softness").value),
-            opacity: Number(document.getElementById("opacity").value),
-            reflection: Number(document.getElementById("reflection").value)
-          },
-          background: {
-            mode: "solid",
-            color_hex: document.getElementById("backgroundColor").value.toUpperCase()
-          },
-          output: {
-            format: document.getElementById("outputFormat").value,
-            width: null,
-            height: null,
-            return_debug: document.getElementById("returnDebug").value === "true"
-          }
-        },
-        stage_modes: state.stageModes
-      };
-
+      const body = buildRequestBody();
       const endpoint = stopAfter ? `/v1/dev/pipeline/run-stage/${stopAfter}` : "/v1/dev/pipeline/run-all";
       try {
         const response = await fetch(endpoint, {
@@ -634,9 +478,7 @@ def render_playground_html() -> str:
         }
         payload.stages.forEach((stage) => { state.stages[stage.stage_key] = stage; });
         stageDefinitions.forEach((stage) => {
-          if (!state.stages[stage.key]) {
-            state.stages[stage.key] = { status: "skipped" };
-          }
+          if (!state.stages[stage.key]) state.stages[stage.key] = { status: "skipped" };
         });
         const failed = payload.stages.find((stage) => stage.status === "failed");
         globalNote.textContent = failed
@@ -648,6 +490,43 @@ def render_playground_html() -> str:
       renderCards();
     }
 
+    function buildRequestBody() {
+      const stageModes = {};
+      Object.entries(state.stageBackendKinds).forEach(([stageKey, backendKind]) => {
+        if (stageKey === "shadow_generator") {
+          stageModes[stageKey] = state.stageVariants[stageKey] === "mock" ? "mock" : state.stageVariants[stageKey];
+        } else {
+          stageModes[stageKey] = backendKind === "mock" ? "mock" : "real";
+        }
+      });
+
+      return {
+        render_request: {
+          request_id: document.getElementById("requestId").value || null,
+          pipeline_version: "ml-shadowgen-v1",
+          source: { mime_type: state.mimeType, image_base64: state.imageBase64 },
+          preprocess: { padding_px: Number(document.getElementById("paddingPx").value) },
+          shadow: {
+            angle_deg: Number(document.getElementById("angleDeg").value),
+            elevation_deg: Number(document.getElementById("elevationDeg").value),
+            softness: Number(document.getElementById("softness").value),
+            opacity: Number(document.getElementById("opacity").value),
+            reflection: Number(document.getElementById("reflection").value)
+          },
+          background: { mode: "solid", color_hex: document.getElementById("backgroundColor").value.toUpperCase() },
+          output: {
+            format: document.getElementById("outputFormat").value,
+            width: null,
+            height: null,
+            return_debug: document.getElementById("returnDebug").value === "true"
+          }
+        },
+        stage_modes: stageModes,
+        stage_backend_kinds: state.stageBackendKinds,
+        stage_variants: state.stageVariants
+      };
+    }
+
     function clearResults() {
       state.stages = {};
       globalNote.textContent = "Результаты очищены.";
@@ -657,10 +536,7 @@ def render_playground_html() -> str:
     function fileToBase64(file) {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
-        reader.onload = () => {
-          const result = String(reader.result || "");
-          resolve(result.split(",")[1]);
-        };
+        reader.onload = () => resolve(String(reader.result || "").split(",")[1]);
         reader.onerror = reject;
         reader.readAsDataURL(file);
       });
@@ -669,15 +545,10 @@ def render_playground_html() -> str:
     async function loadCapabilities() {
       try {
         const response = await fetch("/v1/capabilities");
-        if (!response.ok) {
-          throw new Error("capabilities request failed");
-        }
+        if (!response.ok) throw new Error("capabilities request failed");
         const payload = await response.json();
         state.capabilities = Object.fromEntries((payload.components || []).map((component) => [component.name, component]));
-        const segmenterCapability = state.capabilities.segmenter;
-        if (segmenterCapability?.using_mock) {
-          globalNote.textContent = `Segmentation real backend сейчас не активен. ${segmenterCapability.detail || ""}`.trim();
-        }
+        globalNote.textContent = `runtime: ${payload.active_backend_mode}; async: ${payload.async_enabled}; default backend: ${payload.execution_default_backend}`;
       } catch (error) {
         globalNote.textContent = `Не удалось загрузить runtime capabilities: ${error.message}`;
       }

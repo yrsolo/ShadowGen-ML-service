@@ -17,5 +17,6 @@ class GetHealthUseCase:
                 status="ok",
                 service_version=self.settings.service_version,
                 active_backend_mode=self.runtime.descriptor.mode,
+                async_enabled=self.runtime.descriptor.async_enabled,
             )
         )

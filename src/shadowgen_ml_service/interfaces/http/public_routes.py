@@ -24,4 +24,16 @@ def build_public_router(
     async def render(payload: RenderRequest, request: Request):
         return request.app.state.render_service.render(payload)
 
+    @router.post("/v1/render/jobs")
+    async def submit_render_job(payload: RenderRequest, request: Request):
+        return request.app.state.render_service.submit_render_job(payload)
+
+    @router.get("/v1/render/jobs/{job_id}")
+    async def get_render_job(job_id: str, request: Request):
+        return request.app.state.render_service.get_render_job(job_id)
+
+    @router.delete("/v1/render/jobs/{job_id}")
+    async def cancel_render_job(job_id: str, request: Request):
+        return request.app.state.render_service.cancel_render_job(job_id)
+
     return router

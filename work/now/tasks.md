@@ -15,12 +15,15 @@
   - [x] `mock`
   - [x] `V1-GAN`
   - [x] `V2-DIFF` scaffold
-- [x] Update project documentation to match the current repository state
+- [x] Refactor runtime to Triton-ready backend registry architecture
+- [x] Add async render job API and in-memory job backend
+- [x] Update project documentation to match the Triton-ready repository state
 
 ## Next Likely
 
-- [ ] Add shadow-stage input previews for `img`, `mask`, `depth`, and `normal`
+- [ ] Implement working Triton execution for one heavy stage end-to-end against a real Triton server
 - [ ] Implement the real `V2-DIFF` shadow backend
+- [ ] Add shadow-stage input previews for `img`, `mask`, `depth`, and `normal`
 - [ ] Continue replacing compatibility shims with direct imports from the layered structure
 - [ ] Add Docker packaging and deployment-oriented runtime docs
 
@@ -28,3 +31,4 @@
 
 - Models, checkpoints, caches, debug artifacts, and generated outputs stay outside git tracking.
 - `.models/` is the expected local home for heavy checkpoints, including the current `V1-GAN` shadow weights.
+- Heavy stages now expose execution through `backend_kind` (`mock|local|triton`) plus `model_variant`.

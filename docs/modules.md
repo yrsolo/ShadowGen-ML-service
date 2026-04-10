@@ -23,7 +23,7 @@ work/          local tracking and roadmap notes
   Module entrypoint used by Uvicorn.
 
 - [config.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/config.py)
-  Central environment-backed settings object.
+  Central environment-backed settings object for local, Triton, and async runtime behavior.
 
 - [schemas.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/schemas.py)
 - [web_ui.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/web_ui.py)
@@ -34,19 +34,25 @@ work/          local tracking and roadmap notes
 Purpose:
 
 - define the service language
-- keep type-safe contracts
-- stay free of HTTP and UI details
+- keep stable internal contracts
+- stay free of HTTP, UI, and transport details
 
 Main files:
 
 - [commands.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/core/commands.py)
-  Request-side command objects such as `RenderCommand` and `ShadowSpec`.
+  Request-side command objects such as `RenderCommand`, `ShadowSpec`, and debug command metadata.
 
 - [contracts.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/core/contracts.py)
   Stage interfaces like `Detector`, `Segmenter`, `ShadowGenerator`.
 
 - [models.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/core/models.py)
-  Internal result and runtime metadata objects.
+  Internal result models and execution-aware runtime metadata.
+
+- [stage_io.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/core/stage_io.py)
+  Canonical stage input objects used to keep local and Triton execution aligned.
+
+- [job_contracts.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/core/job_contracts.py)
+  Async render job state and repository-facing contracts.
 
 - [errors.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/core/errors.py)
   Service-level error hierarchy.
@@ -55,12 +61,14 @@ Add code here when:
 
 - you need a new internal contract
 - you need a new typed result object
+- you need a canonical stage input/output shape
 - you need a new service error
 
 Do not add:
 
 - model loading
 - FastAPI routes
+- Triton transport code
 - HTML
 
 ## `application/`
@@ -69,15 +77,20 @@ Purpose:
 
 - orchestrate pipeline execution
 - manage stage order and backend selection
-- collect metrics and warnings
+- keep sync and async use cases stable
 
 ### `application/use_cases/`
 
 - [render_pipeline.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/application/use_cases/render_pipeline.py)
-  Main public render path.
+  Main synchronous public render path.
 
 - [debug_pipeline.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/application/use_cases/debug_pipeline.py)
   Stage-by-stage debug execution path for the playground.
+
+- [submit_render_job.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/application/use_cases/submit_render_job.py)
+- [get_render_job.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/application/use_cases/get_render_job.py)
+- [cancel_render_job.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/application/use_cases/cancel_render_job.py)
+  Async render job orchestration.
 
 - [get_health.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/application/use_cases/get_health.py)
 - [get_capabilities.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/application/use_cases/get_capabilities.py)
@@ -85,10 +98,10 @@ Purpose:
 ### `application/services/`
 
 - [backend_selector.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/application/services/backend_selector.py)
-  Decides which backend mode is actually used.
+  Selects `mock`, `local`, or `triton` plus the effective model variant.
 
 - [stage_runner.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/application/services/stage_runner.py)
-  Shared stage execution wrapper.
+  Shared stage execution wrapper with metadata capture.
 
 - [stage_catalog.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/application/services/stage_catalog.py)
   Source of truth for stage order and human-facing names.
@@ -96,10 +109,10 @@ Purpose:
 ### Other files
 
 - [dependencies.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/application/dependencies.py)
-  `PipelineRuntime` container.
+  Registry-based runtime container and backend registration primitives.
 
 - [models.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/application/models.py)
-  Pipeline context, metrics collector, debug execution objects.
+  Pipeline context, metrics collector, stage execution metadata, async job records.
 
 Add code here when:
 
@@ -113,23 +126,25 @@ Purpose:
 
 - assemble the runtime
 - probe dependency availability
+- register all backends
 - create capability metadata
 
 Main files:
 
 - [container.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/bootstrap/container.py)
-  Composition root. This is where active implementations are selected.
+  Composition root. Registers backends per stage and chooses defaults.
 
 - [probes.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/bootstrap/probes.py)
   Lightweight backend availability probes.
 
 - [runtime_descriptor.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/bootstrap/runtime_descriptor.py)
-  Runtime status assembly for capabilities/health.
+  Converts registered backend descriptors into health/capability payloads.
 
 Add code here when:
 
 - a new stage backend needs runtime wiring
-- a new model family needs probe metadata
+- a stage becomes Triton-aware
+- capability metadata rules change
 
 ## `infrastructure/`
 
@@ -137,11 +152,40 @@ Purpose:
 
 - concrete implementations
 - technical persistence and encoding
-- preview builders
+- preview building
+- transport integrations
+
+### `infrastructure/backends/triton/`
+
+This is the shared Triton subsystem.
+
+Main files:
+
+- [client.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/infrastructure/backends/triton/client.py)
+  Shared transport wrapper for Triton calls.
+
+- [config.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/infrastructure/backends/triton/config.py)
+  Triton endpoint settings.
+
+- [model_registry.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/infrastructure/backends/triton/model_registry.py)
+  Mapping from stage and model variant to Triton model identifiers.
+
+- [serializers.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/infrastructure/backends/triton/serializers.py)
+  Tensor and image serialization helpers.
+
+- [errors.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/infrastructure/backends/triton/errors.py)
+  Triton-specific error types.
+
+- [batching.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/infrastructure/backends/triton/batching.py)
+  Batching capability helpers.
+
+Rule:
+
+- transport-level concerns live here, not in `application/`
 
 ### `infrastructure/stages/`
 
-This is the main place for model code.
+This is the main place for stage code.
 
 Current stage packages:
 
@@ -155,30 +199,36 @@ Current stage packages:
 - `composition/`
 - `shared/`
 
-Pattern:
+Current backend pattern for heavy stages:
 
 ```text
 stage_name/
   mock.py
-  real_backend.py
-  __init__.py
+  local_backend.py
+  triton.py
 ```
 
 Examples:
 
 - [geometry/geocalib.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/infrastructure/stages/geometry/geocalib.py)
 - [detection/grounding_dino.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/infrastructure/stages/detection/grounding_dino.py)
+- [detection/triton.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/infrastructure/stages/detection/triton.py)
 - [segmentation/birefnet.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/infrastructure/stages/segmentation/birefnet.py)
+- [segmentation/triton.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/infrastructure/stages/segmentation/triton.py)
+- [depth/depth_anything.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/infrastructure/stages/depth/depth_anything.py)
+- [depth/triton.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/infrastructure/stages/depth/triton.py)
 - [normals/stable_normal.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/infrastructure/stages/normals/stable_normal.py)
 - [normals/from_depth.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/infrastructure/stages/normals/from_depth.py)
+- [normals/triton.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/infrastructure/stages/normals/triton.py)
 - [shadow/pix2pix.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/infrastructure/stages/shadow/pix2pix.py)
 - [shadow/v2_diff.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/infrastructure/stages/shadow/v2_diff.py)
+- [shadow/triton.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/infrastructure/stages/shadow/triton.py)
 
 Shadow stage specifics:
 
 - `mock`: analytical fallback
-- `V1-GAN`: current migrated pix2pix backend
-- `V2-DIFF`: scaffold class, not implemented yet
+- `V1-GAN`: current local backend
+- `V2-DIFF`: preferred Triton-ready slot
 
 ### `infrastructure/cache/`
 
@@ -187,6 +237,7 @@ Shadow stage specifics:
 Purpose:
 
 - store and restore preprocess snapshots
+- keep cache logic outside use cases
 
 ### `infrastructure/encoding/`
 
@@ -204,11 +255,20 @@ Purpose:
 
 - build per-stage debug previews for the playground
 
+### `infrastructure/jobs/`
+
+- [in_memory.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/infrastructure/jobs/in_memory.py)
+
+Purpose:
+
+- current in-process async render job backend
+- replaceable job repository/queue implementation
+
 Add code here when:
 
 - it is model-specific
 - it is file/cache/preview implementation code
-- it depends on technical libraries
+- it depends on transport, persistence, or runtime libraries
 
 ## `interfaces/http/`
 
@@ -228,6 +288,7 @@ Main files:
 Add code here when:
 
 - API payload shape changes
+- async API changes
 - debug request/response schema changes
 - route behavior changes
 
@@ -246,8 +307,10 @@ This file contains the inline HTML/CSS/JS page used for:
 - file upload
 - contract parameter control
 - stage reruns
-- backend switching
+- backend-kind switching
+- shadow model variant switching
 - preview rendering
+- execution metadata inspection
 
 ## `pipeline/`
 
@@ -293,7 +356,7 @@ Purpose:
 
 Use with care:
 
-- if utility logic becomes stage-specific, move it back into the relevant stage package
+- if utility logic becomes stage-specific, move it into the relevant stage package
 
 ## Where To Edit Common Changes
 
@@ -303,17 +366,18 @@ If you want to add a new stage:
 2. add implementation under `infrastructure/stages/<stage>/`
 3. wire it in `bootstrap/container.py`
 4. expose it in `application/services/stage_catalog.py`
-5. add debug/UI schema handling if needed
+5. update selector/runtime metadata if execution options changed
 6. add tests
 7. update docs
 
 If you want to add a new backend variant for an existing stage:
 
-1. create a new backend file inside that stage package
-2. update runtime probes/wiring
-3. update backend selection behavior
-4. update debug details and playground labels
-5. document the new variant
+1. create a backend file inside that stage package
+2. if it is Triton-based, use the shared Triton subsystem
+3. update runtime probes and registry wiring
+4. update backend selection behavior
+5. update debug details and playground labels
+6. document the new variant
 
 If you want to change API payloads:
 
@@ -322,6 +386,14 @@ If you want to change API payloads:
 3. update use cases if command shape changes
 4. update tests
 5. update `docs/api.md`
+
+If you want to change async execution:
+
+1. update `core/job_contracts.py`
+2. update `application/use_cases/*render_job.py`
+3. update `infrastructure/jobs/`
+4. update public schemas/routes
+5. update docs
 
 ## Non-Code Folders
 

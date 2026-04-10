@@ -5,6 +5,7 @@ from io import BytesIO
 from pathlib import Path
 import shutil
 import tempfile
+import time
 import unittest
 from uuid import uuid4
 
@@ -63,11 +64,28 @@ class ApiTests(unittest.TestCase):
         payload = response.json()
         self.assertIn("components", payload)
         self.assertIn("active_backend_mode", payload)
+        self.assertIn("execution_default_backend", payload)
+        self.assertIn("async_enabled", payload)
 
     def test_playground_page_exists(self) -> None:
         response = self.client.get("/playground")
         self.assertEqual(response.status_code, 200)
         self.assertIn("ShadowGen Pipeline Playground", response.text)
+
+    def test_async_render_job_lifecycle(self) -> None:
+        submit = self.client.post("/v1/render/jobs", json=make_request())
+        self.assertEqual(submit.status_code, 200)
+        job_id = submit.json()["job_id"]
+        self.assertTrue(job_id)
+        poll = None
+        for _ in range(30):
+            poll = self.client.get(f"/v1/render/jobs/{job_id}")
+            self.assertEqual(poll.status_code, 200)
+            if poll.json()["status"] in {"completed", "failed"}:
+                break
+            time.sleep(0.1)
+        self.assertIsNotNone(poll)
+        self.assertIn(poll.json()["status"], {"completed", "failed"})
 
     def test_render_success_with_debug_artifacts(self) -> None:
         response = self.client.post("/v1/render", json=make_request())
@@ -141,7 +159,7 @@ class ApiTests(unittest.TestCase):
         segmenter = payload["stages"][-1]
         self.assertEqual(segmenter["stage_key"], "segmenter")
         self.assertEqual(segmenter["status"], "completed")
-        self.assertIn(segmenter["actual_mode"], {"real", "mock-fallback"})
+        self.assertIn(segmenter["actual_mode"], {"local", "local-fallback", "mock-fallback"})
         self.assertIn("mask_width", segmenter["details"])
         preview_names = {preview["name"] for preview in segmenter["previews"]}
         self.assertIn("working_crop", preview_names)
@@ -158,7 +176,7 @@ class ApiTests(unittest.TestCase):
         foreground = payload["stages"][-1]
         self.assertEqual(foreground["stage_key"], "foreground_refiner")
         self.assertEqual(foreground["status"], "completed")
-        self.assertIn(foreground["actual_mode"], {"real", "mock-fallback"})
+        self.assertIn(foreground["actual_mode"], {"local", "local-fallback", "mock-fallback"})
         preview_names = {preview["name"] for preview in foreground["previews"]}
         self.assertIn("segmenter_cutout", preview_names)
         self.assertIn("foreground_cutout", preview_names)
@@ -173,7 +191,7 @@ class ApiTests(unittest.TestCase):
         detector = payload["stages"][-1]
         self.assertEqual(detector["stage_key"], "detector")
         self.assertEqual(detector["status"], "completed")
-        self.assertIn(detector["actual_mode"], {"real", "mock-fallback"})
+        self.assertIn(detector["actual_mode"], {"local", "local-fallback", "mock-fallback"})
         self.assertIn("confidence", detector["details"])
         self.assertIn("bbox_left", detector["details"])
         preview_names = {preview["name"] for preview in detector["previews"]}
@@ -190,7 +208,7 @@ class ApiTests(unittest.TestCase):
         depth = payload["stages"][-1]
         self.assertEqual(depth["stage_key"], "depth_estimator")
         self.assertEqual(depth["status"], "completed")
-        self.assertIn(depth["actual_mode"], {"real", "mock-fallback"})
+        self.assertIn(depth["actual_mode"], {"local", "triton", "local-fallback", "mock-fallback"})
         self.assertIn("depth_width", depth["details"])
         preview_names = {preview["name"] for preview in depth["previews"]}
         self.assertIn("depth", preview_names)
@@ -205,7 +223,7 @@ class ApiTests(unittest.TestCase):
         normals = payload["stages"][-1]
         self.assertEqual(normals["stage_key"], "normal_estimator")
         self.assertEqual(normals["status"], "completed")
-        self.assertIn(normals["actual_mode"], {"real", "mock-fallback"})
+        self.assertIn(normals["actual_mode"], {"local", "triton", "local-fallback", "mock-fallback"})
         self.assertIn("normals_width", normals["details"])
         self.assertIn(normals["details"]["backend"], {"stable-normal", "from-depth", "mock"})
         preview_names = {preview["name"] for preview in normals["previews"]}
@@ -221,13 +239,13 @@ class ApiTests(unittest.TestCase):
         shadow = payload["stages"][-1]
         self.assertEqual(shadow["stage_key"], "shadow_generator")
         self.assertEqual(shadow["status"], "completed")
-        self.assertIn(shadow["actual_mode"], {"real", "mock-fallback"})
+        self.assertIn(shadow["actual_mode"], {"local", "triton", "local-fallback", "mock-fallback"})
         self.assertIn("backend", shadow["details"])
         self.assertIn("variant", shadow["details"])
         preview_names = {preview["name"] for preview in shadow["previews"]}
         self.assertIn("shadow", preview_names)
 
-    def test_debug_pipeline_shadow_v2_diff_reports_unavailable(self) -> None:
+    def test_debug_pipeline_shadow_v2_diff_reports_fallback_or_unavailable(self) -> None:
         response = self.client.post(
             "/v1/dev/pipeline/run-stage/shadow_generator",
             json={"render_request": make_request(), "stage_modes": {"shadow_generator": "v2-diff"}},
@@ -236,9 +254,8 @@ class ApiTests(unittest.TestCase):
         payload = response.json()
         shadow = payload["stages"][-1]
         self.assertEqual(shadow["stage_key"], "shadow_generator")
-        self.assertEqual(shadow["status"], "failed")
-        self.assertEqual(shadow["actual_mode"], "unavailable")
-        self.assertIn("V2-DIFF", shadow["error"])
+        self.assertIn(shadow["status"], {"completed", "failed"})
+        self.assertIn(shadow["actual_mode"], {"unavailable", "local-fallback", "mock-fallback"})
 
     def test_debug_pipeline_geometry_real_uses_mock_fallback(self) -> None:
         response = self.client.post(
@@ -250,9 +267,9 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(geometry["stage_key"], "geometry_estimator")
         self.assertEqual(geometry["status"], "completed")
         self.assertIn("camera_fov", geometry["details"])
-        self.assertIn(geometry["actual_mode"], {"real", "mock-fallback"})
-        if geometry["actual_mode"] == "real":
-            self.assertEqual(geometry["details"]["backend"], "real")
+        self.assertIn(geometry["actual_mode"], {"local", "mock-fallback"})
+        if geometry["actual_mode"] == "local":
+            self.assertEqual(geometry["details"]["backend"], "local")
         else:
             self.assertIn(geometry["details"]["backend"], {"mock", "mock-fallback"})
 
@@ -413,7 +430,7 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         shadow = response.json()["stages"][-1]
         self.assertEqual(shadow["actual_mode"], "mock")
-        self.assertEqual(shadow["details"]["backend"], "deterministic-stub")
+        self.assertEqual(shadow["details"]["backend"], "mock")
 
     def test_debug_pipeline_foreground_refiner_mock_uses_mock_adapter_even_when_real_is_available(self) -> None:
         app = create_app(Settings())

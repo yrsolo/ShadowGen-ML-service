@@ -17,19 +17,19 @@ This folder is split into two kinds of material:
 ## Active Docs
 
 - [architecture.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/architecture.md)
-  System design, layered structure, pipeline flow, and current runtime responsibilities.
+  Control plane vs execution plane, layered structure, sync and async flows, Triton-ready stage boundaries.
 
 - [modules.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/modules.md)
-  Folder-by-folder explanation of the codebase with pointers for where to edit what.
+  Folder-by-folder explanation of the codebase, including the Triton subsystem and async job backend.
 
 - [runbook-local.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/runbook-local.md)
-  Local setup, GPU environment, startup commands, model bring-up notes, and troubleshooting.
+  Local setup, GPU environment, startup commands, backend-kind settings, Triton settings, and troubleshooting.
 
 - [api.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/api.md)
-  Public API and debug/playground response summary.
+  Public API, async jobs API, dev/playground request model, and execution metadata semantics.
 
 - [workflow.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/workflow.md)
-  Repository workflow, tracking expectations, and structure discipline.
+  Repository workflow, tracking expectations, and architectural placement rules.
 
 ## Historical Source Material
 

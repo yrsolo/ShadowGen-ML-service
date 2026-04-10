@@ -18,9 +18,33 @@ class StageModesPayload(BaseModel):
     composer: Literal["mock", "real"] = "real"
 
 
+class StageBackendKindsPayload(BaseModel):
+    detector: Literal["mock", "local", "triton"] = "local"
+    geometry_estimator: Literal["mock", "local"] = "local"
+    segmenter: Literal["mock", "local", "triton"] = "local"
+    foreground_refiner: Literal["mock", "local"] = "local"
+    depth_estimator: Literal["mock", "local", "triton"] = "local"
+    normal_estimator: Literal["mock", "local", "triton"] = "local"
+    shadow_generator: Literal["mock", "local", "triton"] = "local"
+    composer: Literal["mock", "local"] = "local"
+
+
+class StageVariantsPayload(BaseModel):
+    detector: str = "grounding-dino"
+    geometry_estimator: str = "geocalib"
+    segmenter: str = "birefnet"
+    foreground_refiner: str = "fast-foreground-estimation"
+    depth_estimator: str = "depth-anything-v2-small"
+    normal_estimator: str = "stable-normal"
+    shadow_generator: Literal["mock", "v1-gan", "v2-diff"] = "v1-gan"
+    composer: str = "python-composer"
+
+
 class PipelineDebugRequest(BaseModel):
     render_request: RenderRequest
     stage_modes: StageModesPayload = Field(default_factory=StageModesPayload)
+    stage_backend_kinds: StageBackendKindsPayload = Field(default_factory=StageBackendKindsPayload)
+    stage_variants: StageVariantsPayload = Field(default_factory=StageVariantsPayload)
 
 
 class StagePreviewResponse(BaseModel):
@@ -36,6 +60,15 @@ class StageExecutionResponse(BaseModel):
     status: Literal["completed", "failed", "skipped"]
     requested_mode: str
     actual_mode: str
+    requested_backend_kind: str = "mock"
+    actual_backend_kind: str = "internal"
+    model_variant: str = "default"
+    model_name: str | None = None
+    model_version: str | None = None
+    device: str | None = None
+    endpoint: str | None = None
+    cache_status: str | None = None
+    fallback_reason: str | None = None
     elapsed_ms: int | None = None
     error: str | None = None
     details: dict[str, str | int | float | bool] | None = None

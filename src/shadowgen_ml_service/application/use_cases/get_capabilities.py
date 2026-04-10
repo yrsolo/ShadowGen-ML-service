@@ -22,6 +22,8 @@ class GetCapabilitiesUseCase:
                 max_image_bytes=self.settings.max_image_bytes,
                 active_backend_mode=self.runtime.descriptor.mode,
                 degraded=self.runtime.descriptor.degraded,
+                execution_default_backend=self.runtime.descriptor.execution_default_backend,
+                async_enabled=self.runtime.descriptor.async_enabled,
                 components=self.runtime.descriptor.components,
             )
         )

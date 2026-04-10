@@ -106,6 +106,19 @@ class ErrorResponse(BaseModel):
     error: ErrorBody
 
 
+class BackendCapabilities(BaseModel):
+    backend_kind: str
+    model_variant: str
+    model_name: str
+    model_version: str
+    available: bool
+    detail: str | None = None
+    device: str | None = None
+    endpoint: str | None = None
+    supports_batching: bool = False
+    supports_async: bool = False
+
+
 class ComponentCapabilities(BaseModel):
     name: str
     implementation: str
@@ -114,6 +127,14 @@ class ComponentCapabilities(BaseModel):
     available: bool
     using_mock: bool
     detail: str | None = None
+    backend_kind: str = "mock"
+    model_variant: str = "default"
+    device: str | None = None
+    endpoint: str | None = None
+    supports_batching: bool = False
+    supports_async: bool = False
+    fallback_reason: str | None = None
+    backends: list[BackendCapabilities] = Field(default_factory=list)
 
 
 class CapabilitiesResponse(BaseModel):
@@ -125,6 +146,8 @@ class CapabilitiesResponse(BaseModel):
     max_image_bytes: int
     active_backend_mode: str
     degraded: bool
+    execution_default_backend: str = "local"
+    async_enabled: bool = False
     components: list[ComponentCapabilities]
 
 
@@ -132,3 +155,22 @@ class HealthResponse(BaseModel):
     status: Literal["ok"]
     service_version: str
     active_backend_mode: str
+    async_enabled: bool = False
+
+
+class RenderJobSubmitResponse(BaseModel):
+    job_id: str
+    request_id: str | None = None
+    status: str
+    created_at: str
+    updated_at: str
+
+
+class RenderJobResponse(BaseModel):
+    job_id: str
+    request_id: str | None = None
+    status: str
+    created_at: str
+    updated_at: str
+    error: str | None = None
+    result: RenderResponse | None = None

@@ -5,6 +5,9 @@
 - `GET /health`
 - `GET /v1/capabilities`
 - `POST /v1/render`
+- `POST /v1/render/jobs`
+- `GET /v1/render/jobs/{job_id}`
+- `DELETE /v1/render/jobs/{job_id}`
 
 ## Dev Endpoints
 
@@ -40,7 +43,7 @@ Rules:
 - default is `100`
 - minimum is `0`
 
-## Success Contract
+## Sync Success Contract
 
 A successful render returns:
 
@@ -63,6 +66,33 @@ Errors use the shape:
 }
 ```
 
+## Async Render API
+
+### `POST /v1/render/jobs`
+
+Submits the same logical render request as the sync endpoint, but returns job metadata instead of the render result.
+
+Response shape:
+
+- `job_id`
+- `request_id`
+- `status`
+- `created_at`
+- `updated_at`
+
+### `GET /v1/render/jobs/{job_id}`
+
+Returns:
+
+- job metadata
+- current status
+- optional error
+- optional final `RenderResponse` result
+
+### `DELETE /v1/render/jobs/{job_id}`
+
+Cancels a pending or running job.
+
 ## `GET /v1/capabilities`
 
 Capabilities expose:
@@ -73,6 +103,8 @@ Capabilities expose:
 - supported output formats
 - active backend mode
 - degraded flag
+- execution default backend
+- async availability
 - component list
 
 Each component includes:
@@ -84,8 +116,59 @@ Each component includes:
 - `available`
 - `using_mock`
 - `detail`
+- `backend_kind`
+- `model_variant`
+- `device`
+- `endpoint`
+- `supports_batching`
+- `supports_async`
+- `fallback_reason`
+- `backends`
 
-This is the main machine-readable place to understand which backend is actually active.
+`backends` is the detailed descriptor list for all registered executors of that stage.
+
+Each backend descriptor includes:
+
+- `backend_kind`
+- `model_variant`
+- `model_name`
+- `model_version`
+- `available`
+- `detail`
+- `device`
+- `endpoint`
+- `supports_batching`
+- `supports_async`
+
+This is the primary machine-readable place to understand whether a stage currently runs via:
+
+- `mock`
+- `local`
+- `triton`
+
+## `GET /health`
+
+Current fields:
+
+- `status`
+- `service_version`
+- `active_backend_mode`
+- `async_enabled`
+
+## Debug Pipeline Request
+
+The dev endpoints accept:
+
+- `render_request`
+- `stage_modes`
+- `stage_backend_kinds`
+- `stage_variants`
+
+Notes:
+
+- `stage_modes` is a compatibility input and should be treated as transitional
+- `stage_backend_kinds` is the execution-aware selector
+- `stage_variants` chooses the logical model variant
 
 ## Debug Pipeline Responses
 
@@ -99,10 +182,24 @@ Each stage includes:
 - `status`
 - `requested_mode`
 - `actual_mode`
+- `requested_backend_kind`
+- `actual_backend_kind`
+- `model_variant`
+- `model_name`
+- `model_version`
+- `device`
+- `endpoint`
+- `cache_status`
+- `fallback_reason`
 - `elapsed_ms`
 - `error`
 - `details`
 - `previews`
+
+Compatibility notes:
+
+- `requested_mode` and `actual_mode` still exist
+- execution-aware fields are now the source of truth
 
 ## Stage Detail Summary
 
@@ -212,11 +309,17 @@ May include:
 - `variant`
 - `device`
 
-Current requested variants in the dev interface:
+Current stage variants:
 
 - `mock`
 - `v1-gan`
 - `v2-diff`
+
+Current execution backend kinds:
+
+- `mock`
+- `local`
+- `triton`
 
 Previews:
 
@@ -228,9 +331,11 @@ Previews:
 
 - `final`
 
-## Notes
+## Execution Semantics
 
-- `requested_mode` is what the caller asked for
-- `actual_mode` is what the runtime really used
-- `mock-fallback` means the requested model backend was not usable and the stage fell back
-- `unavailable` means the requested backend variant exists in the interface but is not wired to inference yet
+- `requested_backend_kind` is what the caller asked for
+- `actual_backend_kind` is what the runtime actually used
+- `model_variant` identifies the logical stage backend family
+- `mock-fallback` means a non-mock backend was requested but the stage fell back to mock
+- `local-fallback` means a Triton backend was requested but the stage fell back to local execution
+- `unavailable` means the interface knows the backend slot but no executable backend is currently wired

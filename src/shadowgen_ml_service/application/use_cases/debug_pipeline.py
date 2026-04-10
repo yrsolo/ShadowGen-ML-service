@@ -31,8 +31,10 @@ class DebugPipelineUseCase:
                 title=decode_def.title,
                 description=decode_def.description,
                 status="completed",
-                requested_mode="real",
+                requested_mode="internal",
                 actual_mode="internal",
+                requested_backend_kind="internal",
+                actual_backend_kind="internal",
                 elapsed_ms=0,
                 previews=self.runtime.previews.build("decode", source_rgba, context),
             )
@@ -40,169 +42,132 @@ class DebugPipelineUseCase:
         if stop_after == "decode":
             return DebugPipelineOutcome(request_id=command.render.request_id, stages=stages, warnings=context.warnings)
 
-        geometry = self._run_stage(
+        for stage_key in (
             "geometry_estimator",
-            command.stage_modes.get("geometry_estimator", "mock"),
-            context,
-            lambda: self._geometry_backend(command.stage_modes.get("geometry_estimator", "mock")).estimate(source_rgba),
-            lambda value, actual_mode: {
-                "camera_fov": round(value.camera_fov, 3),
-                "camera_pitch": round(value.camera_pitch, 3),
-                "camera_roll": round(value.camera_roll, 3),
-                "confidence": round(value.confidence, 4),
-                "backend": actual_mode,
-                "camera_model": self.settings.geocalib_camera_model if actual_mode == "real" else ("mock-v1" if actual_mode == "mock-fallback" else "mock"),
-                "weights": self.settings.geocalib_weights if actual_mode == "real" else "mock-v1",
-                "shared_intrinsics": self.settings.geocalib_shared_intrinsics if actual_mode == "real" else False,
-            },
-        )
-        stages.append(geometry)
-        if geometry.status == "failed" or stop_after == "geometry_estimator":
-            return DebugPipelineOutcome(request_id=command.render.request_id, stages=stages, warnings=context.warnings)
-        context.geometry = getattr(context, "geometry")
-
-        detection = self._run_stage(
             "detector",
-            command.stage_modes.get("detector", "mock"),
-            context,
-            lambda: self._detector_backend(command.stage_modes.get("detector", "mock")).detect(source_rgba, command.render.padding_px),
-            lambda value, actual_mode: {
-                "bbox_left": value.bbox[0],
-                "bbox_top": value.bbox[1],
-                "bbox_right": value.bbox[2],
-                "bbox_bottom": value.bbox[3],
-                "confidence": round(value.confidence, 4),
-                "backend": actual_mode,
-                "prompt": self.settings.grounding_dino_prompt if actual_mode == "real" else "mock",
-            },
-        )
-        stages.append(detection)
-        if detection.status == "failed" or stop_after == "detector":
-            return DebugPipelineOutcome(request_id=command.render.request_id, stages=stages, warnings=context.warnings)
-
-        segmentation = self._run_stage(
             "segmenter",
-            command.stage_modes.get("segmenter", "mock"),
-            context,
-            lambda: self._segmenter_backend(command.stage_modes.get("segmenter", "mock")).segment(self._prepare_working_crop(context)),
-            lambda value, actual_mode: {
-                "bbox_left": value.bbox[0],
-                "bbox_top": value.bbox[1],
-                "bbox_right": value.bbox[2],
-                "bbox_bottom": value.bbox[3],
-                "backend": actual_mode,
-                "mask_width": value.mask.width,
-                "mask_height": value.mask.height,
-            },
-        )
-        stages.append(segmentation)
-        if segmentation.status == "failed" or stop_after == "segmenter":
-            return DebugPipelineOutcome(request_id=command.render.request_id, stages=stages, warnings=context.warnings)
-
-        foreground_refiner = self._run_stage(
             "foreground_refiner",
-            command.stage_modes.get("foreground_refiner", "real"),
-            context,
-            lambda: self._foreground_refiner_backend(command.stage_modes.get("foreground_refiner", "real")).refine(
-                context.segmentation.crop_rgba,
-                context.segmentation.cutout_rgba.getchannel("A"),
-            ),
-            lambda value, actual_mode: {
-                "backend": actual_mode,
-                "cutout_width": value.cutout_rgba.width,
-                "cutout_height": value.cutout_rgba.height,
-            },
-        )
-        stages.append(foreground_refiner)
-        if foreground_refiner.status == "failed" or stop_after == "foreground_refiner":
-            return DebugPipelineOutcome(request_id=command.render.request_id, stages=stages, warnings=context.warnings)
-
-        depth = self._run_stage(
             "depth_estimator",
-            command.stage_modes.get("depth_estimator", "mock"),
-            context,
-            lambda: self._depth_backend(command.stage_modes.get("depth_estimator", "mock")).estimate(
-                context.segmentation.cutout_rgba,
-                context.segmentation.mask,
-            ),
-            lambda value, actual_mode: {
-                "backend": actual_mode,
-                "depth_width": value.depth_map.width,
-                "depth_height": value.depth_map.height,
-            },
-        )
-        stages.append(depth)
-        if depth.status == "failed" or stop_after == "depth_estimator":
-            return DebugPipelineOutcome(request_id=command.render.request_id, stages=stages, warnings=context.warnings)
-
-        normals_mode = command.stage_modes.get("normal_estimator", "real")
-        normals_backend = self._normals_backend(normals_mode)
-        normals = self._run_stage(
             "normal_estimator",
-            normals_mode,
-            context,
-            lambda: normals_backend.estimate(context.segmentation.cutout_rgba, context.depth.depth_map),
-            lambda value, actual_mode: {
-                "backend": str(getattr(normals_backend, "backend_name", actual_mode)),
-                "variant": str(getattr(normals_backend, "model_variant", "from-depth")),
-                "normals_width": value.normal_map.width,
-                "normals_height": value.normal_map.height,
-            },
-        )
-        stages.append(normals)
-        if normals.status == "failed" or stop_after == "normal_estimator":
-            return DebugPipelineOutcome(request_id=command.render.request_id, stages=stages, warnings=context.warnings)
-
-        shadow = self._run_stage(
             "shadow_generator",
-            command.stage_modes.get("shadow_generator", "v1-gan"),
-            context,
-            lambda: self._shadow_backend(command.stage_modes.get("shadow_generator", "v1-gan")).generate(
+            "composer",
+        ):
+            execution = self._run_stage(stage_key, command, context)
+            stages.append(execution)
+            if execution.status == "failed" or stop_after == stage_key:
+                return DebugPipelineOutcome(request_id=command.render.request_id, stages=stages, warnings=context.warnings)
+
+        return DebugPipelineOutcome(request_id=command.render.request_id, stages=stages, warnings=context.warnings)
+
+    def _run_stage(self, stage_key: str, command: DebugPipelineCommand, context: PipelineContext) -> StageExecution:
+        requested_backend_kind, requested_variant = self._requested_backend(stage_key, command)
+        selection = self.selector.select_for_debug(stage_key, requested_backend_kind, requested_variant)
+        registered = None if selection.backend_id is None else self.runtime.registry.get(selection.backend_id)
+        _, execution = self.stage_runner.execute(
+            stage_key=stage_key,
+            selection=selection,
+            context=context,
+            backend=None if registered is None else registered.handler,
+            invocation=lambda backend: self._invoke_stage(stage_key, backend, context),
+            details_factory=lambda value, stage_selection: self._stage_details(stage_key, value, stage_selection),
+            previews_factory=lambda value: self.runtime.previews.build(stage_key, self._assign_stage_value(stage_key, context, value), context),
+        )
+        if execution.status == "completed":
+            execution.details = dict(execution.details or {})
+            execution.details.setdefault("device", execution.device or "cpu")
+        return execution
+
+    def _invoke_stage(self, stage_key: str, backend, context: PipelineContext):
+        if stage_key == "geometry_estimator":
+            return backend.estimate(context.source_rgba)
+        if stage_key == "detector":
+            return backend.detect(context.source_rgba, context.command.padding_px)
+        if stage_key == "segmenter":
+            return backend.segment(self._prepare_working_crop(context))
+        if stage_key == "foreground_refiner":
+            return backend.refine(context.segmentation.crop_rgba, context.segmentation.cutout_rgba.getchannel("A"))
+        if stage_key == "depth_estimator":
+            return backend.estimate(context.segmentation.cutout_rgba, context.segmentation.mask)
+        if stage_key == "normal_estimator":
+            return backend.estimate(context.segmentation.cutout_rgba, context.depth.depth_map)
+        if stage_key == "shadow_generator":
+            return backend.generate(
                 cutout_rgba=context.segmentation.cutout_rgba,
                 mask=context.segmentation.mask,
                 depth_map=context.depth.depth_map,
                 normal_map=context.normals.normal_map,
                 geometry=context.geometry,
-                shadow=command.render.shadow,
-            ),
-            lambda value, actual_mode: {
-                "backend": str(getattr(self._shadow_backend(command.stage_modes.get("shadow_generator", "v1-gan")), "backend_name", actual_mode)),
-                "variant": str(getattr(self._shadow_backend(command.stage_modes.get("shadow_generator", "v1-gan")), "model_variant", "mock")),
-            },
-        )
-        stages.append(shadow)
-        if shadow.status == "failed" or stop_after == "shadow_generator":
-            return DebugPipelineOutcome(request_id=command.render.request_id, stages=stages, warnings=context.warnings)
-
-        composer = self._run_stage(
-            "composer",
-            command.stage_modes.get("composer", "real"),
-            context,
-            lambda: self.runtime.composer.compose(
+                shadow=context.command.shadow,
+            )
+        if stage_key == "composer":
+            return backend.compose(
                 cutout_rgba=context.segmentation.cutout_rgba,
                 shadow_rgba=context.shadow.shadow_rgba,
-                background=command.render.background,
-                output=command.render.output,
-            ),
-        )
-        stages.append(composer)
-        return DebugPipelineOutcome(request_id=command.render.request_id, stages=stages, warnings=context.warnings)
+                background=context.command.background,
+                output=context.command.output,
+            )
+        raise ValueError(f"unsupported stage key {stage_key}")
 
-    def _run_stage(self, stage_key: str, requested_mode: str, context: PipelineContext, action, details_factory=None) -> StageExecution:
-        selection = self.selector.select_shadow_variant_for_debug(requested_mode) if stage_key == "shadow_generator" else self.selector.select_for_debug(stage_key, requested_mode)
-        value, execution = self.stage_runner.execute(
-            stage_key=stage_key,
-            selection=selection,
-            context=context,
-            action=action,
-            details_factory=details_factory,
-            previews_factory=lambda stage_value: self.runtime.previews.build(stage_key, self._assign_stage_value(stage_key, context, stage_value), context),
-        )
-        if execution.status == "completed":
-            execution.details = dict(execution.details or {})
-            execution.details.setdefault("device", self._device_label_for_stage(stage_key, requested_mode, execution.actual_mode))
-            self._assign_stage_value(stage_key, context, value)
-        return execution
+    def _stage_details(self, stage_key: str, value, selection) -> dict[str, str | int | float | bool] | None:
+        actual_backend = selection.actual_backend_kind
+        if stage_key == "geometry_estimator":
+            return {
+                "camera_fov": round(value.camera_fov, 3),
+                "camera_pitch": round(value.camera_pitch, 3),
+                "camera_roll": round(value.camera_roll, 3),
+                "confidence": round(value.confidence, 4),
+                "backend": actual_backend,
+                "variant": selection.actual_variant,
+            }
+        if stage_key == "detector":
+            return {
+                "bbox_left": value.bbox[0],
+                "bbox_top": value.bbox[1],
+                "bbox_right": value.bbox[2],
+                "bbox_bottom": value.bbox[3],
+                "confidence": round(value.confidence, 4),
+                "backend": actual_backend,
+                "variant": selection.actual_variant,
+                "prompt": "mock" if actual_backend == "mock" else self.settings.grounding_dino_prompt,
+            }
+        if stage_key == "segmenter":
+            return {
+                "bbox_left": value.bbox[0],
+                "bbox_top": value.bbox[1],
+                "bbox_right": value.bbox[2],
+                "bbox_bottom": value.bbox[3],
+                "backend": actual_backend,
+                "variant": selection.actual_variant,
+                "mask_width": value.mask.width,
+                "mask_height": value.mask.height,
+            }
+        if stage_key == "foreground_refiner":
+            return {
+                "backend": actual_backend,
+                "variant": selection.actual_variant,
+                "cutout_width": value.cutout_rgba.width,
+                "cutout_height": value.cutout_rgba.height,
+            }
+        if stage_key == "depth_estimator":
+            return {
+                "backend": actual_backend,
+                "variant": selection.actual_variant,
+                "depth_width": value.depth_map.width,
+                "depth_height": value.depth_map.height,
+            }
+        if stage_key == "normal_estimator":
+            return {
+                "backend": actual_backend,
+                "variant": selection.actual_variant,
+                "normals_width": value.normal_map.width,
+                "normals_height": value.normal_map.height,
+            }
+        if stage_key == "shadow_generator":
+            return {
+                "backend": actual_backend,
+                "variant": selection.actual_variant,
+            }
+        return None
 
     def _assign_stage_value(self, stage_key: str, context: PipelineContext, value):
         if stage_key == "geometry_estimator":
@@ -246,55 +211,47 @@ class DebugPipelineUseCase:
             )
         return context.working_crop
 
-    def _detector_backend(self, requested_mode: str):
-        return self.runtime.mock_detector if requested_mode == "mock" else (self.runtime.real_detector or self.runtime.mock_detector)
-
-    def _geometry_backend(self, requested_mode: str):
-        return self.runtime.mock_geometry if requested_mode == "mock" else (self.runtime.real_geometry or self.runtime.mock_geometry)
-
-    def _segmenter_backend(self, requested_mode: str):
-        return self.runtime.mock_segmenter if requested_mode == "mock" else (self.runtime.real_segmenter or self.runtime.mock_segmenter)
-
-    def _foreground_refiner_backend(self, requested_mode: str):
-        return (
-            self.runtime.mock_foreground_refiner
-            if requested_mode == "mock"
-            else (self.runtime.real_foreground_refiner or self.runtime.mock_foreground_refiner)
-        )
-
-    def _depth_backend(self, requested_mode: str):
-        return self.runtime.mock_depth if requested_mode == "mock" else (self.runtime.real_depth or self.runtime.mock_depth)
-
-    def _normals_backend(self, requested_mode: str):
-        return self.runtime.mock_normals if requested_mode == "mock" else (self.runtime.real_normals or self.runtime.mock_normals)
-
-    def _shadow_backend(self, requested_mode: str):
-        if requested_mode == "mock":
-            return self.runtime.mock_shadow
-        if requested_mode == "v2-diff":
-            return self.runtime.shadow_v2_diff or self.runtime.mock_shadow
-        return self.runtime.shadow_v1_gan or self.runtime.real_shadow or self.runtime.mock_shadow
-
-    def _device_label_for_stage(self, stage_key: str, requested_mode: str, actual_mode: str) -> str:
-        if actual_mode in {"mock", "mock-fallback", "internal"}:
-            return "cpu"
-        if stage_key == "detector":
-            backend = self._detector_backend(requested_mode)
-        elif stage_key == "geometry_estimator":
-            backend = self._geometry_backend(requested_mode)
-        elif stage_key == "segmenter":
-            backend = self._segmenter_backend(requested_mode)
-        elif stage_key == "foreground_refiner":
-            backend = self._foreground_refiner_backend(requested_mode)
-        elif stage_key == "depth_estimator":
-            backend = self._depth_backend(requested_mode)
-        elif stage_key == "normal_estimator":
-            backend = self._normals_backend(requested_mode)
-        elif stage_key == "shadow_generator":
-            backend = self._shadow_backend(requested_mode)
+    def _requested_backend(self, stage_key: str, command: DebugPipelineCommand) -> tuple[str, str]:
+        legacy_mode = command.stage_modes.get(stage_key)
+        if stage_key in command.stage_backend_kinds:
+            requested_backend_kind = command.stage_backend_kinds[stage_key]
+        elif legacy_mode == "mock":
+            requested_backend_kind = "mock"
+        elif stage_key == "shadow_generator" and legacy_mode == "v2-diff":
+            requested_backend_kind = "triton"
         else:
-            return "cpu"
-        return str(getattr(backend, "device_label", "cpu"))
+            requested_backend_kind = "local"
+
+        if requested_backend_kind == "mock":
+            requested_variant = self._mock_variant(stage_key)
+        elif stage_key in command.stage_variants:
+            requested_variant = command.stage_variants[stage_key]
+        elif stage_key == "shadow_generator":
+            requested_variant = legacy_mode if legacy_mode in {"mock", "v1-gan", "v2-diff"} else "v1-gan"
+        elif stage_key == "normal_estimator":
+            requested_variant = "stable-normal"
+        elif stage_key == "detector":
+            requested_variant = "grounding-dino"
+        elif stage_key == "segmenter":
+            requested_variant = "birefnet"
+        elif stage_key == "depth_estimator":
+            requested_variant = "depth-anything-v2-small"
+        elif stage_key == "geometry_estimator":
+            requested_variant = "geocalib"
+        elif stage_key == "foreground_refiner":
+            requested_variant = "fast-foreground-estimation"
+        elif stage_key == "composer":
+            requested_variant = "python-composer"
+        else:
+            requested_variant = "default"
+        return requested_backend_kind, requested_variant
+
+    def _mock_variant(self, stage_key: str) -> str:
+        mapping = {
+            "shadow_generator": "mock",
+            "foreground_refiner": "passthrough-v1",
+        }
+        return mapping.get(stage_key, "mock-v1")
 
     def _decode_command(self, command: DebugPipelineCommand):
         render = command.render

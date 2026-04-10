@@ -46,4 +46,6 @@ class RenderCommand:
 @dataclass(frozen=True)
 class DebugPipelineCommand:
     render: RenderCommand
+    stage_backend_kinds: dict[str, str] = field(default_factory=dict)
+    stage_variants: dict[str, str] = field(default_factory=dict)
     stage_modes: dict[str, str] = field(default_factory=dict)

@@ -2,7 +2,7 @@
 
 ## Goal
 
-This runbook describes how to prepare a local environment, start the service, use the playground, and understand the current model bring-up expectations.
+This runbook describes how to prepare a local environment, start the service, use the playground, and understand the current Triton-ready execution model.
 
 ## Recommended Environment
 
@@ -73,6 +73,28 @@ Open:
 - `http://127.0.0.1:8000/`
 - `http://127.0.0.1:8000/playground`
 
+## Execution Model
+
+The runtime is now execution-aware.
+
+For heavy stages, separate two dimensions:
+
+- `backend_kind`
+  - `mock`
+  - `local`
+  - `triton`
+- `model_variant`
+  - stage-specific, for example `grounding-dino`, `birefnet`, `stable-normal`, `v1-gan`, `v2-diff`
+
+The playground and capability responses expose:
+
+- requested backend kind
+- actual backend kind
+- model variant
+- device
+- endpoint
+- fallback reason
+
 ## Playground Use
 
 The playground supports:
@@ -83,6 +105,7 @@ The playground supports:
 - per-stage rerun
 - preview scaling
 - explicit backend switching
+- explicit shadow model variant switching
 
 Current shadow stage variants in the UI:
 
@@ -90,60 +113,80 @@ Current shadow stage variants in the UI:
 - `V1-GAN`
 - `V2-DIFF`
 
-Current behavior:
+Current execution backend choices for heavy stages:
 
-- `V1-GAN` is the working migrated legacy shadow model
-- `V2-DIFF` is present as a scaffold and intentionally reports itself as not connected yet
+- `mock`
+- `local`
+- `triton`
 
 ## Model Bring-Up Summary
 
 ### Geometry
 
-- Backend: GeoCalib
+- Backends: `mock`, `local`
+- Local backend: GeoCalib
 - Env vars:
   - `SHADOWGEN_GEOCALIB_WEIGHTS`
   - `SHADOWGEN_GEOCALIB_CAMERA_MODEL`
   - `SHADOWGEN_GEOCALIB_SHARED_INTRINSICS`
+  - `SHADOWGEN_GEOMETRY_BACKEND_KIND`
 
 ### Detection
 
-- Backend: GroundingDINO
+- Backends: `mock`, `local`, `triton`
+- Local backend: GroundingDINO
 - Env vars:
   - `SHADOWGEN_GROUNDING_DINO_MODEL_ID`
   - `SHADOWGEN_GROUNDING_DINO_PROMPT`
   - `SHADOWGEN_GROUNDING_DINO_BOX_THRESHOLD`
   - `SHADOWGEN_GROUNDING_DINO_TEXT_THRESHOLD`
+  - `SHADOWGEN_DETECTOR_BACKEND_KIND`
+  - `SHADOWGEN_TRITON_DETECTOR_MODEL`
 
 ### Segmentation
 
-- Backend: BiRefNet
+- Backends: `mock`, `local`, `triton`
+- Local backend: BiRefNet
 - Env vars:
   - `SHADOWGEN_BIREFNET_MODEL_ID`
   - `SHADOWGEN_BIREFNET_RESOLUTION`
   - `SHADOWGEN_BIREFNET_MASK_THRESHOLD`
   - `SHADOWGEN_BIREFNET_ALLOW_CPU`
+  - `SHADOWGEN_SEGMENTER_BACKEND_KIND`
+  - `SHADOWGEN_TRITON_SEGMENTER_MODEL`
 
 ### Foreground Refinement
 
-- Backend: Fast Foreground Colour Estimation
+- Backends: `mock`, `local`
+- Local backend: Fast Foreground Colour Estimation
 - Dependency note:
   - OpenCV-based stage
+- Env vars:
+  - `SHADOWGEN_FOREGROUND_REFINER_BACKEND_KIND`
 
 ### Depth
 
-- Backend: Depth Anything V2 Small
+- Backends: `mock`, `local`, `triton`
+- Local backend: Depth Anything V2 Small
 - Env vars:
   - `SHADOWGEN_DEPTH_ANYTHING_MODEL_ID`
+  - `SHADOWGEN_DEPTH_BACKEND_KIND`
+  - `SHADOWGEN_TRITON_DEPTH_MODEL`
   - `SHADOWGEN_TARGET_DEVICE`
 
 ### Normals
 
-- Primary backend: StableNormal
-- Fallback backend: `from-depth`
+- Backends:
+  - `mock`
+  - `local stable-normal`
+  - `local from-depth-v2` fallback
+  - `triton stable-normal`
 - Env vars:
   - `SHADOWGEN_STABLE_NORMAL_VARIANT`
   - `SHADOWGEN_STABLE_NORMAL_RESOLUTION`
   - `SHADOWGEN_STABLE_NORMAL_ALLOW_CPU`
+  - `SHADOWGEN_NORMALS_BACKEND_KIND`
+  - `SHADOWGEN_TRITON_NORMALS_MODEL`
   - `SHADOWGEN_TARGET_DEVICE`
 
 ### Shadow
@@ -156,14 +199,15 @@ Current behavior:
 #### `mock`
 
 - deterministic analytical fallback
-- still uses coarse blur for softness emulation
+- keeps the coarse blur softness behavior
 
 #### `V1-GAN`
 
-- migrated legacy pix2pix generator
+- current working local shadow backend
 - local weights path:
   - `.models/shadow/AveragedModel.pth`
 - env vars:
+  - `SHADOWGEN_SHADOW_BACKEND_KIND`
   - `SHADOWGEN_SHADOW_MODEL_VARIANT`
   - `SHADOWGEN_SHADOW_PIX2PIX_WEIGHTS_PATH`
   - `SHADOWGEN_TARGET_DEVICE`
@@ -171,15 +215,19 @@ Current behavior:
 Important:
 
 - real shadow backends receive `softness` as model input
-- real shadow backends do not use post-blur for softness anymore
+- real shadow backends do not use post-blur for softness
 
 #### `V2-DIFF`
 
-- scaffold exists in code
-- runtime slot exists
-- backend intentionally not implemented yet
+- preferred Triton-ready slot
+- scaffolded intentionally
+- not implemented as a working model yet
+- env vars:
+  - `SHADOWGEN_SHADOW_BACKEND_KIND`
+  - `SHADOWGEN_SHADOW_MODEL_VARIANT`
+  - `SHADOWGEN_TRITON_SHADOW_V2_MODEL`
 
-Expected future model inputs:
+Expected model inputs:
 
 - `img`
 - `mask`
@@ -189,6 +237,49 @@ Expected future model inputs:
 - `elevation`
 - `softness`
 - `reflection`
+
+## Triton Settings
+
+Global Triton-related settings:
+
+- `SHADOWGEN_EXECUTION_DEFAULT_BACKEND`
+- `SHADOWGEN_TRITON_URL`
+- `SHADOWGEN_TRITON_PROTOCOL`
+- `SHADOWGEN_TRITON_TIMEOUT_MS`
+- `SHADOWGEN_TRITON_MODEL_REPOSITORY`
+
+Async settings:
+
+- `SHADOWGEN_ASYNC_ENABLED`
+- `SHADOWGEN_ASYNC_BACKEND`
+
+Per-stage execution defaults:
+
+- `SHADOWGEN_DETECTOR_BACKEND_KIND`
+- `SHADOWGEN_SEGMENTER_BACKEND_KIND`
+- `SHADOWGEN_DEPTH_BACKEND_KIND`
+- `SHADOWGEN_NORMALS_BACKEND_KIND`
+- `SHADOWGEN_SHADOW_BACKEND_KIND`
+
+Global behavior:
+
+- if `SHADOWGEN_EXECUTION_DEFAULT_BACKEND=mock`, heavy stages default to mock
+- otherwise the service defaults to `local` unless a stage override is set
+- requesting `triton` without a reachable endpoint or registered model results in explicit fallback metadata
+
+## Async API Use
+
+The service now provides async render endpoints:
+
+- `POST /v1/render/jobs`
+- `GET /v1/render/jobs/{job_id}`
+- `DELETE /v1/render/jobs/{job_id}`
+
+Current async backend:
+
+- in-process, in-memory
+
+This is meant for architectural separation and API stability. It is replaceable later with Redis/RQ, Celery, or another worker backend.
 
 ## Local Storage Rules
 
@@ -225,17 +316,21 @@ curl http://127.0.0.1:8000/v1/capabilities
 Check:
 
 - `active_backend_mode`
-- `degraded`
+- `execution_default_backend`
+- `async_enabled`
 - `components[]`
 
 For model bring-up, the most useful fields are:
 
-- `name`
 - `implementation`
+- `backend_kind`
+- `model_variant`
 - `model_name`
 - `model_version`
-- `using_mock`
-- `detail`
+- `device`
+- `endpoint`
+- `fallback_reason`
+- `backends`
 
 ## Troubleshooting
 
@@ -245,26 +340,28 @@ Check:
 
 - CUDA torch is installed in the same `.venv`
 - service was started from that `.venv`
-- stage `details.device` in the playground
+- stage `device` in the playground
+- capabilities for that stage show `backend_kind=local` and a CUDA-capable device
 
-### Stage shows `mock-fallback`
+### Requested Triton but got fallback
 
 That means:
 
-- the stage exists
-- requested backend was not usable at runtime
-- the service fell back to the mock or deterministic path
+- the stage is Triton-aware
+- the runtime could not use the requested Triton backend
+- the selector fell back to `local` or `mock`
 
 Inspect:
 
+- `fallback_reason`
+- `endpoint`
 - `/v1/capabilities`
-- stage details in playground
 - startup logs
 
 ### `V2-DIFF` is unavailable
 
 That is expected right now.
-The scaffold is present by design, but the model backend is not implemented yet.
+The runtime slot and Triton adapter scaffold exist by design, but the actual model backend is not yet connected.
 
 ## Related Docs
 

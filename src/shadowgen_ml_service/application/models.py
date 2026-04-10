@@ -2,12 +2,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from time import perf_counter
-from typing import Any
+from typing import Any, Literal
 
 from PIL import Image
 
 from shadowgen_ml_service.core.commands import RenderCommand
 from shadowgen_ml_service.core.models import (
+    BackendKind,
     CapabilitiesInfo,
     CompositionResult,
     DepthResult,
@@ -19,6 +20,8 @@ from shadowgen_ml_service.core.models import (
     NormalResult,
     PreprocessSnapshot,
     SegmentationResult,
+    StageBackendDescriptor,
+    StageBackendId,
     ShadowResult,
 )
 
@@ -71,10 +74,21 @@ class PipelineContext:
 
 
 @dataclass(frozen=True)
-class StageBackendSelection:
-    requested_mode: str
-    actual_mode: str
+class ExecutionSelection:
+    stage_key: str
+    backend_id: StageBackendId | None
+    requested_backend_kind: BackendKind
+    actual_backend_kind: BackendKind | Literal["unavailable", "internal"]
+    requested_variant: str = "default"
+    actual_variant: str = "default"
+    actual_mode: str = "internal"
     unavailable_message: str | None = None
+    fallback_reason: str | None = None
+    descriptor: StageBackendDescriptor | None = None
+
+    @property
+    def requested_mode(self) -> str:
+        return self.requested_backend_kind
 
 
 @dataclass
@@ -85,6 +99,15 @@ class StageExecution:
     status: str
     requested_mode: str
     actual_mode: str
+    requested_backend_kind: BackendKind = "mock"
+    actual_backend_kind: BackendKind | Literal["unavailable", "internal"] = "internal"
+    model_variant: str = "default"
+    model_name: str | None = None
+    model_version: str | None = None
+    device: str | None = None
+    endpoint: str | None = None
+    cache_status: str | None = None
+    fallback_reason: str | None = None
     elapsed_ms: int | None = None
     error: str | None = None
     details: dict[str, str | int | float | bool] | None = None
@@ -116,3 +139,14 @@ class HealthOutcome:
 @dataclass(frozen=True)
 class CapabilitiesOutcome:
     payload: CapabilitiesInfo
+
+
+@dataclass(frozen=True)
+class AsyncRenderJobRecord:
+    job_id: str
+    request_id: str | None
+    status: str
+    created_at: str
+    updated_at: str
+    error: str | None = None
+    render_outcome: RenderOutcome | None = None

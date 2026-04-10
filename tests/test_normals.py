@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import tempfile
+import shutil
 import unittest
 from pathlib import Path
 
@@ -38,15 +38,18 @@ class FakeTorch:
 class StableNormalTests(unittest.TestCase):
     def test_stable_normal_estimator_uses_torch_hub_predictor(self) -> None:
         fake_torch = FakeTorch()
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            estimator = StableNormalEstimator(
-                torch_module=fake_torch,
-                model_variant="StableNormal_turbo",
-                target_device="cuda:0",
-                cache_dir=Path(tmp_dir),
-                resolution=768,
-            )
-            result = estimator.estimate(Image.new("RGBA", (96, 80), (255, 255, 255, 255)))
+        cache_dir = Path(".cache") / "test-temp" / "stable-normal-cache"
+        shutil.rmtree(cache_dir, ignore_errors=True)
+        self.addCleanup(lambda: shutil.rmtree(cache_dir, ignore_errors=True))
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        estimator = StableNormalEstimator(
+            torch_module=fake_torch,
+            model_variant="StableNormal_turbo",
+            target_device="cuda:0",
+            cache_dir=cache_dir,
+            resolution=768,
+        )
+        result = estimator.estimate(Image.new("RGBA", (96, 80), (255, 255, 255, 255)))
 
         self.assertEqual(result.normal_map.size, (96, 80))
         self.assertEqual(estimator.device_label, "cuda:0")

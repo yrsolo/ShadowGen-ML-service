@@ -28,16 +28,16 @@ Before commit:
 ### Put code here
 
 - `core/`
-  internal contracts, commands, typed models, service errors
+  internal contracts, canonical stage I/O, typed models, job contracts, service errors
 
 - `application/`
-  orchestration, stage runner, backend selection, pipeline state
+  orchestration, stage runner, backend selection, pipeline state, async jobs
 
 - `bootstrap/`
-  runtime wiring, probes, capability assembly
+  runtime wiring, probes, backend registry defaults, capability assembly
 
 - `infrastructure/`
-  concrete model adapters, cache, encoding, preview logic
+  concrete stage adapters, Triton subsystem, cache, encoding, preview logic, job backends
 
 - `interfaces/http/`
   FastAPI routes, schemas, HTTP mappers
@@ -53,25 +53,41 @@ Before commit:
 
 These are transition shims, not the architectural center.
 
+## Execution Design Rules
+
+- heavy stages must be designed around `backend_kind`, not vague `real`
+- supported backend kinds are:
+  - `mock`
+  - `local`
+  - `triton`
+- model family selection is separate from execution kind
+- a new backend must expose machine-readable metadata:
+  - model variant
+  - model name
+  - model version
+  - device
+  - endpoint when relevant
+  - batching and async support flags
+
 ## Stage Design Rules
 
 - each stage should have a clear interface
-- each stage should have explicit mock and real behavior when practical
 - stage-specific logic should live in that stage package
-- do not bury one stage’s responsibility inside another
+- one stage must not silently own another stage's responsibility
+- heavy stages should accept canonical inputs suitable for local or Triton execution
 
 Examples:
 
 - foreground colour correction is a standalone stage, not segmentation internals
-- normals have their own stage and fallback path
-- shadow model families are explicit named variants, not a vague single `real`
+- normals have their own stage and explicit fallback path
+- shadow model families are explicit variants, not a vague single `real`
 
 ## Model Integration Rules
 
 When integrating a new model:
 
 1. add or update contracts only if the public or internal stage interface truly changed
-2. add the model inside the correct `infrastructure/stages/<stage>/` package
+2. add the backend inside the correct `infrastructure/stages/<stage>/` package
 3. keep training code out of this repo unless explicitly needed
 4. import only the minimum inference path from legacy projects
 5. put weights in ignored local storage such as `.models/`
@@ -79,6 +95,13 @@ When integrating a new model:
 7. expose useful runtime metadata in capabilities and debug UI
 8. add tests
 9. update docs
+
+If the backend is remote:
+
+1. use the shared Triton subsystem
+2. keep transport details out of `application/`
+3. register the backend in the runtime registry
+4. expose fallback behavior explicitly
 
 ## Shadow-Specific Rule
 
@@ -88,8 +111,15 @@ For shadow generation:
   - `mock`
   - `V1-GAN`
   - `V2-DIFF`
-- real models should consume `softness` as model input
+- real backends should consume `softness` as model input
 - coarse post-blur softness is allowed only in the mock shadow backend
+
+## Async Execution Rule
+
+- sync render remains the primary debug-friendly path
+- async jobs must reuse the same stage runner and backend registry
+- async infrastructure must stay replaceable
+- job persistence and queue logic belong under `infrastructure/jobs/`
 
 ## Local-Only Data
 
@@ -106,7 +136,7 @@ Use ignored directories for local runtime data:
 
 ## Documentation Rule
 
-After changing architecture, module ownership, model lineup, runtime behavior, or workflow:
+After changing architecture, execution model, module ownership, model lineup, runtime behavior, or workflow:
 
 - update [README.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/README.md)
 - update [docs/README.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/README.md)
@@ -115,5 +145,5 @@ After changing architecture, module ownership, model lineup, runtime behavior, o
 The docs should stay useful for:
 
 - a fast first read
-- a teammate onboarding into the repo
-- a future refactor that needs to understand the current boundaries
+- teammate onboarding
+- future backend migration, especially to Triton

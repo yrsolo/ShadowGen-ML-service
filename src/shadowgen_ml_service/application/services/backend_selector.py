@@ -1,17 +1,19 @@
 from __future__ import annotations
 
 from shadowgen_ml_service.application.dependencies import PipelineRuntime
-from shadowgen_ml_service.application.models import StageBackendSelection
+from shadowgen_ml_service.application.models import ExecutionSelection
+from shadowgen_ml_service.core.models import StageBackendId
 
 
 UNAVAILABLE_MESSAGES = {
-    "detector": "Real detector is unavailable. Configure the GroundingDINO integration and model weights first.",
-    "geometry_estimator": "Real geometry estimator is unavailable. Configure GeoCalib integration first.",
-    "segmenter": "Real segmenter is unavailable. Configure the BiRefNet adapter first.",
-    "foreground_refiner": "Real foreground colour estimator is unavailable. Install the Fast Foreground Colour Estimation dependencies first.",
-    "depth_estimator": "Real depth estimator is unavailable. Configure the Depth Anything adapter first.",
-    "normal_estimator": "Real normal estimator is unavailable. Configure the StableNormal adapter or use the depth-derived fallback.",
-    "shadow_generator": "Real shadow generator is unavailable. Configure the pix2pix shadow backend and local weights first.",
+    "detector": "Requested detector backend is unavailable.",
+    "geometry_estimator": "Requested geometry backend is unavailable.",
+    "segmenter": "Requested segmenter backend is unavailable.",
+    "foreground_refiner": "Requested foreground refinement backend is unavailable.",
+    "depth_estimator": "Requested depth backend is unavailable.",
+    "normal_estimator": "Requested normals backend is unavailable.",
+    "shadow_generator": "Requested shadow backend is unavailable.",
+    "composer": "Requested composer backend is unavailable.",
 }
 
 
@@ -19,51 +21,114 @@ class BackendSelector:
     def __init__(self, runtime: PipelineRuntime) -> None:
         self.runtime = runtime
 
-    def select_for_debug(self, stage_key: str, requested_mode: str) -> StageBackendSelection:
+    def select_for_public(self, stage_key: str) -> ExecutionSelection:
         component = next((item for item in self.runtime.descriptor.components if item.name == stage_key), None)
-        if component is None:
-            return StageBackendSelection(requested_mode=requested_mode, actual_mode="internal")
-        if requested_mode == "real":
-            if stage_key == "composer":
-                return StageBackendSelection(requested_mode=requested_mode, actual_mode="real")
-            if component.implementation == "real" and component.available:
-                return StageBackendSelection(requested_mode=requested_mode, actual_mode="real")
-            if component.available and component.using_mock:
-                return StageBackendSelection(requested_mode=requested_mode, actual_mode="mock-fallback")
-            return StageBackendSelection(
-                requested_mode=requested_mode,
-                actual_mode="unavailable",
-                unavailable_message=UNAVAILABLE_MESSAGES.get(stage_key, "Requested real mode is unavailable for this stage."),
+        active = self.runtime.default_backend(stage_key)
+        if component is None or active is None:
+            return ExecutionSelection(
+                stage_key=stage_key,
+                backend_id=None,
+                requested_backend_kind="internal",
+                actual_backend_kind="internal",
+                actual_mode="internal",
             )
-        return StageBackendSelection(requested_mode=requested_mode, actual_mode="mock")
+        return ExecutionSelection(
+            stage_key=stage_key,
+            backend_id=active.descriptor.backend_id,
+            requested_backend_kind=component.backend_kind,
+            actual_backend_kind=active.descriptor.backend_kind,
+            requested_variant=component.model_variant,
+            actual_variant=active.descriptor.model_variant,
+            actual_mode=component.implementation,
+            fallback_reason=component.fallback_reason,
+            descriptor=active.descriptor,
+        )
 
-    def actual_mode_for_public(self, stage_key: str) -> str:
-        component = next((item for item in self.runtime.descriptor.components if item.name == stage_key), None)
-        if component is None:
-            return "internal"
-        if component.implementation == "real":
-            return "real"
-        if component.using_mock:
-            return "mock-fallback" if component.implementation == "mock-fallback" else "mock"
-        return component.implementation
+    def select_for_debug(self, stage_key: str, requested_backend_kind: str, requested_variant: str = "default") -> ExecutionSelection:
+        if stage_key == "decode":
+            return ExecutionSelection(
+                stage_key=stage_key,
+                backend_id=None,
+                requested_backend_kind="internal",
+                actual_backend_kind="internal",
+                actual_mode="internal",
+            )
 
-    def select_shadow_variant_for_debug(self, requested_mode: str) -> StageBackendSelection:
-        if requested_mode == "mock":
-            return StageBackendSelection(requested_mode=requested_mode, actual_mode="mock")
-        if requested_mode == "v1-gan":
-            if self.runtime.shadow_v1_gan is not None:
-                return StageBackendSelection(requested_mode=requested_mode, actual_mode="real")
-            return StageBackendSelection(
-                requested_mode=requested_mode,
-                actual_mode="mock-fallback",
-                unavailable_message="V1-GAN is unavailable. Falling back to the mock shadow generator.",
+        fallback_reason = None
+        for backend_kind, variant in self._fallback_order(stage_key, requested_backend_kind, requested_variant):
+            backend = self.runtime.backend(stage_key, backend_kind, variant)
+            if backend is None or not backend.descriptor.available or backend.handler is None:
+                continue
+            actual_mode = backend_kind
+            if backend_kind == "mock" and requested_backend_kind != "mock":
+                actual_mode = "mock-fallback"
+                fallback_reason = f"{requested_backend_kind}:{requested_variant} unavailable for {stage_key}"
+            elif backend_kind != requested_backend_kind or variant != requested_variant:
+                actual_mode = f"{backend_kind}-fallback"
+                fallback_reason = f"{requested_backend_kind}:{requested_variant} unavailable for {stage_key}"
+            return ExecutionSelection(
+                stage_key=stage_key,
+                backend_id=backend.descriptor.backend_id,
+                requested_backend_kind=requested_backend_kind,
+                actual_backend_kind=backend_kind,
+                requested_variant=requested_variant,
+                actual_variant=variant,
+                actual_mode=actual_mode,
+                fallback_reason=fallback_reason,
+                descriptor=backend.descriptor,
             )
-        if requested_mode == "v2-diff":
-            if self.runtime.shadow_v2_diff is not None:
-                return StageBackendSelection(requested_mode=requested_mode, actual_mode="real")
-            return StageBackendSelection(
-                requested_mode=requested_mode,
-                actual_mode="unavailable",
-                unavailable_message="V2-DIFF is not connected yet. The model scaffold exists, but the inference backend is not implemented.",
-            )
-        return StageBackendSelection(requested_mode=requested_mode, actual_mode="unavailable", unavailable_message="Unknown shadow backend requested.")
+
+        return ExecutionSelection(
+            stage_key=stage_key,
+            backend_id=None,
+            requested_backend_kind=requested_backend_kind,
+            actual_backend_kind="unavailable",
+            requested_variant=requested_variant,
+            actual_variant=requested_variant,
+            actual_mode="unavailable",
+            unavailable_message=UNAVAILABLE_MESSAGES.get(stage_key, "Requested backend is unavailable."),
+        )
+
+    def _fallback_order(self, stage_key: str, requested_backend_kind: str, requested_variant: str) -> list[tuple[str, str]]:
+        if requested_backend_kind == "mock":
+            return [("mock", self._mock_variant(stage_key))]
+
+        fallback: list[tuple[str, str]] = [(requested_backend_kind, requested_variant)]
+        if stage_key == "normal_estimator":
+            if requested_backend_kind == "triton":
+                fallback.extend([("local", "stable-normal"), ("local", "from-depth"), ("mock", "mock-v1")])
+            else:
+                fallback.extend([("local", "from-depth"), ("mock", "mock-v1")])
+            return fallback
+
+        if stage_key == "shadow_generator":
+            if requested_backend_kind == "triton":
+                fallback.extend([("local", "v1-gan"), ("mock", "mock")])
+            elif requested_backend_kind == "local":
+                fallback.append(("mock", "mock"))
+            return fallback
+
+        if requested_backend_kind == "triton":
+            fallback.extend([("local", self._default_variant(stage_key)), ("mock", "mock-v1")])
+        elif requested_backend_kind == "local":
+            fallback.append(("mock", "mock-v1"))
+        return fallback
+
+    def _default_variant(self, stage_key: str) -> str:
+        mapping = {
+            "detector": "grounding-dino",
+            "segmenter": "birefnet",
+            "depth_estimator": "depth-anything-v2-small",
+            "normal_estimator": "stable-normal",
+            "geometry_estimator": "geocalib",
+            "foreground_refiner": "fast-foreground-estimation",
+            "composer": "python-composer",
+        }
+        return mapping.get(stage_key, "default")
+
+    def _mock_variant(self, stage_key: str) -> str:
+        mapping = {
+            "shadow_generator": "mock",
+            "foreground_refiner": "passthrough-v1",
+        }
+        return mapping.get(stage_key, "mock-v1")

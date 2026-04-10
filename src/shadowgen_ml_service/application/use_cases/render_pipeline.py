@@ -3,7 +3,7 @@ from __future__ import annotations
 from time import perf_counter
 
 from shadowgen_ml_service.application.dependencies import PipelineRuntime
-from shadowgen_ml_service.application.models import PipelineContext, RenderOutcome, StageBackendSelection
+from shadowgen_ml_service.application.models import PipelineContext, RenderOutcome
 from shadowgen_ml_service.application.services.backend_selector import BackendSelector
 from shadowgen_ml_service.application.services.stage_runner import StageRunner
 from shadowgen_ml_service.config import Settings
@@ -42,55 +42,28 @@ class RenderPipelineUseCase:
         context.metrics.measure_from("cache_ms", cache_started)
 
         if snapshot is None:
-            detection = self._execute_public_stage("detector", context, lambda: self.runtime.detector.detect(source_rgba, command.padding_px))
-            context.detection = detection
-
-            geometry = self._execute_public_stage("geometry_estimator", context, lambda: self.runtime.geometry.estimate(source_rgba))
-            context.geometry = geometry
-
+            context.detection = self._execute_public_stage("detector", context)
+            context.geometry = self._execute_public_stage("geometry_estimator", context)
             context.working_crop = prepare_working_crop(
                 source_rgba,
-                detection.bbox,
+                context.detection.bbox,
                 self.settings.working_size,
                 content_scale=self.settings.working_content_scale,
             )
-
-            segmentation = self._execute_public_stage("segmenter", context, lambda: self.runtime.segmenter.segment(context.working_crop))
-            context.segmentation = segmentation
-            context.pre_refinement_cutout = segmentation.cutout_rgba
-
-            foreground_refinement = self._execute_public_stage(
-                "foreground_refiner",
-                context,
-                lambda: self.runtime.foreground_refiner.refine(
-                    context.segmentation.crop_rgba,
-                    self._segmentation_alpha(context.segmentation),
-                ),
-            )
-            context.foreground_refinement = foreground_refinement
-            context.segmentation = self._merge_refined_cutout(context.segmentation, foreground_refinement.cutout_rgba)
-
-            depth = self._execute_public_stage(
-                "depth_estimator",
-                context,
-                lambda: self.runtime.depth.estimate(context.segmentation.cutout_rgba, context.segmentation.mask),
-            )
-            context.depth = depth
-
-            normals = self._execute_public_stage(
-                "normal_estimator",
-                context,
-                lambda: self.runtime.normals.estimate(context.segmentation.cutout_rgba, depth.depth_map),
-            )
-            context.normals = normals
+            context.segmentation = self._execute_public_stage("segmenter", context)
+            context.pre_refinement_cutout = context.segmentation.cutout_rgba
+            context.foreground_refinement = self._execute_public_stage("foreground_refiner", context)
+            context.segmentation = self._merge_refined_cutout(context.segmentation, context.foreground_refinement.cutout_rgba)
+            context.depth = self._execute_public_stage("depth_estimator", context)
+            context.normals = self._execute_public_stage("normal_estimator", context)
 
             snapshot = PreprocessSnapshot(
-                detection=detection,
-                geometry=geometry,
+                detection=context.detection,
+                geometry=context.geometry,
                 segmentation=context.segmentation,
-                depth=depth,
-                normals=normals,
-                foreground_refinement=foreground_refinement,
+                depth=context.depth,
+                normals=context.normals,
+                foreground_refinement=context.foreground_refinement,
             )
             self.runtime.cache.save(cache_key, snapshot)
         else:
@@ -109,35 +82,12 @@ class RenderPipelineUseCase:
             context.normals = snapshot.normals
             context.foreground_refinement = snapshot.foreground_refinement
 
-        shadow = self._execute_public_stage(
-            "shadow_generator",
-            context,
-            lambda: self.runtime.shadow.generate(
-                cutout_rgba=context.segmentation.cutout_rgba,
-                mask=context.segmentation.mask,
-                depth_map=context.depth.depth_map,
-                normal_map=context.normals.normal_map,
-                geometry=context.geometry,
-                shadow=command.shadow,
-            ),
-        )
-        context.shadow = shadow
-
-        composition = self._execute_public_stage(
-            "composer",
-            context,
-            lambda: self.runtime.composer.compose(
-                cutout_rgba=context.segmentation.cutout_rgba,
-                shadow_rgba=shadow.shadow_rgba,
-                background=command.background,
-                output=command.output,
-            ),
-        )
-        context.composition = composition
+        context.shadow = self._execute_public_stage("shadow_generator", context)
+        context.composition = self._execute_public_stage("composer", context)
 
         encode_started = perf_counter()
         artifacts = self.runtime.encoder.encode(
-            final_image=composition.final_image,
+            final_image=context.composition.final_image,
             output_format=command.output.format,
             debug_images={
                 "cutout": context.segmentation.cutout_rgba,
@@ -145,7 +95,7 @@ class RenderPipelineUseCase:
                 "crop": context.segmentation.crop_rgba,
                 "depth": context.depth.depth_map,
                 "normals": context.normals.normal_map,
-                "shadow": shadow.shadow_rgba,
+                "shadow": context.shadow.shadow_rgba,
             },
             return_debug=command.output.return_debug,
         )
@@ -166,9 +116,16 @@ class RenderPipelineUseCase:
             model_version=self.runtime.descriptor.model_version,
         )
 
-    def _execute_public_stage(self, stage_key: str, context: PipelineContext, action):
-        selection = StageBackendSelection(requested_mode="real", actual_mode=self.selector.actual_mode_for_public(stage_key))
-        value, execution = self.stage_runner.execute(stage_key=stage_key, selection=selection, context=context, action=action)
+    def _execute_public_stage(self, stage_key: str, context: PipelineContext):
+        selection = self.selector.select_for_public(stage_key)
+        registered = None if selection.backend_id is None else self.runtime.registry.get(selection.backend_id)
+        value, execution = self.stage_runner.execute(
+            stage_key=stage_key,
+            selection=selection,
+            context=context,
+            backend=None if registered is None else registered.handler,
+            invocation=lambda backend: self._invoke_stage(stage_key, backend, context),
+        )
         metric_key = {
             "geometry_estimator": "geometry_ms",
             "detector": "detection_ms",
@@ -181,6 +138,37 @@ class RenderPipelineUseCase:
         }[stage_key]
         context.metrics.set(metric_key, execution.elapsed_ms or 0)
         return value
+
+    def _invoke_stage(self, stage_key: str, backend, context: PipelineContext):
+        if stage_key == "detector":
+            return backend.detect(context.source_rgba, context.command.padding_px)
+        if stage_key == "geometry_estimator":
+            return backend.estimate(context.source_rgba)
+        if stage_key == "segmenter":
+            return backend.segment(context.working_crop)
+        if stage_key == "foreground_refiner":
+            return backend.refine(context.segmentation.crop_rgba, self._segmentation_alpha(context.segmentation))
+        if stage_key == "depth_estimator":
+            return backend.estimate(context.segmentation.cutout_rgba, context.segmentation.mask)
+        if stage_key == "normal_estimator":
+            return backend.estimate(context.segmentation.cutout_rgba, context.depth.depth_map)
+        if stage_key == "shadow_generator":
+            return backend.generate(
+                cutout_rgba=context.segmentation.cutout_rgba,
+                mask=context.segmentation.mask,
+                depth_map=context.depth.depth_map,
+                normal_map=context.normals.normal_map,
+                geometry=context.geometry,
+                shadow=context.command.shadow,
+            )
+        if stage_key == "composer":
+            return backend.compose(
+                cutout_rgba=context.segmentation.cutout_rgba,
+                shadow_rgba=context.shadow.shadow_rgba,
+                background=context.command.background,
+                output=context.command.output,
+            )
+        raise ValueError(f"unsupported stage key {stage_key}")
 
     def _decode_command(self, command: RenderCommand):
         if command.pipeline_version != self.settings.default_pipeline_version:
@@ -197,25 +185,13 @@ class RenderPipelineUseCase:
             raise ValidationServiceError(message, request_id=command.request_id) from exc
 
     def _append_runtime_warnings(self, context: PipelineContext) -> None:
-        context.warnings.extend(
-            f"mock_backend_{component.name}"
-            for component in self.runtime.descriptor.components
-            if component.using_mock
-        )
-        if any(component.name == "detector" and component.implementation == "mock-fallback" for component in self.runtime.descriptor.components):
-            context.warnings.append("detector_real_fallback_active")
-        if any(component.name == "geometry_estimator" and component.implementation == "mock-fallback" for component in self.runtime.descriptor.components):
-            context.warnings.append("geometry_real_fallback_active")
-        if any(component.name == "segmenter" and component.implementation == "mock-fallback" for component in self.runtime.descriptor.components):
-            context.warnings.append("segmenter_real_fallback_active")
-        if any(component.name == "foreground_refiner" and component.implementation == "mock-fallback" for component in self.runtime.descriptor.components):
-            context.warnings.append("foreground_refiner_real_fallback_active")
-        if any(component.name == "depth_estimator" and component.implementation == "mock-fallback" for component in self.runtime.descriptor.components):
-            context.warnings.append("depth_real_fallback_active")
-        if any(component.name == "normal_estimator" and component.model_name == "normal-map-from-depth" for component in self.runtime.descriptor.components):
-            context.warnings.append("normals_neural_backend_unavailable")
-        if any(component.name == "shadow_generator" and component.implementation == "mock-fallback" for component in self.runtime.descriptor.components):
-            context.warnings.append("shadow_real_fallback_active")
+        for component in self.runtime.descriptor.components:
+            if component.using_mock:
+                context.warnings.append(f"mock_backend_{component.name}")
+            if component.fallback_reason:
+                context.warnings.append(f"{component.name}_fallback_active")
+            if component.name == "normal_estimator" and component.model_name == "normal-map-from-depth":
+                context.warnings.append("normals_neural_backend_unavailable")
 
     def _segmentation_alpha(self, segmentation: SegmentationResult):
         return segmentation.cutout_rgba.getchannel("A")
