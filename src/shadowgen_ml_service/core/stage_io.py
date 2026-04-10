@@ -4,10 +4,6 @@ from dataclasses import dataclass
 
 from PIL import Image
 
-from shadowgen_ml_service.core.commands import ShadowSpec
-from shadowgen_ml_service.core.models import GeometryResult
-
-
 @dataclass(frozen=True)
 class DetectionInput:
     image: Image.Image
@@ -37,5 +33,8 @@ class ShadowInput:
     mask: Image.Image
     depth: Image.Image
     normal: Image.Image
-    geometry: GeometryResult
-    shadow: ShadowSpec
+    angle: float
+    elevation: float
+    softness: float
+    reflection: float
+    opacity: float

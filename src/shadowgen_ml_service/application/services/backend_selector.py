@@ -96,9 +96,9 @@ class BackendSelector:
         fallback: list[tuple[str, str]] = [(requested_backend_kind, requested_variant)]
         if stage_key == "normal_estimator":
             if requested_backend_kind == "triton":
-                fallback.extend([("local", "stable-normal"), ("local", "from-depth"), ("mock", "mock-v1")])
+                fallback.extend([("local", "stable-normal"), ("local", "from-depth-v2"), ("mock", "mock-v1")])
             else:
-                fallback.extend([("local", "from-depth"), ("mock", "mock-v1")])
+                fallback.extend([("local", "from-depth-v2"), ("mock", "mock-v1")])
             return fallback
 
         if stage_key == "shadow_generator":

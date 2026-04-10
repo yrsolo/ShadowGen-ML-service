@@ -16,6 +16,10 @@
   - [x] `V1-GAN`
   - [x] `V2-DIFF` scaffold
 - [x] Refactor runtime to Triton-ready backend registry architecture
+- [x] Correct the Triton-ready architecture:
+  - [x] switch Triton transport to standard tensor infer payloads
+  - [x] make `stage_io` the actual heavy-stage boundary
+  - [x] tighten fallback and architecture tests
 - [x] Add async render job API and in-memory job backend
 - [x] Update project documentation to match the Triton-ready repository state
 

@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from shadowgen_ml_service.core.contracts import Segmenter
 from shadowgen_ml_service.core.models import SegmentationResult
+from shadowgen_ml_service.core.stage_io import SegmentationInput
 from shadowgen_ml_service.infrastructure.backends.triton.client import TritonInferenceClient
 from shadowgen_ml_service.infrastructure.backends.triton.model_registry import TritonModelBinding
-from shadowgen_ml_service.infrastructure.backends.triton.serializers import base64_png_to_image, image_to_base64_png
+from shadowgen_ml_service.infrastructure.backends.triton.serializers import image_to_nchw_float32_input, mask_output_to_image, rgba_output_to_image, tensor_to_bbox
 
 
 class TritonSegmenter(Segmenter):
@@ -14,15 +15,21 @@ class TritonSegmenter(Segmenter):
         self.client = client
         self.binding = binding
         self.device_label = "triton"
-        self.model_variant = binding.model_name
+        self.model_variant = binding.model_variant
 
-    def segment(self, image) -> SegmentationResult:
-        response = self.client.infer_json(
+    def segment(self, stage_input: SegmentationInput) -> SegmentationResult:
+        response = self.client.infer(
             self.binding.model_name,
-            {"image_base64": image_to_base64_png(image.convert("RGBA"))},
+            inputs=[image_to_nchw_float32_input(self.binding.inputs["image"].tensor_name, stage_input.image.convert("RGB"))],
+            outputs=[
+                self.binding.outputs["bbox"].tensor_name,
+                self.binding.outputs["mask"].tensor_name,
+                self.binding.outputs["cutout"].tensor_name,
+                self.binding.outputs["crop"].tensor_name,
+            ],
         )
-        bbox = tuple(int(value) for value in response["bbox"])
-        mask = base64_png_to_image(response["mask_base64"], mode="L")
-        cutout = base64_png_to_image(response["cutout_base64"], mode="RGBA")
-        crop = base64_png_to_image(response.get("crop_base64", response["cutout_base64"]), mode="RGBA")
+        bbox = tensor_to_bbox(response[self.binding.outputs["bbox"].tensor_name])
+        mask = mask_output_to_image(response[self.binding.outputs["mask"].tensor_name])
+        cutout = rgba_output_to_image(response[self.binding.outputs["cutout"].tensor_name])
+        crop = rgba_output_to_image(response[self.binding.outputs["crop"].tensor_name])
         return SegmentationResult(bbox=bbox, mask=mask, cutout_rgba=cutout, crop_rgba=crop)

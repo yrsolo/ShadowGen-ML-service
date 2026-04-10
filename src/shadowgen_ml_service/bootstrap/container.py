@@ -15,7 +15,7 @@ from shadowgen_ml_service.config import Settings
 from shadowgen_ml_service.core.models import ComponentStatus, StageBackendId
 from shadowgen_ml_service.infrastructure.backends.triton.client import TritonInferenceClient
 from shadowgen_ml_service.infrastructure.backends.triton.config import TritonBackendSettings
-from shadowgen_ml_service.infrastructure.backends.triton.model_registry import TritonModelBinding, TritonModelRegistry
+from shadowgen_ml_service.infrastructure.backends.triton.model_registry import TritonModelBinding, TritonModelRegistry, TritonTensorBinding
 from shadowgen_ml_service.infrastructure.cache.preprocess_cache_repository import FilesystemPreprocessCacheRepository
 from shadowgen_ml_service.infrastructure.encoding.default import DefaultArtifactEncoder
 from shadowgen_ml_service.infrastructure.presentation.preview_registry import DefaultPreviewBuilderRegistry
@@ -59,11 +59,67 @@ def build_runtime(settings: Settings) -> PipelineRuntime:
     triton_ready = triton_client.ping()
     triton_models = TritonModelRegistry(
         [
-            TritonModelBinding("detector", "grounding-dino", settings.triton_detector_model),
-            TritonModelBinding("segmenter", "birefnet", settings.triton_segmenter_model),
-            TritonModelBinding("depth_estimator", "depth-anything-v2-small", settings.triton_depth_model),
-            TritonModelBinding("normal_estimator", "stable-normal", settings.triton_normals_model),
-            TritonModelBinding("shadow_generator", "v2-diff", settings.triton_shadow_v2_model),
+            TritonModelBinding(
+                "detector",
+                "grounding-dino",
+                settings.triton_detector_model,
+                inputs={
+                    "image": TritonTensorBinding("image", "FP32"),
+                    "padding_px": TritonTensorBinding("padding_px", "INT32"),
+                },
+                outputs={
+                    "bbox": TritonTensorBinding("bbox", "FP32"),
+                    "confidence": TritonTensorBinding("confidence", "FP32"),
+                },
+            ),
+            TritonModelBinding(
+                "segmenter",
+                "birefnet",
+                settings.triton_segmenter_model,
+                inputs={"image": TritonTensorBinding("image", "FP32")},
+                outputs={
+                    "bbox": TritonTensorBinding("bbox", "FP32"),
+                    "mask": TritonTensorBinding("mask", "FP32"),
+                    "cutout": TritonTensorBinding("cutout", "FP32"),
+                    "crop": TritonTensorBinding("crop", "FP32"),
+                },
+            ),
+            TritonModelBinding(
+                "depth_estimator",
+                "depth-anything-v2-small",
+                settings.triton_depth_model,
+                inputs={
+                    "image": TritonTensorBinding("image", "FP32"),
+                    "mask": TritonTensorBinding("mask", "FP32"),
+                },
+                outputs={"depth": TritonTensorBinding("depth", "FP32")},
+            ),
+            TritonModelBinding(
+                "normal_estimator",
+                "stable-normal",
+                settings.triton_normals_model,
+                inputs={
+                    "image": TritonTensorBinding("image", "FP32"),
+                    "depth": TritonTensorBinding("depth", "FP32"),
+                },
+                outputs={"normal": TritonTensorBinding("normal", "FP32")},
+            ),
+            TritonModelBinding(
+                "shadow_generator",
+                "v2-diff",
+                settings.triton_shadow_v2_model,
+                inputs={
+                    "img": TritonTensorBinding("img", "FP32"),
+                    "mask": TritonTensorBinding("mask", "FP32"),
+                    "depth": TritonTensorBinding("depth", "FP32"),
+                    "normal": TritonTensorBinding("normal", "FP32"),
+                    "angle": TritonTensorBinding("angle", "FP32"),
+                    "elevation": TritonTensorBinding("elevation", "FP32"),
+                    "softness": TritonTensorBinding("softness", "FP32"),
+                    "reflection": TritonTensorBinding("reflection", "FP32"),
+                },
+                outputs={"shadow": TritonTensorBinding("shadow", "FP32")},
+            ),
         ]
     )
 
@@ -686,7 +742,7 @@ def _resolve_active_backend(*, registry: PipelineBackendRegistry, stage_key: str
             return registered, fallback_reason
 
     if stage_key == "normal_estimator":
-        for variant in ("stable-normal", "from-depth"):
+        for variant in ("stable-normal", "from-depth-v2"):
             registered = registry.get(StageBackendId(stage_key=stage_key, backend_kind="local", model_variant=variant))
             if registered is not None and registered.descriptor.available:
                 fallback_reason = f"{preferred_backend_kind}:{preferred_variant} unavailable for {stage_key}"

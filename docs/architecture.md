@@ -37,6 +37,8 @@ Provides stage executors:
 
 Application code does not depend on a specific transport or executor type. It only works with stage ports and execution metadata.
 
+For Triton-backed stages, transport normalization happens below the application layer. The control plane builds canonical stage inputs, while Triton adapters translate them into the standard Triton tensor infer schema with explicit input and output tensors.
+
 ## Pipeline Flow
 
 Current stage order:
@@ -60,6 +62,7 @@ Processing rules:
 - foreground refinement is a standalone stage
 - heavy downstream stages consume canonical working-canvas inputs
 - shadow consumes canonical `img`, `mask`, `depth`, `normal`, `angle`, `elevation`, `softness`, `reflection`
+- heavy-stage orchestration passes typed `stage_io` inputs into ports instead of backend-specific argument lists
 
 ## Layered Structure
 

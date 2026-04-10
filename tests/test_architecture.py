@@ -32,6 +32,8 @@ class ArchitectureTests(unittest.TestCase):
         for path in (SRC_ROOT / "application").rglob("*.py"):
             imports = module_imports(path)
             self.assertFalse(any(item.startswith("shadowgen_ml_service.interfaces.http") for item in imports), path)
+            self.assertFalse(any(item.startswith("shadowgen_ml_service.infrastructure.stages.") for item in imports), path)
+            self.assertFalse(any(item.startswith("shadowgen_ml_service.infrastructure.backends.triton") for item in imports), path)
 
     def test_stage_implementations_do_not_import_other_stage_packages(self) -> None:
         stages_root = SRC_ROOT / "infrastructure" / "stages"

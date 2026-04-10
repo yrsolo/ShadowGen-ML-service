@@ -9,6 +9,7 @@ from PIL import Image
 
 from shadowgen_ml_service.core.contracts import DepthEstimator
 from shadowgen_ml_service.core.models import DepthResult
+from shadowgen_ml_service.core.stage_io import DepthInput
 from shadowgen_ml_service.infrastructure.stages.shared.model_support import RealAdapterProbe, import_module, module_available
 
 
@@ -81,8 +82,8 @@ class RealDepthEstimator(DepthEstimator):
             self._model = self._model.to(self.device_label)
         self.device_label = self._infer_device_label()
 
-    def estimate(self, image: Image.Image, mask: Image.Image) -> DepthResult:
-        image_rgb = image.convert("RGB")
+    def estimate(self, stage_input: DepthInput) -> DepthResult:
+        image_rgb = stage_input.image.convert("RGB")
         inputs = self._processor(images=image_rgb, return_tensors="pt")
         if hasattr(inputs, "to"):
             inputs = inputs.to(self.device_label)
@@ -92,8 +93,8 @@ class RealDepthEstimator(DepthEstimator):
             outputs = self._model(**inputs)
         predicted_depth = outputs.predicted_depth if hasattr(outputs, "predicted_depth") else outputs["predicted_depth"]
         depth_map = normalize_depth_map(predicted_depth, image_rgb.size)
-        if mask is not None:
-            depth_map = Image.composite(depth_map, Image.new("L", depth_map.size, 0), mask.convert("L"))
+        if stage_input.mask is not None:
+            depth_map = Image.composite(depth_map, Image.new("L", depth_map.size, 0), stage_input.mask.convert("L"))
         return DepthResult(depth_map=depth_map)
 
     def _infer_device_label(self) -> str:

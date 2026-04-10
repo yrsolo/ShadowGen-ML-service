@@ -52,12 +52,15 @@
 ### Triton Readiness Evidence
 
 - shared Triton subsystem exists under `infrastructure/backends/triton/`
+- Triton transport now uses the standard tensor infer payload with explicit `inputs` and `outputs`
+- stage/model bindings now include tensor schema metadata, not only model names
 - stage-specific Triton adapters exist for:
   - `detector`
   - `segmenter`
   - `depth_estimator`
   - `normal_estimator`
   - `shadow_generator`
+- heavy-stage orchestration now enters executors through canonical `stage_io` contracts
 - local-only phase-1 stages remain:
   - `geometry_estimator`
   - `foreground_refiner`
@@ -128,7 +131,7 @@ The active docs now provide:
 
 ### Validation Evidence
 
-- `.venv\Scripts\python.exe -m pytest` passed: `53 passed`
+- `.venv\Scripts\python.exe -m pytest` passed: `58 passed`
 - `python -m compileall src tests` passed
 
 ## Remaining Bootstrap Gaps

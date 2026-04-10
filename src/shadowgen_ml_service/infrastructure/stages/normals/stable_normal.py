@@ -7,6 +7,7 @@ from PIL import Image
 
 from shadowgen_ml_service.core.contracts import NormalEstimator
 from shadowgen_ml_service.core.models import NormalResult
+from shadowgen_ml_service.core.stage_io import NormalsInput
 from shadowgen_ml_service.infrastructure.stages.shared.model_support import RealAdapterProbe, import_module, module_available
 
 
@@ -50,8 +51,8 @@ class StableNormalEstimator(NormalEstimator):
                 self._RESOURCE_CACHE[cache_key] = predictor
         self._predictor = predictor
 
-    def estimate(self, image: Image.Image, depth_map: Image.Image | None = None) -> NormalResult:
-        source = image if image.mode == "RGBA" else image.convert("RGBA")
+    def estimate(self, stage_input: NormalsInput) -> NormalResult:
+        source = stage_input.image if stage_input.image.mode == "RGBA" else stage_input.image.convert("RGBA")
         normal_map = self._predictor(
             source,
             resolution=self.resolution,

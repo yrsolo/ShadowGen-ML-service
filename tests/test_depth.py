@@ -6,6 +6,7 @@ import numpy as np
 from PIL import Image
 
 from shadowgen_ml_service.adapters.real import RealDepthEstimator
+from shadowgen_ml_service.core.stage_io import DepthInput
 
 
 class FakeNoGrad:
@@ -102,7 +103,7 @@ class DepthTests(unittest.TestCase):
         )
         image = Image.new("RGBA", (96, 80), (255, 255, 255, 255))
         mask = Image.new("L", image.size, 255)
-        result = estimator.estimate(image, mask)
+        result = estimator.estimate(DepthInput(image=image, mask=mask))
         self.assertEqual(result.depth_map.size, image.size)
         self.assertEqual(estimator.device_label, "cuda:0")
         self.assertEqual(estimator._model.device, "cuda:0")

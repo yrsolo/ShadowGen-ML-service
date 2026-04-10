@@ -9,6 +9,7 @@ from PIL import Image
 
 from shadowgen_ml_service.core.contracts import Segmenter
 from shadowgen_ml_service.core.models import SegmentationResult
+from shadowgen_ml_service.core.stage_io import SegmentationInput
 from shadowgen_ml_service.infrastructure.stages.shared.model_support import RealAdapterProbe, import_module, module_available
 
 
@@ -113,7 +114,8 @@ class RealSegmenter(Segmenter):
             self._model = self._model.to(self.device_label)
         self.device_label = self._infer_device_label()
 
-    def segment(self, image: Image.Image) -> SegmentationResult:
+    def segment(self, stage_input: SegmentationInput) -> SegmentationResult:
+        image = stage_input.image
         image_rgb = image.convert("RGB")
         image_tensor = self._transform_image(image_rgb).unsqueeze(0)
         if hasattr(image_tensor, "to"):

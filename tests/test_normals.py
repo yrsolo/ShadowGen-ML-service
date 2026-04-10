@@ -7,6 +7,7 @@ from pathlib import Path
 from PIL import Image
 
 from shadowgen_ml_service.adapters.real import StableNormalEstimator
+from shadowgen_ml_service.core.stage_io import NormalsInput
 
 
 class FakeHub:
@@ -49,7 +50,7 @@ class StableNormalTests(unittest.TestCase):
             cache_dir=cache_dir,
             resolution=768,
         )
-        result = estimator.estimate(Image.new("RGBA", (96, 80), (255, 255, 255, 255)))
+        result = estimator.estimate(NormalsInput(image=Image.new("RGBA", (96, 80), (255, 255, 255, 255))))
 
         self.assertEqual(result.normal_map.size, (96, 80))
         self.assertEqual(estimator.device_label, "cuda:0")

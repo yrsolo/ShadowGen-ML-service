@@ -1,6 +1,12 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+
+
+@dataclass(frozen=True)
+class TritonTensorBinding:
+    tensor_name: str
+    datatype: str
 
 
 @dataclass(frozen=True)
@@ -8,6 +14,8 @@ class TritonModelBinding:
     stage_key: str
     model_variant: str
     model_name: str
+    inputs: dict[str, TritonTensorBinding] = field(default_factory=dict)
+    outputs: dict[str, TritonTensorBinding] = field(default_factory=dict)
 
 
 class TritonModelRegistry:

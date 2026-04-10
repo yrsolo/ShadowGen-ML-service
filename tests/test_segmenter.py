@@ -6,6 +6,7 @@ import numpy as np
 from PIL import Image
 
 from shadowgen_ml_service.adapters.real import RealSegmenter
+from shadowgen_ml_service.core.stage_io import SegmentationInput
 
 
 class FakeNoGrad:
@@ -143,7 +144,7 @@ class SegmenterTests(unittest.TestCase):
             target_device="cuda:0",
         )
         image = Image.new("RGBA", (96, 80), (255, 255, 255, 255))
-        result = segmenter.segment(image)
+        result = segmenter.segment(SegmentationInput(image=image))
         self.assertEqual(result.mask.size, image.size)
         self.assertEqual(result.cutout_rgba.size, image.size)
         self.assertEqual(result.crop_rgba.size, image.size)

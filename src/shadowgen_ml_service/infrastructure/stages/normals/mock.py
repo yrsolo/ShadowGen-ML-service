@@ -4,6 +4,7 @@ from PIL import Image
 
 from shadowgen_ml_service.core.contracts import NormalEstimator
 from shadowgen_ml_service.core.models import NormalResult
+from shadowgen_ml_service.core.stage_io import NormalsInput
 
 
 class MockNormalEstimator(NormalEstimator):
@@ -12,7 +13,7 @@ class MockNormalEstimator(NormalEstimator):
         self.backend_name = "mock"
         self.model_variant = "mock"
 
-    def estimate(self, image: Image.Image, depth_map: Image.Image | None = None) -> NormalResult:
-        size = depth_map.size if depth_map is not None else image.size
+    def estimate(self, stage_input: NormalsInput) -> NormalResult:
+        size = stage_input.depth_map.size if stage_input.depth_map is not None else stage_input.image.size
         normal_map = Image.new("RGB", size, (127, 127, 255))
         return NormalResult(normal_map=normal_map)

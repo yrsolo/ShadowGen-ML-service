@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from shadowgen_ml_service.core.contracts import DepthEstimator
 from shadowgen_ml_service.core.models import DepthResult
+from shadowgen_ml_service.core.stage_io import DepthInput
 from shadowgen_ml_service.infrastructure.backends.triton.client import TritonInferenceClient
 from shadowgen_ml_service.infrastructure.backends.triton.model_registry import TritonModelBinding
-from shadowgen_ml_service.infrastructure.backends.triton.serializers import base64_png_to_image, image_to_base64_png
+from shadowgen_ml_service.infrastructure.backends.triton.serializers import grayscale_output_to_image, image_to_nchw_float32_input, mask_to_nchw_float32_input
 
 
 class TritonDepthEstimator(DepthEstimator):
@@ -14,14 +15,15 @@ class TritonDepthEstimator(DepthEstimator):
         self.client = client
         self.binding = binding
         self.device_label = "triton"
-        self.model_variant = binding.model_name
+        self.model_variant = binding.model_variant
 
-    def estimate(self, image, mask) -> DepthResult:
-        response = self.client.infer_json(
+    def estimate(self, stage_input: DepthInput) -> DepthResult:
+        response = self.client.infer(
             self.binding.model_name,
-            {
-                "image_base64": image_to_base64_png(image.convert("RGBA")),
-                "mask_base64": image_to_base64_png(mask.convert("L")),
-            },
+            inputs=[
+                image_to_nchw_float32_input(self.binding.inputs["image"].tensor_name, stage_input.image.convert("RGB")),
+                mask_to_nchw_float32_input(self.binding.inputs["mask"].tensor_name, stage_input.mask.convert("L")),
+            ],
+            outputs=[self.binding.outputs["depth"].tensor_name],
         )
-        return DepthResult(depth_map=base64_png_to_image(response["depth_base64"], mode="L"))
+        return DepthResult(depth_map=grayscale_output_to_image(response[self.binding.outputs["depth"].tensor_name]))

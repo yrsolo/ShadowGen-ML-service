@@ -76,6 +76,10 @@ The runtime resolves:
 
 This metadata is exposed through both capabilities and dev-stage responses.
 
+Heavy stages now enter execution through canonical `stage_io` input objects, so orchestration no longer depends on backend-specific argument lists.
+
+The Triton subsystem now targets the standard Triton tensor infer schema with explicit `inputs` and `outputs` instead of stage-specific JSON bodies.
+
 ## Project Layout
 
 ```text

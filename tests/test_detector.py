@@ -6,6 +6,7 @@ import numpy as np
 from PIL import Image
 
 from shadowgen_ml_service.adapters.real import RealDetector, select_primary_detection
+from shadowgen_ml_service.core.stage_io import DetectionInput
 
 
 class FakeTensor:
@@ -126,7 +127,7 @@ class DetectorTests(unittest.TestCase):
             text_threshold=0.2,
             target_device="cuda:0",
         )
-        result = detector.detect(Image.new("RGB", (320, 240), "white"), padding_px=100)
+        result = detector.detect(DetectionInput(image=Image.new("RGB", (320, 240), "white"), padding_px=100))
         self.assertEqual(result.bbox, (18, 28, 110, 220))
         self.assertAlmostEqual(result.confidence, 0.88, places=3)
         self.assertEqual(FakeProcessor.last_from_pretrained[0], "IDEA-Research/grounding-dino-base")

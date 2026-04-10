@@ -17,11 +17,12 @@ from shadowgen_ml_service.core.models import (
     SegmentationResult,
     ShadowResult,
 )
+from shadowgen_ml_service.core.stage_io import DetectionInput, DepthInput, NormalsInput, SegmentationInput, ShadowInput
 
 
 class Detector(ABC):
     @abstractmethod
-    def detect(self, image: Image.Image, padding_px: int) -> DetectionResult:
+    def detect(self, stage_input: DetectionInput) -> DetectionResult:
         raise NotImplementedError
 
 
@@ -33,7 +34,7 @@ class GeometryEstimator(ABC):
 
 class Segmenter(ABC):
     @abstractmethod
-    def segment(self, image: Image.Image) -> SegmentationResult:
+    def segment(self, stage_input: SegmentationInput) -> SegmentationResult:
         raise NotImplementedError
 
 
@@ -45,27 +46,19 @@ class ForegroundColorEstimator(ABC):
 
 class DepthEstimator(ABC):
     @abstractmethod
-    def estimate(self, image: Image.Image, mask: Image.Image) -> DepthResult:
+    def estimate(self, stage_input: DepthInput) -> DepthResult:
         raise NotImplementedError
 
 
 class NormalEstimator(ABC):
     @abstractmethod
-    def estimate(self, image: Image.Image, depth_map: Image.Image | None = None) -> NormalResult:
+    def estimate(self, stage_input: NormalsInput) -> NormalResult:
         raise NotImplementedError
 
 
 class ShadowGenerator(ABC):
     @abstractmethod
-    def generate(
-        self,
-        cutout_rgba: Image.Image,
-        mask: Image.Image,
-        depth_map: Image.Image,
-        normal_map: Image.Image,
-        geometry: GeometryResult,
-        shadow: ShadowSpec,
-    ) -> ShadowResult:
+    def generate(self, stage_input: ShadowInput) -> ShadowResult:
         raise NotImplementedError
 
 

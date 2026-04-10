@@ -49,7 +49,7 @@ Main files:
   Internal result models and execution-aware runtime metadata.
 
 - [stage_io.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/core/stage_io.py)
-  Canonical stage input objects used to keep local and Triton execution aligned.
+  Canonical heavy-stage input objects. This is the real boundary between orchestration and executors.
 
 - [job_contracts.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/core/job_contracts.py)
   Async render job state and repository-facing contracts.
@@ -162,16 +162,16 @@ This is the shared Triton subsystem.
 Main files:
 
 - [client.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/infrastructure/backends/triton/client.py)
-  Shared transport wrapper for Triton calls.
+  Shared transport wrapper for standard Triton infer calls with explicit tensor inputs and outputs.
 
 - [config.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/infrastructure/backends/triton/config.py)
   Triton endpoint settings.
 
 - [model_registry.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/infrastructure/backends/triton/model_registry.py)
-  Mapping from stage and model variant to Triton model identifiers.
+  Mapping from stage and model variant to Triton model identifiers plus tensor binding schemas.
 
 - [serializers.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/infrastructure/backends/triton/serializers.py)
-  Tensor and image serialization helpers.
+  Tensor serialization and response decoding helpers for the standard Triton tensor protocol.
 
 - [errors.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/src/shadowgen_ml_service/infrastructure/backends/triton/errors.py)
   Triton-specific error types.

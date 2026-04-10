@@ -2,9 +2,16 @@ from __future__ import annotations
 
 from shadowgen_ml_service.core.contracts import ShadowGenerator
 from shadowgen_ml_service.core.models import ShadowResult
+from shadowgen_ml_service.core.stage_io import ShadowInput
 from shadowgen_ml_service.infrastructure.backends.triton.client import TritonInferenceClient
 from shadowgen_ml_service.infrastructure.backends.triton.model_registry import TritonModelBinding
-from shadowgen_ml_service.infrastructure.backends.triton.serializers import base64_png_to_image, image_to_base64_png
+from shadowgen_ml_service.infrastructure.backends.triton.serializers import (
+    grayscale_to_nchw_float32_input,
+    image_to_nchw_float32_input,
+    rgb_to_nchw_float32_input,
+    rgba_output_to_image,
+    scalar_to_input,
+)
 
 
 class TritonShadowGenerator(ShadowGenerator):
@@ -16,21 +23,19 @@ class TritonShadowGenerator(ShadowGenerator):
         self.device_label = "triton"
         self.model_variant = model_variant
 
-    def generate(self, cutout_rgba, mask, depth_map, normal_map, geometry, shadow) -> ShadowResult:
-        response = self.client.infer_json(
+    def generate(self, stage_input: ShadowInput) -> ShadowResult:
+        response = self.client.infer(
             self.binding.model_name,
-            {
-                "img_base64": image_to_base64_png(cutout_rgba.convert("RGBA")),
-                "mask_base64": image_to_base64_png(mask.convert("L")),
-                "depth_base64": image_to_base64_png(depth_map.convert("L")),
-                "normal_base64": image_to_base64_png(normal_map.convert("RGB")),
-                "angle": float(shadow.angle_deg),
-                "elevation": float(shadow.elevation_deg),
-                "softness": float(shadow.softness),
-                "reflection": float(shadow.reflection),
-                "camera_pitch": float(geometry.camera_pitch),
-                "camera_roll": float(geometry.camera_roll),
-                "camera_fov": float(geometry.camera_fov),
-            },
+            inputs=[
+                image_to_nchw_float32_input(self.binding.inputs["img"].tensor_name, stage_input.img.convert("RGBA")),
+                grayscale_to_nchw_float32_input(self.binding.inputs["mask"].tensor_name, stage_input.mask.convert("L")),
+                grayscale_to_nchw_float32_input(self.binding.inputs["depth"].tensor_name, stage_input.depth.convert("L")),
+                rgb_to_nchw_float32_input(self.binding.inputs["normal"].tensor_name, stage_input.normal.convert("RGB")),
+                scalar_to_input(self.binding.inputs["angle"].tensor_name, stage_input.angle),
+                scalar_to_input(self.binding.inputs["elevation"].tensor_name, stage_input.elevation),
+                scalar_to_input(self.binding.inputs["softness"].tensor_name, stage_input.softness),
+                scalar_to_input(self.binding.inputs["reflection"].tensor_name, stage_input.reflection),
+            ],
+            outputs=[self.binding.outputs["shadow"].tensor_name],
         )
-        return ShadowResult(shadow_rgba=base64_png_to_image(response["shadow_base64"], mode="RGBA"))
+        return ShadowResult(shadow_rgba=rgba_output_to_image(response[self.binding.outputs["shadow"].tensor_name]))

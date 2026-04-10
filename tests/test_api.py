@@ -225,7 +225,8 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(normals["status"], "completed")
         self.assertIn(normals["actual_mode"], {"local", "triton", "local-fallback", "mock-fallback"})
         self.assertIn("normals_width", normals["details"])
-        self.assertIn(normals["details"]["backend"], {"stable-normal", "from-depth", "mock"})
+        self.assertIn(normals["details"]["backend"], {"local", "triton", "mock"})
+        self.assertIn(normals["details"]["variant"], {"stable-normal", "from-depth-v2", "mock-v1"})
         preview_names = {preview["name"] for preview in normals["previews"]}
         self.assertIn("normals", preview_names)
 
@@ -291,11 +292,11 @@ class ApiTests(unittest.TestCase):
         app = create_app(Settings())
 
         class BombDetector:
-            def detect(self, image, padding_px):
+            def detect(self, stage_input):
                 raise AssertionError("real detector should not run in mock mode")
 
         class StubMockDetector:
-            def detect(self, image, padding_px):
+            def detect(self, stage_input):
                 return DetectionResult(bbox=(1, 2, 30, 40), confidence=0.123)
 
         app.state.render_service.runtime.real_detector = BombDetector()
@@ -343,11 +344,12 @@ class ApiTests(unittest.TestCase):
         app = create_app(Settings())
 
         class BombSegmenter:
-            def segment(self, image):
+            def segment(self, stage_input):
                 raise AssertionError("real segmenter should not run in mock mode")
 
         class StubMockSegmenter:
-            def segment(self, image):
+            def segment(self, stage_input):
+                image = stage_input.image
                 mask = Image.new("L", image.size, 255)
                 cutout = image.copy()
                 cutout.putalpha(mask)
@@ -376,7 +378,7 @@ class ApiTests(unittest.TestCase):
         app = create_app(Settings())
 
         class BombDepthEstimator:
-            def estimate(self, image, mask):
+            def estimate(self, stage_input):
                 raise AssertionError("real depth estimator should not run in mock mode")
 
         app.state.render_service.runtime.real_depth = BombDepthEstimator()
@@ -396,7 +398,7 @@ class ApiTests(unittest.TestCase):
         app = create_app(Settings())
 
         class BombNormalsEstimator:
-            def estimate(self, image, depth_map=None):
+            def estimate(self, stage_input):
                 raise AssertionError("real normals estimator should not run in mock mode")
 
         app.state.render_service.runtime.real_normals = BombNormalsEstimator()
@@ -416,7 +418,7 @@ class ApiTests(unittest.TestCase):
         app = create_app(Settings())
 
         class BombShadowGenerator:
-            def generate(self, cutout_rgba, mask, depth_map, normal_map, geometry, shadow):
+            def generate(self, stage_input):
                 raise AssertionError("real shadow generator should not run in mock mode")
 
         app.state.render_service.runtime.real_shadow = BombShadowGenerator()
@@ -469,7 +471,8 @@ class ApiTests(unittest.TestCase):
                 def __init__(self) -> None:
                     self.seen_size = None
 
-                def segment(self, image):
+                def segment(self, stage_input):
+                    image = stage_input.image
                     self.seen_size = image.size
                     mask = Image.new("L", image.size, 255)
                     cutout = image.copy()
