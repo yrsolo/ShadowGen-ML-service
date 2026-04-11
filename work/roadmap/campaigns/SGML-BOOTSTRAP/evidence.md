@@ -10,6 +10,7 @@
 - runtime refactored to a Triton-ready registry model
 - sync and async render paths now coexist
 - project docs rewritten into a usable current-state reference set
+- worker-facing integration contract documented for `ShadowGen-v2`
 
 ## Captured Evidence
 
@@ -129,6 +130,7 @@ The active docs now provide:
 - codebase map in `docs/modules.md`
 - local runtime and model bring-up notes in `docs/runbook-local.md`
 - public, debug, and async API summary in `docs/api.md`
+- worker-to-ML-core integration contract in `docs/worker-core-contract.md`
 - repository workflow rules in `docs/workflow.md`
 
 ### Validation Evidence

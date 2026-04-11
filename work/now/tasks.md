@@ -27,6 +27,10 @@
   - [x] derive compatibility `actual_mode` strictly from execution outcome
 - [x] Add async render job API and in-memory job backend
 - [x] Update project documentation to match the Triton-ready repository state
+- [x] Document the worker <-> ML-core contract:
+  - [x] define sync compatibility and async-native worker modes
+  - [x] define capabilities handshake for batching and async support
+  - [x] define responsibility split between worker concurrency and ML-core batching
 
 ## Next Likely
 

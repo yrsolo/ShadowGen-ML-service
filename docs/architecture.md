@@ -415,3 +415,16 @@ This architecture is optimized for:
 - preserving the debug web UI
 - supporting sync and async execution side by side
 - keeping stage ownership explicit and testable
+
+## Worker Integration Boundary
+
+The intended upstream integration boundary is:
+
+- product queue and business retries stay outside this repository
+- an upstream worker talks to the ML core only through HTTP
+- the worker owns job-level concurrency
+- the ML core owns stage-level batching decisions
+
+The formal worker-facing contract is documented in:
+
+- [worker-core-contract.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/worker-core-contract.md)

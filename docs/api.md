@@ -146,6 +146,11 @@ This is the primary machine-readable place to understand whether a stage current
 - `local`
 - `triton`
 
+This is also the primary worker-facing handshake endpoint for deciding:
+
+- whether the ML core should be used in sync or async mode
+- whether batching is supported by the active heavy-stage backends
+
 ## `GET /health`
 
 Current fields:
@@ -339,3 +344,18 @@ Previews:
 - `mock-fallback` means a non-mock backend was requested but the stage fell back to mock
 - `local-fallback` means a Triton backend was requested but the stage fell back to local execution
 - `unavailable` means the interface knows the backend slot but no executable backend is currently wired
+
+## Worker Integration Notes
+
+The recommended worker contract is documented separately in:
+
+- [worker-core-contract.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/worker-core-contract.md)
+
+Worker authors should treat:
+
+- `GET /v1/capabilities`
+  - as the feature-discovery handshake
+- `POST /v1/render`
+  - as the sync compatibility path
+- `POST /v1/render/jobs`
+  - as the preferred async path when `async_enabled=true`
