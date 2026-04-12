@@ -6,12 +6,20 @@ Current live-first model:
 
 - `shadowgen_segmenter`
 
-Export the ONNX model into:
+Current repository shape for `shadowgen_segmenter`:
 
-- `ops/triton/model_repository/shadowgen_segmenter/1/model.onnx`
+- `ops/triton/model_repository/shadowgen_segmenter/config.pbtxt`
+- `ops/triton/model_repository/shadowgen_segmenter/1/model.py`
 
-Recommended command:
+Current operational path:
 
-```powershell
-.venv\Scripts\python.exe tools\export_segmenter_onnx.py
-```
+- temporary Triton `python` backend for BiRefNet
+- model returns a mask-first tensor contract
+- `cutout`, `crop`, and compatibility `bbox` remain ML-core postprocess responsibilities
+
+Optional ONNX tooling is still tracked, but current BiRefNet export is blocked in this environment by `torchvision::deform_conv2d`.
+
+Relevant files:
+
+- `ops/triton/Dockerfile.segmenter-python`
+- `tools/export_segmenter_onnx.py`

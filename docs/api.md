@@ -315,7 +315,7 @@ Previews:
 
 Operational note:
 
-- when `actual_backend_kind = triton`, the current live contract is a mask-first ONNX model
+- when `actual_backend_kind = triton`, the current live contract is a mask-first Triton Python backend
 - `cutout` and compatibility `bbox` are reconstructed in ML-core postprocess after Triton returns `mask`
 
 ### `foreground_refiner`

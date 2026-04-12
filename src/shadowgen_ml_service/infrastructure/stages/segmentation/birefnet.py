@@ -11,6 +11,11 @@ from shadowgen_ml_service.core.contracts import Segmenter
 from shadowgen_ml_service.core.models import SegmentationResult
 from shadowgen_ml_service.core.stage_io import SegmentationInput
 from shadowgen_ml_service.infrastructure.stages.shared.model_support import RealAdapterProbe, import_module, module_available
+from shadowgen_ml_service.infrastructure.stages.segmentation.torch_runtime import (
+    TorchCompileConfig,
+    configure_torch_runtime,
+    maybe_compile_model,
+)
 from shadowgen_ml_service.utils.images import ensure_pil, pil_to_asset
 
 
@@ -72,6 +77,10 @@ class RealSegmenter(Segmenter):
         mask_threshold: float = 0.5,
         target_device: str = "cuda",
         local_files_only: bool = False,
+        compile_enabled: bool = False,
+        compile_mode: str = "reduce-overhead",
+        compile_backend: str | None = None,
+        matmul_precision: str = "high",
     ) -> None:
         self.model_id = model_id
         self.resolution = resolution
@@ -80,7 +89,15 @@ class RealSegmenter(Segmenter):
         self.local_files_only = local_files_only
         self._torch = torch_module or import_module("torch")
         self._transforms = transforms_module or import_module("torchvision.transforms")
+        self.compile_config = TorchCompileConfig(
+            enabled=compile_enabled,
+            mode=compile_mode,
+            backend=compile_backend or None,
+            matmul_precision=matmul_precision,
+        )
         self.device_label = self._resolve_device_label()
+        self.compile_status = "disabled"
+        configure_torch_runtime(self._torch, matmul_precision=self.compile_config.matmul_precision)
         self._transform_image = self._transforms.Compose(
             [
                 self._transforms.Resize((resolution, resolution)),
@@ -113,6 +130,12 @@ class RealSegmenter(Segmenter):
             self._model.eval()
         if hasattr(self._model, "to"):
             self._model = self._model.to(self.device_label)
+        self._model, self.compile_status = maybe_compile_model(
+            self._model,
+            self._torch,
+            device_label=self.device_label,
+            config=self.compile_config,
+        )
         self.device_label = self._infer_device_label()
 
     def segment(self, stage_input: SegmentationInput) -> SegmentationResult:

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 import unittest
 
 import numpy as np
@@ -26,6 +27,21 @@ class _FakeClient:
 
 
 class TritonSegmenterTests(unittest.TestCase):
+    def test_segmenter_triton_model_repository_scaffold_uses_python_backend(self) -> None:
+        config_path = (
+            Path(__file__).resolve().parents[1]
+            / "ops"
+            / "triton"
+            / "model_repository"
+            / "shadowgen_segmenter"
+            / "config.pbtxt"
+        )
+        config_text = config_path.read_text(encoding="utf-8")
+
+        self.assertIn('backend: "python"', config_text)
+        self.assertIn('key: "compile_enabled"', config_text)
+        self.assertTrue((config_path.parent / "1" / "model.py").exists())
+
     def test_segmenter_onnx_export_contract_requires_mask_only_names(self) -> None:
         contract = default_segmenter_onnx_contract()
         validate_segmenter_export_names(input_names=[contract.input_name], output_names=[contract.output_name])

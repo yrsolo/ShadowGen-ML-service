@@ -166,6 +166,12 @@ Current local-only phase-1 stages:
 
 This means web UI, sync render, async jobs, cache, and previews remain in this service even when heavy inference is moved to Triton.
 
+Current live Triton bridge:
+
+- `segmenter` uses a temporary Triton `python` backend around BiRefNet
+- `torch.compile` remains an opt-in acceleration lever while ONNX export is blocked by `torchvision::deform_conv2d`
+- `ONNX` stays the planned first long-term production model format
+
 ## Where To Read Next
 
 - [Docs Index](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/README.md)

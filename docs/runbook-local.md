@@ -148,31 +148,28 @@ Current execution backend choices for heavy stages:
 - Backends: `mock`, `local`, `triton`
 - Local backend: BiRefNet
 - First live Triton target: `shadowgen_segmenter`
-- First production Triton format: `ONNX`
+- Current live Triton packaging: temporary `python` backend
+- Long-term production Triton format: `ONNX`
 - Env vars:
   - `SHADOWGEN_BIREFNET_MODEL_ID`
   - `SHADOWGEN_BIREFNET_RESOLUTION`
   - `SHADOWGEN_BIREFNET_MASK_THRESHOLD`
   - `SHADOWGEN_BIREFNET_ALLOW_CPU`
+  - `SHADOWGEN_BIREFNET_COMPILE_ENABLED`
+  - `SHADOWGEN_BIREFNET_COMPILE_MODE`
+  - `SHADOWGEN_BIREFNET_COMPILE_BACKEND`
+  - `SHADOWGEN_BIREFNET_MATMUL_PRECISION`
   - `SHADOWGEN_SEGMENTER_BACKEND_KIND`
   - `SHADOWGEN_TRITON_SEGMENTER_MODEL`
 
-#### Export and Triton model repository
+#### Triton Python backend and model repository
 
 Tracked repository scaffold:
 
 - [ops/triton/model_repository/README.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/ops/triton/model_repository/README.md)
 - [ops/triton/model_repository/shadowgen_segmenter/config.pbtxt](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/ops/triton/model_repository/shadowgen_segmenter/config.pbtxt)
-
-Export command:
-
-```powershell
-.venv\Scripts\python.exe tools\export_segmenter_onnx.py
-```
-
-Expected output path:
-
-- `ops/triton/model_repository/shadowgen_segmenter/1/model.onnx`
+- [ops/triton/model_repository/shadowgen_segmenter/1/model.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/ops/triton/model_repository/shadowgen_segmenter/1/model.py)
+- [ops/triton/Dockerfile.segmenter-python](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/ops/triton/Dockerfile.segmenter-python)
 
 Current live contract:
 
@@ -189,7 +186,8 @@ Current blocker note:
 
 - in the current environment BiRefNet ONNX export is blocked by `torchvision::deform_conv2d`
 - the export tool now tries both the modern and legacy ONNX exporters and reports this blocker explicitly
-- if this blocker remains, the next practical fallback is a temporary Triton Python backend for `segmenter`
+- `shadowgen_segmenter` now uses a temporary Triton Python backend so we can run a live Triton stage without replacing the model
+- `torch.compile` is exposed as an opt-in acceleration path for both the local backend and the Triton Python backend
 
 ### Foreground Refinement
 
@@ -411,14 +409,28 @@ Inspect:
 
 ### How to verify the live Triton segmenter
 
-1. Set:
+1. Build a Triton image with the Python backend dependencies:
+
+```powershell
+$dockerImage = "shadowgen-triton-segmenter:py"
+docker build -f ops/triton/Dockerfile.segmenter-python -t $dockerImage .
+```
+
+2. Start Triton on the tracked model repository:
+
+```powershell
+docker run --rm -p 8001:8001 -v "${PWD}/ops/triton/model_repository:/models" $dockerImage tritonserver --model-repository=/models
+```
+
+3. Point ML-core at Triton:
 
 ```powershell
 $env:SHADOWGEN_TRITON_URL="http://127.0.0.1:8001"
 $env:SHADOWGEN_SEGMENTER_BACKEND_KIND="triton"
+$env:SHADOWGEN_BIREFNET_COMPILE_ENABLED="true"
 ```
 
-2. Start the service and check:
+4. Start the service and check:
 
 ```powershell
 curl http://127.0.0.1:8000/v1/capabilities
@@ -431,7 +443,7 @@ Expected segmenter signals:
 - `available = true`
 - `endpoint` is filled
 
-3. In `/playground`, rerun `Segmentation` with `backend_kind = triton`.
+5. In `/playground`, rerun `Segmentation` with `backend_kind = triton`.
 
 Expected stage metadata:
 

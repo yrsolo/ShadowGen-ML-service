@@ -298,9 +298,16 @@ def _register_segmenter(
                 resolution=settings.birefnet_resolution,
                 mask_threshold=settings.birefnet_mask_threshold,
                 target_device=settings.target_device,
+                compile_enabled=settings.birefnet_compile_enabled,
+                compile_mode=settings.birefnet_compile_mode,
+                compile_backend=settings.birefnet_compile_backend,
+                matmul_precision=settings.birefnet_matmul_precision,
             )
             available = True
-            detail = f"BiRefNet local backend active (model_id={settings.birefnet_model_id})"
+            detail = (
+                f"BiRefNet local backend active (model_id={settings.birefnet_model_id}, "
+                f"compile={getattr(handler, 'compile_status', 'disabled')})"
+            )
             device = getattr(handler, "device_label", "cpu")
         except Exception as exc:
             detail = f"BiRefNet local init failed: {exc}"
