@@ -193,7 +193,12 @@ def _register_detector(settings: Settings, registry: PipelineBackendRegistry, tr
         handler,
     )
     binding = triton_models.get("detector", "grounding-dino")
-    triton_available = bool(triton_ready and binding is not None)
+    triton_available, triton_detail = _probe_triton_backend(
+        triton_client=triton_client,
+        binding=binding,
+        triton_ready=triton_ready,
+        unavailable_detail="Triton detector endpoint or model is unavailable",
+    )
     registry.register(
         backend_descriptor(
             stage_key="detector",
@@ -202,7 +207,7 @@ def _register_detector(settings: Settings, registry: PipelineBackendRegistry, tr
             model_name=binding.model_name if binding is not None else settings.triton_detector_model,
             model_version="triton-managed",
             available=triton_available,
-            detail="Triton detector endpoint available" if triton_available else "Triton detector endpoint or model is unavailable",
+            detail=triton_detail,
             device="triton",
             endpoint=triton_client.endpoint,
             supports_batching=False,
@@ -315,7 +320,12 @@ def _register_segmenter(
         handler,
     )
     binding = triton_models.get("segmenter", "birefnet")
-    triton_available = bool(triton_ready and binding is not None)
+    triton_available, triton_detail = _probe_triton_backend(
+        triton_client=triton_client,
+        binding=binding,
+        triton_ready=triton_ready,
+        unavailable_detail="Triton segmenter endpoint or model is unavailable",
+    )
     registry.register(
         backend_descriptor(
             stage_key="segmenter",
@@ -324,7 +334,7 @@ def _register_segmenter(
             model_name=binding.model_name if binding is not None else settings.triton_segmenter_model,
             model_version="triton-managed",
             available=triton_available,
-            detail="Triton segmenter endpoint available" if triton_available else "Triton segmenter endpoint or model is unavailable",
+            detail=triton_detail,
             device="triton",
             endpoint=triton_client.endpoint,
             supports_batching=True,
@@ -423,7 +433,12 @@ def _register_depth(
         handler,
     )
     binding = triton_models.get("depth_estimator", "depth-anything-v2-small")
-    triton_available = bool(triton_ready and binding is not None)
+    triton_available, triton_detail = _probe_triton_backend(
+        triton_client=triton_client,
+        binding=binding,
+        triton_ready=triton_ready,
+        unavailable_detail="Triton depth endpoint or model is unavailable",
+    )
     registry.register(
         backend_descriptor(
             stage_key="depth_estimator",
@@ -432,7 +447,7 @@ def _register_depth(
             model_name=binding.model_name if binding is not None else settings.triton_depth_model,
             model_version="triton-managed",
             available=triton_available,
-            detail="Triton depth endpoint available" if triton_available else "Triton depth endpoint or model is unavailable",
+            detail=triton_detail,
             device="triton",
             endpoint=triton_client.endpoint,
             supports_batching=True,
@@ -513,7 +528,12 @@ def _register_normals(
         handler,
     )
     binding = triton_models.get("normal_estimator", "stable-normal")
-    triton_available = bool(triton_ready and binding is not None)
+    triton_available, triton_detail = _probe_triton_backend(
+        triton_client=triton_client,
+        binding=binding,
+        triton_ready=triton_ready,
+        unavailable_detail="Triton normals endpoint or model is unavailable",
+    )
     registry.register(
         backend_descriptor(
             stage_key="normal_estimator",
@@ -522,7 +542,7 @@ def _register_normals(
             model_name=binding.model_name if binding is not None else settings.triton_normals_model,
             model_version="triton-managed",
             available=triton_available,
-            detail="Triton normals endpoint available" if triton_available else "Triton normals endpoint or model is unavailable",
+            detail=triton_detail,
             device="triton",
             endpoint=triton_client.endpoint,
             supports_batching=True,
@@ -586,7 +606,12 @@ def _register_shadow(
         handler,
     )
     binding = triton_models.get("shadow_generator", "v2-diff")
-    triton_available = bool(triton_ready and binding is not None)
+    triton_available, triton_detail = _probe_triton_backend(
+        triton_client=triton_client,
+        binding=binding,
+        triton_ready=triton_ready,
+        unavailable_detail="V2-DIFF Triton backend scaffold only",
+    )
     registry.register(
         backend_descriptor(
             stage_key="shadow_generator",
@@ -595,7 +620,7 @@ def _register_shadow(
             model_name=binding.model_name if binding is not None else settings.triton_shadow_v2_model,
             model_version="triton-managed",
             available=triton_available,
-            detail="V2-DIFF Triton backend available" if triton_available else "V2-DIFF Triton backend scaffold only",
+            detail=triton_detail,
             device="triton",
             endpoint=triton_client.endpoint,
             supports_batching=True,
@@ -810,3 +835,20 @@ def _derive_implementation(
     if actual_backend_kind == "mock":
         return "mock-fallback" if preferred_backend_kind != "mock" or fallback_reason else "mock"
     return f"{actual_backend_kind}-fallback" if fallback_reason or actual_variant != preferred_variant else actual_backend_kind
+
+
+def _probe_triton_backend(
+    *,
+    triton_client: TritonInferenceClient,
+    binding,
+    triton_ready: bool,
+    unavailable_detail: str,
+) -> tuple[bool, str]:
+    if binding is None:
+        return False, unavailable_detail
+    if not triton_ready:
+        return False, "Triton endpoint is unavailable"
+    available, detail = triton_client.probe_binding(binding)
+    if available:
+        return True, detail
+    return False, detail or unavailable_detail

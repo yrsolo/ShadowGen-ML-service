@@ -113,6 +113,23 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(len(triton_descriptors), 1)
         self.assertEqual(triton_descriptors[0].model_variant, "v2-diff")
 
+    def test_segmenter_triton_descriptor_is_only_available_when_binding_probe_passes(self) -> None:
+        with patch("shadowgen_ml_service.bootstrap.container.TritonInferenceClient.ping", return_value=True):
+            with patch(
+                "shadowgen_ml_service.bootstrap.container.TritonInferenceClient.probe_binding",
+                side_effect=lambda *args, **_kwargs: (
+                    args[-1].stage_key == "segmenter",
+                    "ok" if args[-1].stage_key == "segmenter" else "missing",
+                ),
+            ):
+                runtime = build_runtime(Settings(runtime_mode="auto", triton_url="http://triton.local", segmenter_backend_kind="triton"))
+
+        segmenter_component = next(item for item in runtime.descriptor.components if item.name == "segmenter")
+        self.assertEqual(segmenter_component.backend_kind, "triton")
+        self.assertEqual(segmenter_component.endpoint, "http://triton.local")
+        depth_component = next(item for item in runtime.descriptor.components if item.name == "depth_estimator")
+        self.assertNotEqual(depth_component.backend_kind, "triton")
+
 
 if __name__ == "__main__":
     unittest.main()

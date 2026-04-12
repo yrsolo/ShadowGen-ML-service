@@ -36,10 +36,15 @@
   - [x] add worker-facing readiness and submit-mode metadata
   - [x] add async idempotency via `request_id`
   - [x] add internal Triton stage micro-batching for heavy downstream stages
+- [x] Bring up the first live Triton stage path for `segmenter`:
+  - [x] define ONNX-first segmenter contract
+  - [x] add Triton model repository scaffold for `shadowgen_segmenter`
+  - [x] add BiRefNet ONNX export tool
+  - [x] switch segmenter Triton adapter to live mask-first postprocess flow
 
 ## Next Likely
 
-- [ ] Implement working Triton execution for one heavy stage end-to-end against a real Triton server
+- [ ] Run the first live end-to-end Triton smoke against a real `shadowgen_segmenter` server
 - [ ] Implement the real `V2-DIFF` shadow backend
 - [ ] Add shadow-stage input previews for `img`, `mask`, `depth`, and `normal`
 - [ ] Continue replacing compatibility shims with direct imports from the layered structure

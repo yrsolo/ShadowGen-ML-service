@@ -147,6 +147,8 @@ Current execution backend choices for heavy stages:
 
 - Backends: `mock`, `local`, `triton`
 - Local backend: BiRefNet
+- First live Triton target: `shadowgen_segmenter`
+- First production Triton format: `ONNX`
 - Env vars:
   - `SHADOWGEN_BIREFNET_MODEL_ID`
   - `SHADOWGEN_BIREFNET_RESOLUTION`
@@ -154,6 +156,34 @@ Current execution backend choices for heavy stages:
   - `SHADOWGEN_BIREFNET_ALLOW_CPU`
   - `SHADOWGEN_SEGMENTER_BACKEND_KIND`
   - `SHADOWGEN_TRITON_SEGMENTER_MODEL`
+
+#### Export and Triton model repository
+
+Tracked repository scaffold:
+
+- [ops/triton/model_repository/README.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/ops/triton/model_repository/README.md)
+- [ops/triton/model_repository/shadowgen_segmenter/config.pbtxt](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/ops/triton/model_repository/shadowgen_segmenter/config.pbtxt)
+
+Export command:
+
+```powershell
+.venv\Scripts\python.exe tools\export_segmenter_onnx.py
+```
+
+Expected output path:
+
+- `ops/triton/model_repository/shadowgen_segmenter/1/model.onnx`
+
+Current live contract:
+
+- input `image`: `FP32`, batched `NCHW`, normalized `0..1`
+- output `mask`: `FP32`, batched `NCHW`
+
+Postprocess kept inside ML-core:
+
+- `cutout`
+- `crop`
+- compatibility `bbox`
 
 ### Foreground Refinement
 
@@ -372,6 +402,36 @@ Inspect:
 - `endpoint`
 - `/v1/capabilities`
 - startup logs
+
+### How to verify the live Triton segmenter
+
+1. Set:
+
+```powershell
+$env:SHADOWGEN_TRITON_URL="http://127.0.0.1:8001"
+$env:SHADOWGEN_SEGMENTER_BACKEND_KIND="triton"
+```
+
+2. Start the service and check:
+
+```powershell
+curl http://127.0.0.1:8000/v1/capabilities
+```
+
+Expected segmenter signals:
+
+- `backend_kind = triton`
+- `model_name = shadowgen_segmenter`
+- `available = true`
+- `endpoint` is filled
+
+3. In `/playground`, rerun `Segmentation` with `backend_kind = triton`.
+
+Expected stage metadata:
+
+- `actual_backend_kind = triton`
+- `device = triton`
+- `endpoint` is filled
 
 ### `V2-DIFF` is unavailable
 

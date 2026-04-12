@@ -8,10 +8,12 @@ import tempfile
 import threading
 import time
 import unittest
+from unittest.mock import patch
 from uuid import uuid4
 
 from fastapi.testclient import TestClient
 from PIL import Image, ImageDraw
+import numpy as np
 
 from shadowgen_ml_service.app import create_app
 from shadowgen_ml_service.config import Settings
@@ -70,6 +72,27 @@ class ApiTests(unittest.TestCase):
         self.assertIn("active_backend_mode", payload)
         self.assertIn("execution_default_backend", payload)
         self.assertIn("async_enabled", payload)
+
+    def test_capabilities_mark_segmenter_triton_available_when_live_model_is_connected(self) -> None:
+        def fake_probe_binding(*args, **_kwargs):
+            binding = args[-1]
+            if binding.stage_key == "segmenter":
+                return True, f"Triton model {binding.model_name} is ready"
+            return False, f"Triton model {binding.model_name} is not ready"
+
+        with patch("shadowgen_ml_service.bootstrap.container.TritonInferenceClient.ping", return_value=True):
+            with patch("shadowgen_ml_service.bootstrap.container.TritonInferenceClient.probe_binding", side_effect=fake_probe_binding):
+                app = create_app(Settings(triton_url="http://triton.local", segmenter_backend_kind="triton"))
+                client = TestClient(app)
+                response = client.get("/v1/capabilities")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        segmenter = next(item for item in payload["components"] if item["name"] == "segmenter")
+        self.assertEqual(segmenter["backend_kind"], "triton")
+        self.assertEqual(segmenter["model_variant"], "birefnet")
+        self.assertEqual(segmenter["device"], "triton")
+        self.assertEqual(segmenter["endpoint"], "http://triton.local")
         self.assertIn("supported_submit_modes", payload)
         self.assertIn("preferred_submit_mode", payload)
         self.assertIn("job_execution", payload)
@@ -577,6 +600,78 @@ class ApiTests(unittest.TestCase):
             self.assertEqual(recorder.seen_size, (service.settings.working_size, service.settings.working_size))
         finally:
             shutil.rmtree(temp_dir, ignore_errors=True)
+
+    def test_debug_pipeline_segmenter_triton_runs_with_live_mask_output(self) -> None:
+        def fake_probe_binding(*args, **_kwargs):
+            binding = args[-1]
+            if binding.stage_key == "segmenter":
+                return True, f"Triton model {binding.model_name} is ready"
+            return False, f"Triton model {binding.model_name} is not ready"
+
+        def fake_infer(*args, **kwargs):
+            binding = args[-1] if len(args) > 1 else args[0]
+            inputs = kwargs["inputs"]
+            self.assertEqual(binding.stage_key, "segmenter")
+            image_input = next(item for item in inputs if item["name"] == "image")
+            batch, _channels, height, width = image_input["shape"]
+            mask = np.ones((batch, 1, height, width), dtype=np.float32)
+            mask[:, :, :8, :8] = 0.0
+            return {"mask": mask}
+
+        with patch("shadowgen_ml_service.bootstrap.container.TritonInferenceClient.ping", return_value=True):
+            with patch("shadowgen_ml_service.bootstrap.container.TritonInferenceClient.probe_binding", side_effect=fake_probe_binding):
+                with patch("shadowgen_ml_service.infrastructure.backends.triton.client.TritonInferenceClient.infer", side_effect=fake_infer):
+                    app = create_app(Settings(triton_url="http://triton.local", segmenter_backend_kind="triton"))
+                    client = TestClient(app)
+                    response = client.post(
+                        "/v1/dev/pipeline/run-stage/segmenter",
+                        json={
+                            "render_request": make_request(),
+                            "stage_backend_kinds": {"segmenter": "triton"},
+                            "stage_variants": {"segmenter": "birefnet"},
+                        },
+                    )
+
+        self.assertEqual(response.status_code, 200)
+        segmenter = response.json()["stages"][-1]
+        self.assertEqual(segmenter["status"], "completed")
+        self.assertEqual(segmenter["actual_backend_kind"], "triton")
+        self.assertEqual(segmenter["device"], "triton")
+        self.assertEqual(segmenter["endpoint"], "http://triton.local")
+
+    def test_render_and_async_submit_still_work_with_triton_segmenter_active(self) -> None:
+        def fake_probe_binding(*args, **_kwargs):
+            binding = args[-1]
+            if binding.stage_key == "segmenter":
+                return True, f"Triton model {binding.model_name} is ready"
+            return False, f"Triton model {binding.model_name} is not ready"
+
+        def fake_infer(*args, **kwargs):
+            binding = args[-1] if len(args) > 1 else args[0]
+            inputs = kwargs["inputs"]
+            image_input = next(item for item in inputs if item["name"] == "image")
+            batch, _channels, height, width = image_input["shape"]
+            return {"mask": np.ones((batch, 1, height, width), dtype=np.float32)}
+
+        with patch("shadowgen_ml_service.bootstrap.container.TritonInferenceClient.ping", return_value=True):
+            with patch("shadowgen_ml_service.bootstrap.container.TritonInferenceClient.probe_binding", side_effect=fake_probe_binding):
+                with patch("shadowgen_ml_service.infrastructure.backends.triton.client.TritonInferenceClient.infer", side_effect=fake_infer):
+                    app = create_app(Settings(triton_url="http://triton.local", segmenter_backend_kind="triton"))
+                    client = TestClient(app)
+                    render_response = client.post("/v1/render", json=make_request())
+                    async_response = client.post("/v1/render/jobs", json=make_request())
+                    self.assertEqual(async_response.status_code, 202)
+                    job_id = async_response.json()["job_id"]
+                    for _ in range(50):
+                        job_response = client.get(f"/v1/render/jobs/{job_id}")
+                        self.assertEqual(job_response.status_code, 200)
+                        if job_response.json()["status"] == "completed":
+                            break
+                        time.sleep(0.02)
+                    else:
+                        self.fail("async Triton segmenter job did not complete in time")
+
+        self.assertEqual(render_response.status_code, 200)
 
     def test_timeout_error_mapping(self) -> None:
         class FakeService:

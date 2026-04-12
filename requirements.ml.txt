@@ -3,4 +3,5 @@
 
 torch
 torchvision
+onnx
 -e .[ml]

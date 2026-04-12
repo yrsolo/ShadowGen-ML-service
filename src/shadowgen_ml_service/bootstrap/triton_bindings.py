@@ -25,12 +25,7 @@ def build_triton_model_registry(settings: Settings) -> TritonModelRegistry:
                 "birefnet",
                 settings.triton_segmenter_model,
                 inputs={"image": TritonTensorBinding("image", "FP32", expected_ranks=(4,), shape_policy="channel-first", channels=3)},
-                outputs={
-                    "bbox": TritonTensorBinding("bbox", "FP32", expected_ranks=(1, 2), shape_policy="bbox4"),
-                    "mask": TritonTensorBinding("mask", "FP32", expected_ranks=(3, 4), shape_policy="channel-first", channels=1),
-                    "cutout": TritonTensorBinding("cutout", "FP32", expected_ranks=(3, 4), shape_policy="channel-first", channels=4),
-                    "crop": TritonTensorBinding("crop", "FP32", expected_ranks=(3, 4), shape_policy="channel-first", channels=4),
-                },
+                outputs={"mask": TritonTensorBinding("mask", "FP32", expected_ranks=(3, 4), shape_policy="channel-first", channels=1)},
             ),
             TritonModelBinding(
                 "depth_estimator",

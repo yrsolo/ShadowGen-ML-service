@@ -95,8 +95,10 @@
 - `segmenter`
   - BiRefNet local backend
   - mock backend
-  - Triton scaffold backend
+  - live-first Triton ONNX backend contract
   - working crop, mask, and cutout previews
+  - tracked Triton model repository scaffold under `ops/triton/model_repository/shadowgen_segmenter/`
+  - reproducible ONNX export tool under `tools/export_segmenter_onnx.py`
 
 - `foreground_refiner`
   - Fast Foreground Colour Estimation stage is standalone
@@ -149,7 +151,7 @@ The active docs now provide:
 
 ## Remaining Bootstrap Gaps
 
-- no heavy stage is connected to a live Triton server yet
+- no heavy stage has been smoke-tested yet against a real external Triton server
 - `V2-DIFF` shadow backend is scaffolded but not implemented
 - compatibility shims still remain in the repository
 - Docker/deployment documentation is not yet part of bootstrap

@@ -101,6 +101,66 @@ class TritonTransportTests(unittest.TestCase):
         self.assertEqual(captured["payload"]["inputs"][0]["name"], "image")
         self.assertEqual(tensors["bbox"].shape, (1, 4))
 
+    def test_probe_binding_checks_model_ready_and_metadata(self) -> None:
+        settings = TritonBackendSettings(url="http://triton.local", protocol="http", timeout_ms=1000)
+        client = TritonInferenceClient(settings)
+        binding = TritonModelBinding(
+            stage_key="segmenter",
+            model_variant="birefnet",
+            model_name="shadowgen_segmenter",
+            inputs={"image": TritonTensorBinding("image", "FP32", expected_ranks=(4,), shape_policy="channel-first", channels=3)},
+            outputs={"mask": TritonTensorBinding("mask", "FP32", expected_ranks=(4,), shape_policy="channel-first", channels=1)},
+        )
+
+        def fake_urlopen(req, timeout):
+            if req.full_url.endswith("/v2/models/shadowgen_segmenter/ready"):
+                return _FakeHttpResponse({}, status=200)
+            if req.full_url.endswith("/v2/models/shadowgen_segmenter"):
+                return _FakeHttpResponse(
+                    {
+                        "name": "shadowgen_segmenter",
+                        "inputs": [{"name": "image", "datatype": "FP32", "shape": ["3", "-1", "-1"]}],
+                        "outputs": [{"name": "mask", "datatype": "FP32", "shape": ["1", "-1", "-1"]}],
+                    }
+                )
+            raise AssertionError(f"unexpected url {req.full_url}")
+
+        with patch("shadowgen_ml_service.infrastructure.backends.triton.client.request.urlopen", side_effect=fake_urlopen):
+            available, detail = client.probe_binding(binding)
+
+        self.assertTrue(available)
+        self.assertIn("shadowgen_segmenter", detail)
+
+    def test_probe_binding_rejects_schema_mismatch(self) -> None:
+        settings = TritonBackendSettings(url="http://triton.local", protocol="http", timeout_ms=1000)
+        client = TritonInferenceClient(settings)
+        binding = TritonModelBinding(
+            stage_key="segmenter",
+            model_variant="birefnet",
+            model_name="shadowgen_segmenter",
+            inputs={"image": TritonTensorBinding("image", "FP32", expected_ranks=(4,), shape_policy="channel-first", channels=3)},
+            outputs={"mask": TritonTensorBinding("mask", "FP32", expected_ranks=(4,), shape_policy="channel-first", channels=1)},
+        )
+
+        def fake_urlopen(req, timeout):
+            if req.full_url.endswith("/v2/models/shadowgen_segmenter/ready"):
+                return _FakeHttpResponse({}, status=200)
+            if req.full_url.endswith("/v2/models/shadowgen_segmenter"):
+                return _FakeHttpResponse(
+                    {
+                        "name": "shadowgen_segmenter",
+                        "inputs": [{"name": "image", "datatype": "FP32", "shape": ["4", "-1", "-1"]}],
+                        "outputs": [{"name": "mask", "datatype": "FP32", "shape": ["1", "-1", "-1"]}],
+                    }
+                )
+            raise AssertionError(f"unexpected url {req.full_url}")
+
+        with patch("shadowgen_ml_service.infrastructure.backends.triton.client.request.urlopen", side_effect=fake_urlopen):
+            available, detail = client.probe_binding(binding)
+
+        self.assertFalse(available)
+        self.assertIn("channels", detail)
+
     def test_model_binding_carries_tensor_schema(self) -> None:
         binding = TritonModelBinding(
             stage_key="shadow_generator",
