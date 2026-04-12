@@ -46,6 +46,7 @@
 
 - [x] Switch `segmenter` to a temporary Triton Python backend while BiRefNet ONNX export remains blocked
 - [x] Add opt-in Torch runtime acceleration knobs for BiRefNet (`torch.compile`, matmul precision)
+- [x] Add live Triton bring-up helpers and readiness checks for the temporary Python backend
 - [ ] Run the first live end-to-end Triton smoke against a real `shadowgen_segmenter` server
 - [ ] Implement the real `V2-DIFF` shadow backend
 - [ ] Add shadow-stage input previews for `img`, `mask`, `depth`, and `normal`

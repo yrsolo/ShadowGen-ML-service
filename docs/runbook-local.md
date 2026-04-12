@@ -412,14 +412,20 @@ Inspect:
 1. Build a Triton image with the Python backend dependencies:
 
 ```powershell
-$dockerImage = "shadowgen-triton-segmenter:py"
-docker build -f ops/triton/Dockerfile.segmenter-python -t $dockerImage .
+tools\run_triton_segmenter_python.ps1
 ```
 
-2. Start Triton on the tracked model repository:
+This helper script:
+
+- checks that Docker CLI is available
+- checks that the Docker Desktop WSL distro `docker-desktop` exists
+- builds the custom Triton image
+- starts Triton on the tracked model repository
+
+2. Check the Triton model readiness:
 
 ```powershell
-docker run --rm -p 8001:8001 -v "${PWD}/ops/triton/model_repository:/models" $dockerImage tritonserver --model-repository=/models
+.venv\Scripts\python.exe tools\check_triton_segmenter_ready.py
 ```
 
 3. Point ML-core at Triton:
@@ -450,6 +456,10 @@ Expected stage metadata:
 - `actual_backend_kind = triton`
 - `device = triton`
 - `endpoint` is filled
+
+Operational note:
+
+- on the current workstation, a missing Docker Desktop WSL distro `docker-desktop` blocks live Triton container startup until Docker Desktop is repaired
 
 ### `V2-DIFF` is unavailable
 

@@ -22,4 +22,6 @@ Optional ONNX tooling is still tracked, but current BiRefNet export is blocked i
 Relevant files:
 
 - `ops/triton/Dockerfile.segmenter-python`
+- `tools/run_triton_segmenter_python.ps1`
+- `tools/check_triton_segmenter_ready.py`
 - `tools/export_segmenter_onnx.py`

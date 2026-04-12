@@ -100,6 +100,8 @@
   - tracked Triton model repository scaffold under `ops/triton/model_repository/shadowgen_segmenter/`
   - tracked Triton Python backend implementation under `ops/triton/model_repository/shadowgen_segmenter/1/model.py`
   - tracked Triton custom image scaffold under `ops/triton/Dockerfile.segmenter-python`
+  - tracked bring-up helper under `tools/run_triton_segmenter_python.ps1`
+  - tracked readiness checker under `tools/check_triton_segmenter_ready.py`
   - reproducible ONNX export tool under `tools/export_segmenter_onnx.py`
   - export tool now tries both modern and legacy ONNX exporters and reports the current `torchvision::deform_conv2d` blocker explicitly
   - local BiRefNet runtime now exposes opt-in Torch acceleration controls (`torch.compile`, matmul precision)
@@ -153,6 +155,7 @@ The active docs now provide:
 - `.venv\Scripts\python.exe -m pytest` passed: `81 passed`
 - `python -m compileall src tests tools` passed
 - `python -m py_compile ops/triton/model_repository/shadowgen_segmenter/1/model.py` passed
+- `tools/run_triton_segmenter_python.ps1` fails fast with a clear Docker / WSL diagnostic when the local Triton container backend is unavailable
 
 ## Remaining Bootstrap Gaps
 
@@ -160,4 +163,4 @@ The active docs now provide:
 - current BiRefNet ONNX export is blocked in this environment by `torchvision::deform_conv2d`, so the live `segmenter` bridge currently depends on the temporary Triton Python backend
 - `V2-DIFF` shadow backend is scaffolded but not implemented
 - compatibility shims still remain in the repository
-- the temporary Triton segmenter image has not yet been validated end-to-end against a real running container
+- the current workstation has a Docker Desktop / WSL blocker (`docker-desktop` distro missing), so the temporary Triton segmenter image has not yet been validated end-to-end against a real running container
