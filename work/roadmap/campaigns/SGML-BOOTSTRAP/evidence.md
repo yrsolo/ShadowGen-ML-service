@@ -99,6 +99,7 @@
   - working crop, mask, and cutout previews
   - tracked Triton model repository scaffold under `ops/triton/model_repository/shadowgen_segmenter/`
   - reproducible ONNX export tool under `tools/export_segmenter_onnx.py`
+  - export tool now tries both modern and legacy ONNX exporters and reports the current `torchvision::deform_conv2d` blocker explicitly
 
 - `foreground_refiner`
   - Fast Foreground Colour Estimation stage is standalone
@@ -152,6 +153,7 @@ The active docs now provide:
 ## Remaining Bootstrap Gaps
 
 - no heavy stage has been smoke-tested yet against a real external Triton server
+- current BiRefNet ONNX export is blocked in this environment by `torchvision::deform_conv2d`
 - `V2-DIFF` shadow backend is scaffolded but not implemented
 - compatibility shims still remain in the repository
 - Docker/deployment documentation is not yet part of bootstrap

@@ -250,6 +250,7 @@ Notes:
 - `TensorRT` is intentionally deferred as phase 2 optimization
 - the Triton `segmenter` contract currently returns a minimal `mask` tensor
 - `cutout`, `crop`, and compatibility `bbox` are reconstructed inside the ML core postprocess path
+- current BiRefNet export blocker in this environment is `torchvision::deform_conv2d`, so a temporary Triton Python backend remains an acceptable fallback if ONNX export cannot be completed
 
 ## Sync and Async Flows
 

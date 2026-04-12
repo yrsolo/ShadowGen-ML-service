@@ -185,6 +185,12 @@ Postprocess kept inside ML-core:
 - `crop`
 - compatibility `bbox`
 
+Current blocker note:
+
+- in the current environment BiRefNet ONNX export is blocked by `torchvision::deform_conv2d`
+- the export tool now tries both the modern and legacy ONNX exporters and reports this blocker explicitly
+- if this blocker remains, the next practical fallback is a temporary Triton Python backend for `segmenter`
+
 ### Foreground Refinement
 
 - Backends: `mock`, `local`

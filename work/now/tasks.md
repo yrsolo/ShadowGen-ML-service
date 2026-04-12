@@ -44,6 +44,7 @@
 
 ## Next Likely
 
+- [ ] Resolve the BiRefNet ONNX export blocker (`torchvision::deform_conv2d`) or switch `segmenter` to a temporary Triton Python backend
 - [ ] Run the first live end-to-end Triton smoke against a real `shadowgen_segmenter` server
 - [ ] Implement the real `V2-DIFF` shadow backend
 - [ ] Add shadow-stage input previews for `img`, `mask`, `depth`, and `normal`
