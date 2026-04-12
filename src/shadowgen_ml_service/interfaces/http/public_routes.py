@@ -24,7 +24,7 @@ def build_public_router(
     async def render(payload: RenderRequest, request: Request):
         return request.app.state.render_service.render(payload)
 
-    @router.post("/v1/render/jobs")
+    @router.post("/v1/render/jobs", status_code=202)
     async def submit_render_job(payload: RenderRequest, request: Request):
         return request.app.state.render_service.submit_render_job(payload)
 

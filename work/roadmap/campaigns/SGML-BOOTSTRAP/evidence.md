@@ -11,6 +11,7 @@
 - sync and async render paths now coexist
 - project docs rewritten into a usable current-state reference set
 - worker-facing integration contract documented for `ShadowGen-v2`
+- ML core upgraded to expose worker-facing readiness, capacity, and async idempotency semantics
 
 ## Captured Evidence
 
@@ -49,6 +50,9 @@
 - in-memory async job backend exists under `infrastructure/jobs/`
 - async use cases exist under `application/use_cases/`
 - async endpoints are routed through the same orchestration model as sync execution
+- async backend is now bounded and concurrent instead of single-thread serial
+- async job metadata now includes submit mode and capacity snapshot
+- `request_id` now acts as the async idempotency key when present
 
 ### Triton Readiness Evidence
 
@@ -57,6 +61,11 @@
 - stage/model bindings now include tensor schema metadata, not only model names
 - heavy-stage canonical inputs now carry neutral `RasterAsset` payloads instead of implicit `PIL.Image` objects
 - stage runtime faults are normalized into structured failed-stage executions for dev/debug and service errors for public sync execution
+- heavy-stage Triton execution now supports internal micro-batching for:
+  - `segmenter`
+  - `depth_estimator`
+  - `normal_estimator`
+  - `shadow_generator`
 - stage-specific Triton adapters exist for:
   - `detector`
   - `segmenter`
@@ -135,7 +144,7 @@ The active docs now provide:
 
 ### Validation Evidence
 
-- `.venv\Scripts\python.exe -m pytest` passed: `61 passed`
+- `.venv\Scripts\python.exe -m pytest` passed: `67 passed`
 - `python -m compileall src tests` passed
 
 ## Remaining Bootstrap Gaps

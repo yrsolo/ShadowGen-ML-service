@@ -11,6 +11,7 @@ from shadowgen_ml_service.application.use_cases.get_capabilities import GetCapab
 from shadowgen_ml_service.application.use_cases.get_health import GetHealthUseCase
 from shadowgen_ml_service.application.use_cases.render_pipeline import RenderPipelineUseCase
 from shadowgen_ml_service.application.use_cases.submit_render_job import SubmitRenderJobUseCase
+from shadowgen_ml_service.application.services.job_admission import JobAdmissionController
 from shadowgen_ml_service.bootstrap.container import build_runtime
 from shadowgen_ml_service.config import Settings, get_settings
 from shadowgen_ml_service.core.errors import ServiceError
@@ -24,13 +25,14 @@ from shadowgen_ml_service.interfaces.http.public_routes import build_public_rout
 def create_app(settings: Settings | None = None) -> FastAPI:
     runtime_settings = settings or get_settings()
     runtime = build_runtime(runtime_settings)
+    job_manager = InMemoryRenderJobManager(runtime_settings)
+    admission = JobAdmissionController(runtime_settings, job_manager)
 
-    health_use_case = GetHealthUseCase(runtime_settings, runtime)
-    capabilities_use_case = GetCapabilitiesUseCase(runtime_settings, runtime)
+    health_use_case = GetHealthUseCase(runtime_settings, runtime, admission)
+    capabilities_use_case = GetCapabilitiesUseCase(runtime_settings, runtime, admission)
     render_use_case = RenderPipelineUseCase(runtime_settings, runtime)
     debug_use_case = DebugPipelineUseCase(runtime_settings, runtime)
-    job_manager = InMemoryRenderJobManager()
-    submit_job_use_case = SubmitRenderJobUseCase(job_manager, job_manager, render_use_case)
+    submit_job_use_case = SubmitRenderJobUseCase(job_manager, job_manager, render_use_case, admission)
     get_job_use_case = GetRenderJobUseCase(job_manager)
     cancel_job_use_case = CancelRenderJobUseCase(job_manager, job_manager)
 
@@ -41,6 +43,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.capabilities_use_case = capabilities_use_case
     app.state.render_use_case = render_use_case
     app.state.debug_use_case = debug_use_case
+    app.state.job_manager = job_manager
+    app.state.job_admission = admission
     app.state.submit_job_use_case = submit_job_use_case
     app.state.get_job_use_case = get_job_use_case
     app.state.cancel_job_use_case = cancel_job_use_case
@@ -51,6 +55,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         capabilities_use_case=capabilities_use_case,
         render_use_case=render_use_case,
         debug_use_case=debug_use_case,
+        admission=admission,
         submit_job_use_case=submit_job_use_case,
         get_job_use_case=get_job_use_case,
         cancel_job_use_case=cancel_job_use_case,

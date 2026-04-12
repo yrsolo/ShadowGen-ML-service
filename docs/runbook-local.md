@@ -252,6 +252,17 @@ Async settings:
 
 - `SHADOWGEN_ASYNC_ENABLED`
 - `SHADOWGEN_ASYNC_BACKEND`
+- `SHADOWGEN_JOB_MAX_RUNNING`
+- `SHADOWGEN_JOB_MAX_PENDING`
+- `SHADOWGEN_JOB_ACCEPTING_ENABLED`
+- `SHADOWGEN_JOB_CANCEL_MODE`
+- `SHADOWGEN_BATCHING_ENABLED`
+- `SHADOWGEN_BATCH_WINDOW_MS`
+- `SHADOWGEN_BATCH_MAX_SIZE`
+- `SHADOWGEN_BATCH_SEGMENTER_ENABLED`
+- `SHADOWGEN_BATCH_DEPTH_ENABLED`
+- `SHADOWGEN_BATCH_NORMALS_ENABLED`
+- `SHADOWGEN_BATCH_SHADOW_ENABLED`
 
 Per-stage execution defaults:
 
@@ -318,6 +329,10 @@ Check:
 - `active_backend_mode`
 - `execution_default_backend`
 - `async_enabled`
+- `supported_submit_modes`
+- `preferred_submit_mode`
+- `job_execution`
+- `batching_strategy`
 - `components[]`
 
 For model bring-up, the most useful fields are:

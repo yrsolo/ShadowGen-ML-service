@@ -10,6 +10,7 @@ from shadowgen_ml_service.interfaces.http.public_schemas import (
     CapabilitiesResponse,
     ErrorResponse,
     HealthResponse,
+    JobExecutionResponse,
     MetricsResponse,
     ModelInfoResponse,
     RenderRequest,
@@ -70,6 +71,10 @@ def health_outcome_to_response(outcome: HealthOutcome) -> HealthResponse:
     return HealthResponse(**outcome.payload.__dict__)
 
 
+def job_execution_to_response(payload) -> JobExecutionResponse:
+    return JobExecutionResponse(**payload.__dict__)
+
+
 def capabilities_outcome_to_response(outcome: CapabilitiesOutcome) -> CapabilitiesResponse:
     return CapabilitiesResponse(
         service_version=outcome.payload.service_version,
@@ -82,6 +87,10 @@ def capabilities_outcome_to_response(outcome: CapabilitiesOutcome) -> Capabiliti
         degraded=outcome.payload.degraded,
         execution_default_backend=outcome.payload.execution_default_backend,
         async_enabled=outcome.payload.async_enabled,
+        supported_submit_modes=outcome.payload.supported_submit_modes,
+        preferred_submit_mode=outcome.payload.preferred_submit_mode,
+        batching_strategy=outcome.payload.batching_strategy,
+        job_execution=None if outcome.payload.job_execution is None else job_execution_to_response(outcome.payload.job_execution),
         components=[
             {
                 **component.__dict__,
@@ -148,6 +157,7 @@ def async_job_to_submit_response(record: AsyncRenderJobRecord) -> RenderJobSubmi
         status=record.status,
         created_at=record.created_at,
         updated_at=record.updated_at,
+        submit_mode=record.submit_mode,
     )
 
 
@@ -158,6 +168,8 @@ def async_job_to_response(record: AsyncRenderJobRecord) -> RenderJobResponse:
         status=record.status,
         created_at=record.created_at,
         updated_at=record.updated_at,
+        submit_mode=record.submit_mode,
+        capacity_snapshot=None if record.capacity_snapshot is None else job_execution_to_response(record.capacity_snapshot),
         error=record.error,
         result=None if record.render_outcome is None else render_outcome_to_response(record.render_outcome),
     )

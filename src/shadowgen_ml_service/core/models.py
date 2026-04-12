@@ -128,6 +128,18 @@ class RuntimeDescriptor:
     async_enabled: bool = False
 
 
+@dataclass(frozen=True)
+class JobExecutionInfo:
+    queue_backend: str
+    accepting_jobs: bool
+    max_running_jobs: int
+    max_pending_jobs: int
+    running_jobs: int
+    pending_jobs: int
+    cancel_mode: str = "pending_only"
+    idempotency_supported: bool = True
+
+
 @dataclass
 class PreprocessSnapshot:
     detection: DetectionResult
@@ -145,6 +157,8 @@ class HealthStatus:
     service_version: str
     active_backend_mode: str
     async_enabled: bool = False
+    accepting_jobs: bool = True
+    preferred_submit_mode: str = "sync"
 
 
 @dataclass
@@ -159,4 +173,8 @@ class CapabilitiesInfo:
     degraded: bool
     execution_default_backend: BackendKind = "local"
     async_enabled: bool = False
+    supported_submit_modes: tuple[str, ...] = ("sync",)
+    preferred_submit_mode: str = "sync"
+    batching_strategy: str = "none"
+    job_execution: JobExecutionInfo | None = None
     components: list[ComponentStatus] = field(default_factory=list)

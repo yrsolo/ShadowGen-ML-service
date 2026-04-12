@@ -14,6 +14,7 @@ from shadowgen_ml_service.bootstrap.runtime_descriptor import backend_descriptor
 from shadowgen_ml_service.bootstrap.triton_bindings import build_triton_model_registry
 from shadowgen_ml_service.config import Settings
 from shadowgen_ml_service.core.models import ComponentStatus, StageBackendId
+from shadowgen_ml_service.infrastructure.backends.triton.batching import TritonStageBatchCoordinator
 from shadowgen_ml_service.infrastructure.backends.triton.client import TritonInferenceClient
 from shadowgen_ml_service.infrastructure.backends.triton.config import TritonBackendSettings
 from shadowgen_ml_service.infrastructure.backends.triton.model_registry import TritonModelRegistry
@@ -59,14 +60,25 @@ def build_runtime(settings: Settings) -> PipelineRuntime:
     triton_client = TritonInferenceClient(triton_settings)
     triton_ready = triton_client.ping()
     triton_models = build_triton_model_registry(settings)
+    triton_batcher = TritonStageBatchCoordinator(
+        enabled=settings.batching_enabled,
+        window_ms=settings.batch_window_ms,
+        max_size=settings.batch_max_size,
+        stage_enabled={
+            "segmenter": settings.batch_segmenter_enabled,
+            "depth_estimator": settings.batch_depth_enabled,
+            "normal_estimator": settings.batch_normals_enabled,
+            "shadow_generator": settings.batch_shadow_enabled,
+        },
+    )
 
     _register_detector(settings, registry, triton_client, triton_models, triton_ready)
     _register_geometry(settings, registry)
-    _register_segmenter(settings, registry, triton_client, triton_models, triton_ready)
+    _register_segmenter(settings, registry, triton_client, triton_models, triton_ready, triton_batcher)
     _register_foreground_refiner(registry)
-    _register_depth(settings, registry, triton_client, triton_models, triton_ready)
-    _register_normals(settings, registry, triton_client, triton_models, triton_ready)
-    _register_shadow(settings, registry, triton_client, triton_models, triton_ready)
+    _register_depth(settings, registry, triton_client, triton_models, triton_ready, triton_batcher)
+    _register_normals(settings, registry, triton_client, triton_models, triton_ready, triton_batcher)
+    _register_shadow(settings, registry, triton_client, triton_models, triton_ready, triton_batcher)
     _register_composer(registry)
     _register_encoder(registry)
 
@@ -193,7 +205,7 @@ def _register_detector(settings: Settings, registry: PipelineBackendRegistry, tr
             detail="Triton detector endpoint available" if triton_available else "Triton detector endpoint or model is unavailable",
             device="triton",
             endpoint=triton_client.endpoint,
-            supports_batching=True,
+            supports_batching=False,
             supports_async=True,
         ),
         TritonDetector(triton_client, binding) if triton_available and binding is not None else None,
@@ -248,7 +260,14 @@ def _register_geometry(settings: Settings, registry: PipelineBackendRegistry) ->
     )
 
 
-def _register_segmenter(settings: Settings, registry: PipelineBackendRegistry, triton_client: TritonInferenceClient, triton_models: TritonModelRegistry, triton_ready: bool) -> None:
+def _register_segmenter(
+    settings: Settings,
+    registry: PipelineBackendRegistry,
+    triton_client: TritonInferenceClient,
+    triton_models: TritonModelRegistry,
+    triton_ready: bool,
+    triton_batcher: TritonStageBatchCoordinator,
+) -> None:
     probe = probe_birefnet(allow_cpu=settings.birefnet_allow_cpu)
     mock = MockSegmenter()
     registry.register(
@@ -311,7 +330,7 @@ def _register_segmenter(settings: Settings, registry: PipelineBackendRegistry, t
             supports_batching=True,
             supports_async=True,
         ),
-        TritonSegmenter(triton_client, binding) if triton_available and binding is not None else None,
+        TritonSegmenter(triton_client, binding, triton_batcher) if triton_available and binding is not None else None,
     )
 
 
@@ -354,7 +373,14 @@ def _register_foreground_refiner(registry: PipelineBackendRegistry) -> None:
     )
 
 
-def _register_depth(settings: Settings, registry: PipelineBackendRegistry, triton_client: TritonInferenceClient, triton_models: TritonModelRegistry, triton_ready: bool) -> None:
+def _register_depth(
+    settings: Settings,
+    registry: PipelineBackendRegistry,
+    triton_client: TritonInferenceClient,
+    triton_models: TritonModelRegistry,
+    triton_ready: bool,
+    triton_batcher: TritonStageBatchCoordinator,
+) -> None:
     probe = probe_depth_anything()
     mock = MockDepthEstimator()
     registry.register(
@@ -412,11 +438,18 @@ def _register_depth(settings: Settings, registry: PipelineBackendRegistry, trito
             supports_batching=True,
             supports_async=True,
         ),
-        TritonDepthEstimator(triton_client, binding) if triton_available and binding is not None else None,
+        TritonDepthEstimator(triton_client, binding, triton_batcher) if triton_available and binding is not None else None,
     )
 
 
-def _register_normals(settings: Settings, registry: PipelineBackendRegistry, triton_client: TritonInferenceClient, triton_models: TritonModelRegistry, triton_ready: bool) -> None:
+def _register_normals(
+    settings: Settings,
+    registry: PipelineBackendRegistry,
+    triton_client: TritonInferenceClient,
+    triton_models: TritonModelRegistry,
+    triton_ready: bool,
+    triton_batcher: TritonStageBatchCoordinator,
+) -> None:
     mock = MockNormalEstimator()
     registry.register(
         backend_descriptor(
@@ -495,11 +528,18 @@ def _register_normals(settings: Settings, registry: PipelineBackendRegistry, tri
             supports_batching=True,
             supports_async=True,
         ),
-        TritonNormalEstimator(triton_client, binding) if triton_available and binding is not None else None,
+        TritonNormalEstimator(triton_client, binding, triton_batcher) if triton_available and binding is not None else None,
     )
 
 
-def _register_shadow(settings: Settings, registry: PipelineBackendRegistry, triton_client: TritonInferenceClient, triton_models: TritonModelRegistry, triton_ready: bool) -> None:
+def _register_shadow(
+    settings: Settings,
+    registry: PipelineBackendRegistry,
+    triton_client: TritonInferenceClient,
+    triton_models: TritonModelRegistry,
+    triton_ready: bool,
+    triton_batcher: TritonStageBatchCoordinator,
+) -> None:
     mock = DeterministicShadowGenerator()
     registry.register(
         backend_descriptor(
@@ -561,7 +601,7 @@ def _register_shadow(settings: Settings, registry: PipelineBackendRegistry, trit
             supports_batching=True,
             supports_async=True,
         ),
-        TritonShadowGenerator(triton_client, binding, model_variant="v2-diff") if triton_available and binding is not None else None,
+        TritonShadowGenerator(triton_client, binding, model_variant="v2-diff", batcher=triton_batcher) if triton_available and binding is not None else None,
     )
 
 

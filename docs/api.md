@@ -79,6 +79,14 @@ Response shape:
 - `status`
 - `created_at`
 - `updated_at`
+- `submit_mode`
+
+Behavior:
+
+- returns `202 Accepted` on successful async submission
+- may return the same `job_id` for repeated live or completed `request_id`
+- returns `429` with `queue_full` when the bounded pending queue is full
+- returns `503` with `not_accepting_jobs` when the service is draining or not accepting new jobs
 
 ### `GET /v1/render/jobs/{job_id}`
 
@@ -86,6 +94,8 @@ Returns:
 
 - job metadata
 - current status
+- `submit_mode`
+- optional `capacity_snapshot`
 - optional error
 - optional final `RenderResponse` result
 
@@ -105,6 +115,10 @@ Capabilities expose:
 - degraded flag
 - execution default backend
 - async availability
+- supported submit modes
+- preferred submit mode
+- job execution capacity snapshot
+- batching strategy
 - component list
 
 Each component includes:
@@ -150,6 +164,25 @@ This is also the primary worker-facing handshake endpoint for deciding:
 
 - whether the ML core should be used in sync or async mode
 - whether batching is supported by the active heavy-stage backends
+- whether the core is currently able to accept more jobs
+
+Additional worker-facing fields:
+
+- `supported_submit_modes`
+- `preferred_submit_mode`
+- `job_execution`
+- `batching_strategy`
+
+`job_execution` includes:
+
+- `queue_backend`
+- `accepting_jobs`
+- `max_running_jobs`
+- `max_pending_jobs`
+- `running_jobs`
+- `pending_jobs`
+- `cancel_mode`
+- `idempotency_supported`
 
 ## `GET /health`
 
@@ -159,6 +192,15 @@ Current fields:
 - `service_version`
 - `active_backend_mode`
 - `async_enabled`
+- `accepting_jobs`
+- `preferred_submit_mode`
+
+Current status values:
+
+- `ok`
+- `degraded`
+- `draining`
+- `overloaded`
 
 ## Debug Pipeline Request
 
@@ -359,3 +401,5 @@ Worker authors should treat:
   - as the sync compatibility path
 - `POST /v1/render/jobs`
   - as the preferred async path when `async_enabled=true`
+
+`request_id` remains optional for public compatibility, but when present it now acts as the ML-core idempotency key for async job submission.

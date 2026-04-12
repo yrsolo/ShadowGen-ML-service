@@ -31,6 +31,11 @@
   - [x] define sync compatibility and async-native worker modes
   - [x] define capabilities handshake for batching and async support
   - [x] define responsibility split between worker concurrency and ML-core batching
+- [x] Harden the ML core for optimal worker integration:
+  - [x] add bounded concurrent async dispatcher with capacity snapshot
+  - [x] add worker-facing readiness and submit-mode metadata
+  - [x] add async idempotency via `request_id`
+  - [x] add internal Triton stage micro-batching for heavy downstream stages
 
 ## Next Likely
 

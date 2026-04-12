@@ -30,3 +30,18 @@ class ProcessingFailedServiceError(ServiceError):
 class TimeoutServiceError(ServiceError):
     code = "timeout"
     http_status = 504
+
+
+class AsyncDisabledServiceError(ServiceError):
+    code = "async_disabled"
+    http_status = 503
+
+
+class QueueFullServiceError(ServiceError):
+    code = "queue_full"
+    http_status = 429
+
+
+class NotAcceptingJobsServiceError(ServiceError):
+    code = "not_accepting_jobs"
+    http_status = 503

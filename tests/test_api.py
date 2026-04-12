@@ -5,6 +5,7 @@ from io import BytesIO
 from pathlib import Path
 import shutil
 import tempfile
+import threading
 import time
 import unittest
 from uuid import uuid4
@@ -57,7 +58,9 @@ class ApiTests(unittest.TestCase):
     def test_health(self) -> None:
         response = self.client.get("/health")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["status"], "ok")
+        self.assertIn(response.json()["status"], {"ok", "degraded"})
+        self.assertIn("accepting_jobs", response.json())
+        self.assertIn("preferred_submit_mode", response.json())
 
     def test_capabilities(self) -> None:
         response = self.client.get("/v1/capabilities")
@@ -67,6 +70,10 @@ class ApiTests(unittest.TestCase):
         self.assertIn("active_backend_mode", payload)
         self.assertIn("execution_default_backend", payload)
         self.assertIn("async_enabled", payload)
+        self.assertIn("supported_submit_modes", payload)
+        self.assertIn("preferred_submit_mode", payload)
+        self.assertIn("job_execution", payload)
+        self.assertIn("batching_strategy", payload)
 
     def test_playground_page_exists(self) -> None:
         response = self.client.get("/playground")
@@ -75,9 +82,10 @@ class ApiTests(unittest.TestCase):
 
     def test_async_render_job_lifecycle(self) -> None:
         submit = self.client.post("/v1/render/jobs", json=make_request())
-        self.assertEqual(submit.status_code, 200)
+        self.assertEqual(submit.status_code, 202)
         job_id = submit.json()["job_id"]
         self.assertTrue(job_id)
+        self.assertEqual(submit.json()["submit_mode"], "async")
         poll = None
         for _ in range(30):
             poll = self.client.get(f"/v1/render/jobs/{job_id}")
@@ -87,6 +95,82 @@ class ApiTests(unittest.TestCase):
             time.sleep(0.1)
         self.assertIsNotNone(poll)
         self.assertIn(poll.json()["status"], {"completed", "failed"})
+        self.assertIn("capacity_snapshot", poll.json())
+
+    def test_async_submit_is_idempotent_by_request_id(self) -> None:
+        first = self.client.post("/v1/render/jobs", json=make_request())
+        second = self.client.post("/v1/render/jobs", json=make_request())
+        self.assertEqual(first.status_code, 202)
+        self.assertEqual(second.status_code, 202)
+        self.assertEqual(first.json()["job_id"], second.json()["job_id"])
+
+    def test_async_queue_full_returns_429(self) -> None:
+        app = create_app(Settings(job_max_running=1, job_max_pending=1))
+        entered = threading.Event()
+        release = threading.Event()
+        original_execute = app.state.render_use_case.execute
+
+        class SlowRenderUseCase:
+            def execute(self, command):
+                entered.set()
+                release.wait(timeout=2)
+                return original_execute(command)
+
+        app.state.submit_job_use_case.render_use_case = SlowRenderUseCase()
+        app.state.render_service._submit_job_use_case.render_use_case = app.state.submit_job_use_case.render_use_case
+        client = TestClient(app)
+
+        first_request = make_request()
+        first_request["request_id"] = "queue-full-1"
+        second_request = make_request()
+        second_request["request_id"] = "queue-full-2"
+        third_request = make_request()
+        third_request["request_id"] = "queue-full-3"
+
+        first = client.post("/v1/render/jobs", json=first_request)
+        entered.wait(timeout=1)
+        second = client.post("/v1/render/jobs", json=second_request)
+        third = client.post("/v1/render/jobs", json=third_request)
+
+        self.assertEqual(first.status_code, 202)
+        self.assertEqual(second.status_code, 202)
+        self.assertEqual(third.status_code, 429)
+        self.assertEqual(third.json()["error"]["code"], "queue_full")
+        release.set()
+
+    def test_sync_render_respects_capacity_limit(self) -> None:
+        app = create_app(Settings(job_max_running=1))
+        client = TestClient(app)
+
+        entered = threading.Event()
+        release = threading.Event()
+        original_execute = app.state.render_use_case.execute
+
+        class SlowRenderUseCase:
+            def execute(self, command):
+                entered.set()
+                release.wait(timeout=2)
+                return original_execute(command)
+
+        app.state.render_use_case = SlowRenderUseCase()
+        app.state.render_service._render_use_case = app.state.render_use_case
+
+        holder: dict[str, object] = {}
+
+        def run_first_render():
+            holder["response"] = client.post("/v1/render", json=make_request())
+
+        thread = threading.Thread(target=run_first_render)
+        thread.start()
+        entered.wait(timeout=1)
+
+        blocked = client.post("/v1/render", json=make_request())
+        self.assertEqual(blocked.status_code, 429)
+        self.assertEqual(blocked.json()["error"]["code"], "queue_full")
+
+        release.set()
+        thread.join(timeout=3)
+        self.assertEqual(holder["response"].status_code, 200)
 
     def test_render_success_with_debug_artifacts(self) -> None:
         response = self.client.post("/v1/render", json=make_request())

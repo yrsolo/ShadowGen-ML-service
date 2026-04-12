@@ -112,11 +112,17 @@ From `GET /health`:
 
 - `status`
 - `async_enabled`
+- `accepting_jobs`
+- `preferred_submit_mode`
 
 From `GET /v1/capabilities`:
 
 - `execution_default_backend`
 - `async_enabled`
+- `supported_submit_modes`
+- `preferred_submit_mode`
+- `job_execution`
+- `batching_strategy`
 - `component list`
 
 For each component, the worker should be able to read:
@@ -356,6 +362,10 @@ Recommended worker behavior:
 
 - `validation_error`
   - treat as non-retryable
+- `queue_full`
+  - retry later
+- `not_accepting_jobs`
+  - retry later or route around the node
 - transport timeout / connection error
   - treat as retryable according to worker retry policy
 - `processing_failed`
@@ -435,3 +445,4 @@ Stable assumptions:
 - capabilities are the source of truth for feature detection
 - batching support is discovered from the ML core, not invented by the worker
 - stage-level batching remains internal to the ML core and execution layer
+- `request_id`, when present, is the async idempotency key on the ML-core side

@@ -34,6 +34,10 @@ def _tensor_input(name: str, array: np.ndarray, *, datatype: str) -> dict[str, A
     }
 
 
+def tensor_input(name: str, array: np.ndarray, *, datatype: str) -> dict[str, Any]:
+    return _tensor_input(name, array, datatype=datatype)
+
+
 def _image_to_nchw(image: Image.Image, *, mode: str) -> np.ndarray:
     array = np.asarray(image.convert(mode), dtype=np.float32) / 255.0
     if array.ndim == 2:
@@ -74,6 +78,64 @@ def tensor_from_output(output: dict[str, Any]) -> np.ndarray:
     if data is None:
         raise ValueError(f"output tensor {output.get('name')} does not contain inline data")
     return np.asarray(data, dtype=TRITON_DTYPE_TO_NUMPY[datatype]).reshape(shape)
+
+
+def tensor_from_input(input_payload: dict[str, Any]) -> np.ndarray:
+    datatype = input_payload.get("datatype")
+    if datatype not in TRITON_DTYPE_TO_NUMPY:
+        raise ValueError(f"unsupported Triton datatype: {datatype}")
+    shape = tuple(int(value) for value in input_payload.get("shape", []))
+    data = input_payload.get("data")
+    if data is None:
+        raise ValueError(f"input tensor {input_payload.get('name')} does not contain inline data")
+    return np.asarray(data, dtype=TRITON_DTYPE_TO_NUMPY[datatype]).reshape(shape)
+
+
+def batch_input_tensors(request_batches: list[list[dict[str, Any]]]) -> list[dict[str, Any]]:
+    if not request_batches:
+        return []
+    tensor_names = [tensor["name"] for tensor in request_batches[0]]
+    result: list[dict[str, Any]] = []
+    for tensor_name in tensor_names:
+        matching = []
+        datatype = None
+        for batch in request_batches:
+            found = next((item for item in batch if item["name"] == tensor_name), None)
+            if found is None:
+                raise TritonSchemaMismatchError(f"missing input tensor {tensor_name} in batch item")
+            if datatype is None:
+                datatype = found["datatype"]
+            elif datatype != found["datatype"]:
+                raise TritonSchemaMismatchError(f"input tensor {tensor_name} has inconsistent datatypes across batch")
+            matching.append(tensor_from_input(found))
+        prototype = matching[0]
+        if prototype.ndim == 0:
+            merged = np.stack(matching, axis=0)
+        elif prototype.shape[0] == 1:
+            for item in matching[1:]:
+                if item.shape[1:] != prototype.shape[1:]:
+                    raise TritonSchemaMismatchError(f"input tensor {tensor_name} has incompatible shapes for batching")
+            merged = np.concatenate(matching, axis=0)
+        else:
+            for item in matching[1:]:
+                if item.shape != prototype.shape:
+                    raise TritonSchemaMismatchError(f"input tensor {tensor_name} has incompatible shapes for batching")
+            merged = np.stack(matching, axis=0)
+        result.append(_tensor_input(tensor_name, merged, datatype=datatype))
+    return result
+
+
+def split_output_tensor(tensor: np.ndarray, batch_size: int) -> list[np.ndarray]:
+    if batch_size <= 1:
+        return [np.asarray(tensor)]
+    tensor = np.asarray(tensor)
+    if tensor.ndim == 0 or tensor.shape[0] != batch_size:
+        raise TritonSchemaMismatchError(
+            f"output tensor cannot be split into batch size {batch_size}: observed shape {tuple(tensor.shape)}"
+        )
+    if tensor.ndim == 1:
+        return [tensor[index : index + 1] for index in range(batch_size)]
+    return [tensor[index : index + 1] for index in range(batch_size)]
 
 
 def tensor_map_from_response(response_payload: dict[str, Any]) -> dict[str, np.ndarray]:

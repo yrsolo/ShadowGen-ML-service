@@ -8,12 +8,15 @@ import numpy as np
 from PIL import Image
 
 from shadowgen_ml_service.infrastructure.backends.triton.client import TritonInferenceClient
+from shadowgen_ml_service.infrastructure.backends.triton.batching import TritonStageBatchCoordinator
 from shadowgen_ml_service.infrastructure.backends.triton.config import TritonBackendSettings
 from shadowgen_ml_service.infrastructure.backends.triton.errors import TritonSchemaMismatchError
 from shadowgen_ml_service.infrastructure.backends.triton.model_registry import TritonModelBinding, TritonTensorBinding
 from shadowgen_ml_service.infrastructure.backends.triton.serializers import (
+    batch_input_tensors,
     image_to_nchw_float32_input,
     scalar_to_input,
+    split_output_tensor,
     tensor_map_from_response,
     validate_tensor_against_binding,
 )
@@ -115,6 +118,51 @@ class TritonTransportTests(unittest.TestCase):
         tensor = np.zeros((1, 3, 16, 16), dtype=np.float32)
         with self.assertRaises(TritonSchemaMismatchError):
             validate_tensor_against_binding("mask", tensor, binding)
+
+    def test_batch_input_tensors_concatenates_batch_dimension(self) -> None:
+        first = [image_to_nchw_float32_input("image", Image.new("RGB", (4, 4), "white"))]
+        second = [image_to_nchw_float32_input("image", Image.new("RGB", (4, 4), "black"))]
+        merged = batch_input_tensors([first, second])
+        self.assertEqual(merged[0]["shape"], [2, 3, 4, 4])
+
+    def test_split_output_tensor_returns_per_item_views(self) -> None:
+        tensor = np.zeros((2, 1, 8, 8), dtype=np.float32)
+        parts = split_output_tensor(tensor, 2)
+        self.assertEqual(len(parts), 2)
+        self.assertEqual(parts[0].shape, (1, 1, 8, 8))
+
+    def test_stage_batch_coordinator_groups_compatible_calls(self) -> None:
+        coordinator = TritonStageBatchCoordinator(
+            enabled=True,
+            window_ms=25,
+            max_size=4,
+            stage_enabled={"segmenter": True},
+        )
+        seen = []
+        result_holder = []
+
+        def worker(value: int) -> None:
+            result_holder.append(
+                coordinator.execute(
+                    stage_key="segmenter",
+                    model_variant="birefnet",
+                    payload=value,
+                    run_batch=lambda payloads: seen.append(list(payloads)) or [item * 10 for item in payloads],
+                )
+            )
+
+        import threading
+
+        first = threading.Thread(target=worker, args=(1,))
+        second = threading.Thread(target=worker, args=(2,))
+        first.start()
+        second.start()
+        first.join(timeout=2)
+        second.join(timeout=2)
+
+        self.assertEqual(len(seen), 1)
+        self.assertEqual(sorted(seen[0]), [1, 2])
+        self.assertEqual(sorted(result_holder), [10, 20])
 
 
 if __name__ == "__main__":

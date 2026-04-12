@@ -9,6 +9,7 @@ from PIL import Image
 from shadowgen_ml_service.core.assets import RasterAsset
 from shadowgen_ml_service.core.commands import RenderCommand
 from shadowgen_ml_service.core.models import (
+    JobExecutionInfo,
     BackendKind,
     CapabilitiesInfo,
     CompositionResult,
@@ -149,5 +150,7 @@ class AsyncRenderJobRecord:
     status: str
     created_at: str
     updated_at: str
+    submit_mode: str = "async"
     error: str | None = None
+    capacity_snapshot: JobExecutionInfo | None = None
     render_outcome: RenderOutcome | None = None

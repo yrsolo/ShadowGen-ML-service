@@ -21,6 +21,7 @@ Lives in this service and owns:
 - web playground
 - synchronous render orchestration
 - asynchronous job orchestration
+- job admission control and bounded job concurrency
 - crop / pad / resize preprocessing
 - preview generation
 - preprocess cache
@@ -268,8 +269,40 @@ Characteristics:
 - production-oriented path
 - job state externalized through API
 - reuses the same backend registry and stage runner
+- now runs through a bounded concurrent dispatcher by default
 
-Current async backend is in-process and replaceable by design.
+Current async backend is in-process, bounded, concurrency-aware, and replaceable by design.
+
+## Admission and Capacity
+
+The ML core now exposes worker-facing readiness and capacity semantics:
+
+- `GET /health` acts as both liveness and readiness
+- `GET /v1/capabilities` is the feature-discovery handshake for workers
+- async submission is protected by bounded queue admission
+- sync submission is also capacity-aware and can return overload errors instead of silently blocking
+
+The intended split is:
+
+- worker owns job-level in-flight concurrency
+- ML core owns stage-level concurrency and batching
+
+## Stage-Level Micro-Batching
+
+Heavy-stage batching is now an internal optimization layer of the ML core.
+
+Current rules:
+
+- batching is enabled only for `triton` heavy stages
+- batching happens after canonical crop / pad / resize
+- the worker never submits tensor batches directly
+
+First-wave batchable stages:
+
+- `segmenter`
+- `depth_estimator`
+- `normal_estimator`
+- `shadow_generator`
 
 ## Stage Overview
 
