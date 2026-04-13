@@ -6,6 +6,7 @@
 - layered architecture established
 - service API implemented
 - playground UI implemented
+- playground stage browser reworked into a horizontal scroller with wheel-driven horizontal navigation
 - multiple ML stages wired with mock and real paths
 - runtime refactored to a Triton-ready registry model
 - sync and async render paths now coexist
