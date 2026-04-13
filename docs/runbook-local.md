@@ -417,9 +417,11 @@ The container is built locally from:
 
 - [ops/triton/Dockerfile.segmenter-python](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/ops/triton/Dockerfile.segmenter-python)
 
-The model repository mounted into Triton is:
+The model repository copied into the Triton image is:
 
 - [ops/triton/model_repository](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/ops/triton/model_repository)
+
+The helper bakes the model repository into `/models` by default. This avoids Windows bind-mount problems for workspaces on drives such as `N:\`. Use `-BindModelRepository` only when Docker Desktop can reliably mount the workspace path.
 
 Triton uses standard ports inside the container, but the helper maps them to offset host ports so FastAPI can keep using `8000` locally.
 
@@ -441,6 +443,19 @@ Container ports:
 tools\run_triton_segmenter_python.cmd
 ```
 
+Run in the background:
+
+```powershell
+tools\run_triton_segmenter_python.cmd -Detach
+```
+
+Detached containers are intentionally not started with `--rm`, so startup failures keep their logs:
+
+```powershell
+docker logs shadowgen-triton-segmenter
+docker rm -f shadowgen-triton-segmenter
+```
+
 If PowerShell execution policy is already configured, the direct PowerShell script is also valid:
 
 ```powershell
@@ -452,9 +467,25 @@ This helper script:
 - checks that Docker CLI is available
 - checks that the Docker daemon is reachable
 - builds the custom Triton image
-- starts Triton with `--gpus all`
+- starts Triton without Docker GPU flags by default so the container and HTTP wiring can be verified first
+- starts Triton with `--gpus all` when `-Gpu` is provided
 - publishes HTTP/gRPC/metrics ports
-- mounts the tracked model repository into `/models`
+- serves the image-baked model repository from `/models`
+
+GPU mode:
+
+```powershell
+tools\run_triton_segmenter_python.cmd -Gpu -Detach
+```
+
+If `-Gpu` fails with an NVIDIA runtime error, Docker Desktop is running but Docker cannot expose the NVIDIA runtime to containers yet. Check:
+
+- Docker Desktop is using the WSL2 Linux backend
+- NVIDIA driver supports WSL CUDA
+- `nvidia-smi` works on the Windows host
+- `docker run --rm --gpus all nvidia/cuda:12.6.0-base-ubuntu22.04 nvidia-smi` works
+
+The temporary Python backend model config uses `KIND_CPU` intentionally. The Python model still moves tensors to CUDA when the container has GPU access, but Triton can also load the model for local bring-up without GPU container runtime.
 
 2. Check the Triton model readiness:
 

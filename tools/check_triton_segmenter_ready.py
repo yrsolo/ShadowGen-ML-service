@@ -28,7 +28,7 @@ def main(argv: list[str] | None = None) -> int:
     except HTTPError as exc:
         print(f"segmenter model readiness check failed: HTTP {exc.code}", file=sys.stderr)
         return 1
-    except URLError as exc:
+    except (ConnectionAbortedError, ConnectionResetError, TimeoutError, URLError) as exc:
         print(f"failed to reach Triton at {base_url}: {exc}", file=sys.stderr)
         return 1
 

@@ -164,6 +164,12 @@ The active docs now provide:
 
 - local segmenter Triton container is built from `ops/triton/Dockerfile.segmenter-python`
 - tracked Triton model repository lives under `ops/triton/model_repository`
+- Triton image bakes the model repository into `/models` by default to avoid Windows bind-mount issues
+- optional `-BindModelRepository` remains available for live model repository mounts
+- Triton launcher supports `-Detach` for background local bring-up
+- Triton Python image includes BiRefNet dynamic-module dependencies (`einops`, `kornia`, `timm`)
+- local Triton `shadowgen_segmenter` readiness passed on `http://127.0.0.1:8010`
+- ML-core capabilities reported `segmenter` as `backend_kind=triton`, `available=true`, `model_name=shadowgen_segmenter`, with no fallback reason
 - Windows launcher exists at `tools/run_triton_segmenter_python.cmd`
 - PowerShell launcher exists at `tools/run_triton_segmenter_python.ps1`
 - local helper maps standard Triton container ports to offset host ports:
@@ -171,6 +177,8 @@ The active docs now provide:
   - gRPC `8011`
   - metrics `8012`
 - ML-core should use `SHADOWGEN_TRITON_URL=http://127.0.0.1:8010` when FastAPI uses local port `8000`
+- Triton launcher defaults to no Docker GPU flag for bring-up and supports explicit `-Gpu`
+- temporary Python backend uses `KIND_CPU` so Triton can load without NVIDIA container runtime, while model code still chooses CUDA when available
 
 ### Validation Evidence
 
@@ -181,6 +189,8 @@ The active docs now provide:
   - horizontal overflow detected
   - wheel moved pipeline `scrollLeft` from `4` to `780`
 - PowerShell syntax parse passed for `tools/run_triton_segmenter_python.ps1`
+- `tools\run_triton_segmenter_python.cmd -NoBuild -Detach` started Triton successfully after baking the model repository into the image
+- `.venv\Scripts\python.exe tools\check_triton_segmenter_ready.py http://127.0.0.1:8010` passed
 - `python -m py_compile ops/triton/model_repository/shadowgen_segmenter/1/model.py` passed
 - `tools/run_triton_segmenter_python.ps1` fails fast with a clear Docker / WSL diagnostic when the local Triton container backend is unavailable
 

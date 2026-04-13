@@ -27,6 +27,8 @@ Relevant files:
 - `tools/check_triton_segmenter_ready.py`
 - `tools/export_segmenter_onnx.py`
 
+`Dockerfile.segmenter-python` copies this repository into `/models` during image build. The run helper defaults to that baked-in model repository because Windows bind mounts from non-standard workspace drives can be unreliable. Use the helper's `-BindModelRepository` switch only when bind mounts are known to work in your Docker Desktop setup.
+
 The helper maps Triton container ports to offset host ports so FastAPI can keep using local port `8000`.
 
 Host ports used by the helper:
@@ -34,3 +36,5 @@ Host ports used by the helper:
 - `8010`: Triton HTTP API, used by ML-core (`SHADOWGEN_TRITON_URL=http://127.0.0.1:8010`)
 - `8011`: Triton gRPC API
 - `8012`: Triton metrics
+
+The temporary Python backend uses `KIND_CPU` in `config.pbtxt` so Triton can load the model without Docker GPU runtime during local bring-up. When the launcher is run with `-Gpu`, the Python model code still chooses CUDA if PyTorch can see it.
