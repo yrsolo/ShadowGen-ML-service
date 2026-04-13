@@ -151,10 +151,21 @@ The active docs now provide:
 - worker-to-ML-core integration contract in `docs/worker-core-contract.md`
 - repository workflow rules in `docs/workflow.md`
 
+### Playground Evidence
+
+- dev playground now uses a horizontal stage scroller on desktop
+- each stage card uses top execution controls/details and bottom preview area
+- mouse wheel over the pipeline maps vertical wheel motion to horizontal scrolling
+- top controls were compacted so stage cards and previews remain visible without vertical page scroll
+
 ### Validation Evidence
 
 - `.venv\Scripts\python.exe -m pytest` passed: `81 passed`
 - `python -m compileall src tests tools` passed
+- browser smoke passed for the generated playground HTML:
+  - 9 stage cards rendered
+  - horizontal overflow detected
+  - wheel moved pipeline `scrollLeft` from `4` to `780`
 - `python -m py_compile ops/triton/model_repository/shadowgen_segmenter/1/model.py` passed
 - `tools/run_triton_segmenter_python.ps1` fails fast with a clear Docker / WSL diagnostic when the local Triton container backend is unavailable
 

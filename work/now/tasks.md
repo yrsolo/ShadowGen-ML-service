@@ -50,7 +50,7 @@
 - [ ] Run the first live end-to-end Triton smoke against a real `shadowgen_segmenter` server
 - [ ] Implement the real `V2-DIFF` shadow backend
 - [ ] Add shadow-stage input previews for `img`, `mask`, `depth`, and `normal`
-- [x] Rework the playground into a horizontal stage scroller with wheel-driven horizontal navigation
+- [x] Rework the playground into a horizontal stage scroller with wheel-driven horizontal navigation and compact desktop controls
 - [ ] Continue replacing compatibility shims with direct imports from the layered structure
 - [ ] Extend the temporary Triton segmenter bridge with a verified custom image smoke run
 

@@ -49,35 +49,34 @@ def render_playground_html() -> str:
       border: 1px solid rgba(255,255,255,0.52);
       box-shadow: var(--shadow);
     }
-    .hero { border-radius: 30px; padding: 24px; }
-    h1 { margin: 0 0 10px; font-size: clamp(28px, 4vw, 42px); letter-spacing: -0.04em; }
+    .hero { border-radius: 30px; padding: 18px 24px; }
+    h1 { margin: 0 0 6px; font-size: clamp(24px, 3vw, 34px); letter-spacing: -0.04em; }
     p { margin: 0; color: var(--muted); }
     .hero-grid {
-      margin-top: 18px;
+      margin-top: 12px;
       display: grid;
-      grid-template-columns: repeat(12, 1fr);
-      gap: 14px;
+      grid-template-columns: minmax(220px, 3fr) minmax(300px, 4fr) minmax(220px, 3fr) minmax(220px, 2fr);
+      gap: 12px;
     }
     .panel {
-      grid-column: span 4;
       background: var(--card-strong);
       border: 1px solid var(--line);
       border-radius: 24px;
-      padding: 16px;
+      padding: 12px 16px;
+      min-width: 0;
     }
-    .panel.wide { grid-column: span 6; }
     .panel h2 {
-      margin: 0 0 12px;
+      margin: 0 0 8px;
       font-size: 13px;
       text-transform: uppercase;
       letter-spacing: 0.14em;
       color: var(--muted);
     }
-    .field { display: grid; gap: 6px; margin-bottom: 12px; }
-    .field label { font-size: 13px; color: var(--muted); }
+    .field { display: grid; gap: 4px; margin-bottom: 8px; }
+    .field label { font-size: 12px; color: var(--muted); }
     .field input, .field select {
       width: 100%;
-      padding: 10px 12px;
+      padding: 8px 12px;
       border-radius: 14px;
       border: 1px solid var(--line);
       background: white;
@@ -89,24 +88,26 @@ def render_playground_html() -> str:
       border: 0;
       background: transparent;
     }
-    .value-row { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
-    .actions { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+    .value-row { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
     button {
       border: 0;
       border-radius: 999px;
-      padding: 11px 18px;
+      padding: 10px 18px;
       cursor: pointer;
       font-weight: 600;
     }
     .primary { background: linear-gradient(135deg, var(--accent), #f79c7f); color: white; }
     .ghost { background: rgba(255,255,255,0.9); color: var(--text); border: 1px solid var(--line); }
     .note {
-      margin-top: 14px;
+      margin-top: 0;
       padding: 12px 14px;
       border-radius: 18px;
       background: rgba(27, 35, 59, 0.06);
       color: var(--muted);
       white-space: pre-wrap;
+      max-height: 96px;
+      overflow: auto;
     }
     .pipeline {
       display: grid;
@@ -212,6 +213,7 @@ def render_playground_html() -> str:
       background-position: 0 0, 9px 9px;
     }
     @media (max-width: 1100px) {
+      .hero-grid { grid-template-columns: repeat(12, 1fr); }
       .panel, .panel.wide { grid-column: span 12; }
       .shell { width: calc(100vw - 20px); height: calc(100vh - 20px); margin: 10px auto; }
       .pipeline { grid-auto-columns: minmax(560px, calc(100vw - 28px)); }
