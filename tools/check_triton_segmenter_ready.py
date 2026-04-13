@@ -14,7 +14,7 @@ def _fetch_json(url: str) -> dict:
 
 def main(argv: list[str] | None = None) -> int:
     argv = argv or sys.argv[1:]
-    base_url = argv[0] if argv else "http://127.0.0.1:8001"
+    base_url = argv[0] if argv else "http://127.0.0.1:8010"
     base_url = base_url.rstrip("/")
     model_name = argv[1] if len(argv) > 1 else "shadowgen_segmenter"
     ready_url = f"{base_url}/v2/models/{model_name}/ready"

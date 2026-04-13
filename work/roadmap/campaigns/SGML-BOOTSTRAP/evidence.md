@@ -156,7 +156,21 @@ The active docs now provide:
 - dev playground now uses a horizontal stage scroller on desktop
 - each stage card uses top execution controls/details and bottom preview area
 - mouse wheel over the pipeline maps vertical wheel motion to horizontal scrolling
+- `Shift` + mouse wheel scrolls the active stage card vertically
+- stage cards use internal vertical overflow so previews are scrollable instead of being clipped
 - top controls were compacted so stage cards and previews remain visible without vertical page scroll
+
+### Triton Bring-Up Evidence
+
+- local segmenter Triton container is built from `ops/triton/Dockerfile.segmenter-python`
+- tracked Triton model repository lives under `ops/triton/model_repository`
+- Windows launcher exists at `tools/run_triton_segmenter_python.cmd`
+- PowerShell launcher exists at `tools/run_triton_segmenter_python.ps1`
+- local helper maps standard Triton container ports to offset host ports:
+  - HTTP `8010`
+  - gRPC `8011`
+  - metrics `8012`
+- ML-core should use `SHADOWGEN_TRITON_URL=http://127.0.0.1:8010` when FastAPI uses local port `8000`
 
 ### Validation Evidence
 
@@ -166,6 +180,7 @@ The active docs now provide:
   - 9 stage cards rendered
   - horizontal overflow detected
   - wheel moved pipeline `scrollLeft` from `4` to `780`
+- PowerShell syntax parse passed for `tools/run_triton_segmenter_python.ps1`
 - `python -m py_compile ops/triton/model_repository/shadowgen_segmenter/1/model.py` passed
 - `tools/run_triton_segmenter_python.ps1` fails fast with a clear Docker / WSL diagnostic when the local Triton container backend is unavailable
 

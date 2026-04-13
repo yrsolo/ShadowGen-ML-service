@@ -22,6 +22,15 @@ Optional ONNX tooling is still tracked, but current BiRefNet export is blocked i
 Relevant files:
 
 - `ops/triton/Dockerfile.segmenter-python`
+- `tools/run_triton_segmenter_python.cmd`
 - `tools/run_triton_segmenter_python.ps1`
 - `tools/check_triton_segmenter_ready.py`
 - `tools/export_segmenter_onnx.py`
+
+The helper maps Triton container ports to offset host ports so FastAPI can keep using local port `8000`.
+
+Host ports used by the helper:
+
+- `8010`: Triton HTTP API, used by ML-core (`SHADOWGEN_TRITON_URL=http://127.0.0.1:8010`)
+- `8011`: Triton gRPC API
+- `8012`: Triton metrics

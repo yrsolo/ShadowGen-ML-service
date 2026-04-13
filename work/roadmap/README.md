@@ -10,6 +10,8 @@
   - runtime is now registry-based and Triton-ready
   - sync and async execution paths coexist behind the same orchestration model
   - heavy stages are prepared for `mock|local|triton`
+  - segmenter has a temporary Triton Python backend launcher with local offset Triton ports
+  - playground uses horizontal stage navigation with per-card vertical scroll
   - shadow stage is prepared for named model generations:
     - `mock`
     - `V1-GAN`

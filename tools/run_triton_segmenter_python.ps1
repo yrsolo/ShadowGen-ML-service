@@ -1,31 +1,81 @@
+param(
+    [string]$ImageName = "shadowgen-triton-segmenter:py",
+    [string]$ContainerName = "shadowgen-triton-segmenter",
+    [int]$HttpPort = 8010,
+    [int]$GrpcPort = 8011,
+    [int]$MetricsPort = 8012,
+    [switch]$NoBuild,
+    [switch]$Help
+)
+
 $ErrorActionPreference = "Stop"
 
+if ($Help) {
+    Write-Host "Usage:"
+    Write-Host "  tools\run_triton_segmenter_python.ps1 [-NoBuild] [-HttpPort 8010] [-GrpcPort 8011] [-MetricsPort 8012]"
+    Write-Host ""
+    Write-Host "Starts a local Triton container for shadowgen_segmenter."
+    Write-Host "Default host ports avoid FastAPI's local 8000:"
+    Write-Host "  HTTP    http://127.0.0.1:8010"
+    Write-Host "  gRPC    127.0.0.1:8011"
+    Write-Host "  metrics http://127.0.0.1:8012/metrics"
+    exit 0
+}
+
 $dockerBin = "C:\Program Files\Docker\Docker\resources\bin\docker.exe"
-$imageName = "shadowgen-triton-segmenter:py"
-$containerName = "shadowgen-triton-segmenter"
-$modelRepository = Join-Path $PSScriptRoot "..\ops\triton\model_repository"
+$repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
+$dockerfile = Join-Path $repoRoot "ops\triton\Dockerfile.segmenter-python"
+$modelRepository = Resolve-Path (Join-Path $repoRoot "ops\triton\model_repository")
 
 if (-not (Test-Path $dockerBin)) {
-    throw "Docker CLI not found at $dockerBin"
+    throw "Docker CLI not found at $dockerBin. Install or start Docker Desktop first."
 }
 
 $dockerRoot = Split-Path $dockerBin -Parent
 $env:PATH = "$dockerRoot;$env:PATH"
 
-$wslList = (& wsl -l -q) 2>$null
-if ($LASTEXITCODE -ne 0) {
-    throw "WSL is not available. Triton container bring-up requires a working Linux container backend."
+try {
+    & $dockerBin version --format "{{.Server.Version}}" | Out-Null
+} catch {
+    throw "Docker daemon is not reachable. Start Docker Desktop and retry."
 }
 
-if ($wslList -notmatch "docker-desktop") {
-    throw "Docker Desktop WSL distro 'docker-desktop' is missing. Repair Docker Desktop before trying to run Triton."
+try {
+    $wslList = (& wsl -l -q) 2>$null
+    if ($LASTEXITCODE -eq 0 -and $wslList -notmatch "docker-desktop") {
+        Write-Warning "Docker Desktop WSL distro 'docker-desktop' was not found. Docker may still work with another backend, but GPU Triton usually needs Docker Desktop + WSL2."
+    }
+} catch {
+    Write-Warning "Could not inspect WSL distributions. Continuing because Docker daemon is reachable."
 }
 
-Write-Host "Building Triton segmenter image..."
-& $dockerBin build -f (Join-Path $PSScriptRoot "..\ops\triton\Dockerfile.segmenter-python") -t $imageName (Join-Path $PSScriptRoot "..")
+if (-not $NoBuild) {
+    Write-Host "Building Triton segmenter image: $ImageName"
+    & $dockerBin build -f $dockerfile -t $ImageName $repoRoot
+}
 
-Write-Host "Stopping any existing container..."
-& $dockerBin rm -f $containerName 2>$null | Out-Null
+Write-Host "Stopping any existing container: $ContainerName"
+& $dockerBin rm -f $ContainerName 2>$null | Out-Null
 
-Write-Host "Starting Triton container..."
-& $dockerBin run --name $containerName --rm -p 8001:8001 -v "${modelRepository}:/models" $imageName tritonserver --model-repository=/models
+Write-Host "Starting Triton container:"
+Write-Host "  image:      $ImageName"
+Write-Host "  models:     $modelRepository -> /models"
+Write-Host "  HTTP:       http://127.0.0.1:$HttpPort"
+Write-Host "  gRPC:       127.0.0.1:$GrpcPort"
+Write-Host "  metrics:    http://127.0.0.1:$MetricsPort/metrics"
+Write-Host ""
+Write-Host "After readiness, point ML-core to:"
+Write-Host "  `$env:SHADOWGEN_TRITON_URL='http://127.0.0.1:$HttpPort'"
+Write-Host "  `$env:SHADOWGEN_SEGMENTER_BACKEND_KIND='triton'"
+Write-Host ""
+
+& $dockerBin run `
+    --name $ContainerName `
+    --rm `
+    --gpus all `
+    -p "${HttpPort}:8000" `
+    -p "${GrpcPort}:8001" `
+    -p "${MetricsPort}:8002" `
+    -v "${modelRepository}:/models" `
+    $ImageName `
+    tritonserver --model-repository=/models --log-verbose=1

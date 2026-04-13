@@ -106,6 +106,8 @@ The playground supports:
 - preview scaling
 - explicit backend switching
 - explicit shadow model variant switching
+- horizontal stage navigation with the mouse wheel
+- vertical scrolling inside a stage card with `Shift` + mouse wheel
 
 Current shadow stage variants in the UI:
 
@@ -170,6 +172,8 @@ Tracked repository scaffold:
 - [ops/triton/model_repository/shadowgen_segmenter/config.pbtxt](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/ops/triton/model_repository/shadowgen_segmenter/config.pbtxt)
 - [ops/triton/model_repository/shadowgen_segmenter/1/model.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/ops/triton/model_repository/shadowgen_segmenter/1/model.py)
 - [ops/triton/Dockerfile.segmenter-python](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/ops/triton/Dockerfile.segmenter-python)
+- [tools/run_triton_segmenter_python.cmd](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/tools/run_triton_segmenter_python.cmd)
+- [tools/run_triton_segmenter_python.ps1](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/tools/run_triton_segmenter_python.ps1)
 
 Current live contract:
 
@@ -409,29 +413,59 @@ Inspect:
 
 ### How to verify the live Triton segmenter
 
-1. Build a Triton image with the Python backend dependencies:
+The container is built locally from:
+
+- [ops/triton/Dockerfile.segmenter-python](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/ops/triton/Dockerfile.segmenter-python)
+
+The model repository mounted into Triton is:
+
+- [ops/triton/model_repository](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/ops/triton/model_repository)
+
+Triton uses standard ports inside the container, but the helper maps them to offset host ports so FastAPI can keep using `8000` locally.
+
+Default host ports:
+
+- `8010`: Triton HTTP API, used by ML-core
+- `8011`: Triton gRPC API
+- `8012`: Triton metrics
+
+Container ports:
+
+- `8000`: Triton HTTP API
+- `8001`: Triton gRPC API
+- `8002`: Triton metrics
+
+1. Build and run the Triton image:
 
 ```powershell
-tools\run_triton_segmenter_python.ps1
+tools\run_triton_segmenter_python.cmd
+```
+
+If PowerShell execution policy is already configured, the direct PowerShell script is also valid:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools\run_triton_segmenter_python.ps1
 ```
 
 This helper script:
 
 - checks that Docker CLI is available
-- checks that the Docker Desktop WSL distro `docker-desktop` exists
+- checks that the Docker daemon is reachable
 - builds the custom Triton image
-- starts Triton on the tracked model repository
+- starts Triton with `--gpus all`
+- publishes HTTP/gRPC/metrics ports
+- mounts the tracked model repository into `/models`
 
 2. Check the Triton model readiness:
 
 ```powershell
-.venv\Scripts\python.exe tools\check_triton_segmenter_ready.py
+.venv\Scripts\python.exe tools\check_triton_segmenter_ready.py http://127.0.0.1:8010
 ```
 
 3. Point ML-core at Triton:
 
 ```powershell
-$env:SHADOWGEN_TRITON_URL="http://127.0.0.1:8001"
+$env:SHADOWGEN_TRITON_URL="http://127.0.0.1:8010"
 $env:SHADOWGEN_SEGMENTER_BACKEND_KIND="triton"
 $env:SHADOWGEN_BIREFNET_COMPILE_ENABLED="true"
 ```

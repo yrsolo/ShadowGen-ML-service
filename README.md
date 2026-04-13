@@ -172,6 +172,21 @@ Current live Triton bridge:
 - `torch.compile` remains an opt-in acceleration lever while ONNX export is blocked by `torchvision::deform_conv2d`
 - `ONNX` stays the planned first long-term production model format
 
+Quick local Triton start:
+
+```cmd
+tools\run_triton_segmenter_python.cmd
+```
+
+Then point ML-core at Triton:
+
+```powershell
+$env:SHADOWGEN_TRITON_URL="http://127.0.0.1:8010"
+$env:SHADOWGEN_SEGMENTER_BACKEND_KIND="triton"
+```
+
+The helper builds [ops/triton/Dockerfile.segmenter-python](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/ops/triton/Dockerfile.segmenter-python), mounts [ops/triton/model_repository](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/ops/triton/model_repository), and exposes Triton HTTP on host `8010`, gRPC on host `8011`, and metrics on host `8012`.
+
 ## Where To Read Next
 
 - [Docs Index](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/README.md)

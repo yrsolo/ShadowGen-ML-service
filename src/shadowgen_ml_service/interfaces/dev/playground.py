@@ -120,6 +120,7 @@ def render_playground_html() -> str:
       scroll-snap-type: x proximity;
       overscroll-behavior-x: contain;
       align-items: stretch;
+      min-height: 0;
     }
     .pipeline::-webkit-scrollbar { height: 12px; }
     .pipeline::-webkit-scrollbar-track { background: rgba(255,255,255,0.3); border-radius: 999px; }
@@ -128,12 +129,18 @@ def render_playground_html() -> str:
       border-radius: 26px;
       padding: 18px;
       display: grid;
-      grid-template-rows: auto minmax(0, 1fr);
+      grid-template-rows: auto auto;
       gap: 18px;
       min-height: 100%;
-      overflow: hidden;
+      max-height: 100%;
+      overflow-x: hidden;
+      overflow-y: auto;
+      overscroll-behavior: contain;
       scroll-snap-align: start;
     }
+    .stage-card::-webkit-scrollbar { width: 10px; }
+    .stage-card::-webkit-scrollbar-track { background: rgba(255,255,255,0.25); border-radius: 999px; }
+    .stage-card::-webkit-scrollbar-thumb { background: rgba(27, 35, 59, 0.14); border-radius: 999px; }
     .stage-main { display: grid; gap: 12px; }
     .stage-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
     .stage-title { display: flex; gap: 12px; align-items: center; }
@@ -186,7 +193,7 @@ def render_playground_html() -> str:
       grid-auto-columns: minmax(220px, min(var(--preview-width), 36vw));
       align-content: start;
       overflow-x: auto;
-      overflow-y: hidden;
+      overflow-y: visible;
       padding-bottom: 6px;
     }
     .previews::-webkit-scrollbar { height: 10px; }
@@ -204,7 +211,7 @@ def render_playground_html() -> str:
     }
     .preview img {
       width: 100%; display: block; border-radius: 14px;
-      max-height: min(52vh, 520px);
+      max-height: none;
       object-fit: contain;
       background:
         linear-gradient(45deg, rgba(0,0,0,0.04) 25%, transparent 25%, transparent 75%, rgba(0,0,0,0.04) 75%),
@@ -227,7 +234,7 @@ def render_playground_html() -> str:
         overflow-x: visible;
         overflow-y: visible;
       }
-      .stage-card { min-height: auto; }
+      .stage-card { min-height: auto; max-height: none; overflow: visible; }
       .previews {
         grid-auto-flow: row;
         grid-auto-columns: unset;
@@ -358,6 +365,14 @@ def render_playground_html() -> str:
     document.documentElement.style.setProperty("--preview-width", `${previewSize.value}px`);
     pipelineEl.addEventListener("wheel", (event) => {
       if (window.innerWidth <= 720) return;
+      if (event.shiftKey) {
+        const target = event.target instanceof Element ? event.target : null;
+        const card = target ? target.closest(".stage-card") : null;
+        if (!card) return;
+        event.preventDefault();
+        card.scrollBy({ top: event.deltaY, behavior: "auto" });
+        return;
+      }
       if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
       event.preventDefault();
       pipelineEl.scrollBy({ left: event.deltaY, behavior: "auto" });
