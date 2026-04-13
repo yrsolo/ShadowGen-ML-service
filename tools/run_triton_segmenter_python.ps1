@@ -55,7 +55,17 @@ if (-not $NoBuild) {
 }
 
 Write-Host "Stopping any existing container: $ContainerName"
-& $dockerBin rm -f $ContainerName 2>$null | Out-Null
+$existingContainer = (& $dockerBin ps -a --filter "name=^/${ContainerName}$" --format "{{.Names}}")
+if ($existingContainer -contains $ContainerName) {
+    & $dockerBin rm -f $ContainerName | Out-Null
+} else {
+    Write-Host "  no existing container found"
+}
+
+$gpuProbeOutput = (& $dockerBin run --rm --gpus all $ImageName python3 -c "print('gpu runtime ok')" 2>&1)
+if ($LASTEXITCODE -ne 0) {
+    throw "Docker GPU runtime probe failed. Ensure Docker Desktop has NVIDIA GPU support enabled. Output: $gpuProbeOutput"
+}
 
 Write-Host "Starting Triton container:"
 Write-Host "  image:      $ImageName"
