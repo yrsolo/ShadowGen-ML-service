@@ -55,17 +55,29 @@ class BackendSelector:
             )
 
         fallback_reason = None
+        requested_unavailable_reason = None
         for backend_kind, variant in self._fallback_order(stage_key, requested_backend_kind, requested_variant):
             backend = self.runtime.backend(stage_key, backend_kind, variant)
             if backend is None or not backend.descriptor.available or backend.handler is None:
+                if backend_kind == requested_backend_kind and variant == requested_variant:
+                    requested_unavailable_reason = self._unavailable_reason(
+                        stage_key,
+                        requested_backend_kind,
+                        requested_variant,
+                        backend.descriptor.detail if backend is not None else None,
+                    )
                 continue
             actual_mode = backend_kind
             if backend_kind == "mock" and requested_backend_kind != "mock":
                 actual_mode = "mock-fallback"
-                fallback_reason = f"{requested_backend_kind}:{requested_variant} unavailable for {stage_key}"
+                fallback_reason = requested_unavailable_reason or self._unavailable_reason(
+                    stage_key, requested_backend_kind, requested_variant, None
+                )
             elif backend_kind != requested_backend_kind or variant != requested_variant:
                 actual_mode = f"{backend_kind}-fallback"
-                fallback_reason = f"{requested_backend_kind}:{requested_variant} unavailable for {stage_key}"
+                fallback_reason = requested_unavailable_reason or self._unavailable_reason(
+                    stage_key, requested_backend_kind, requested_variant, None
+                )
             return ExecutionSelection(
                 stage_key=stage_key,
                 backend_id=backend.descriptor.backend_id,
@@ -132,3 +144,13 @@ class BackendSelector:
             "foreground_refiner": "passthrough-v1",
         }
         return mapping.get(stage_key, "mock-v1")
+
+    def _unavailable_reason(
+        self,
+        stage_key: str,
+        requested_backend_kind: str,
+        requested_variant: str,
+        detail: str | None,
+    ) -> str:
+        base = f"{requested_backend_kind}:{requested_variant} unavailable for {stage_key}"
+        return f"{base}: {detail}" if detail else base

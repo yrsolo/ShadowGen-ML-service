@@ -172,6 +172,7 @@ The active docs now provide:
 - ML-core capabilities reported `segmenter` as `backend_kind=triton`, `available=true`, `model_name=shadowgen_segmenter`, with no fallback reason
 - Windows launcher exists at `tools/run_triton_segmenter_python.cmd`
 - PowerShell launcher exists at `tools/run_triton_segmenter_python.ps1`
+- service launcher exists at `run-service-triton-segmenter.cmd` to set Triton segmenter env defaults
 - local helper maps standard Triton container ports to offset host ports:
   - HTTP `8010`
   - gRPC `8011`
@@ -179,6 +180,7 @@ The active docs now provide:
 - ML-core should use `SHADOWGEN_TRITON_URL=http://127.0.0.1:8010` when FastAPI uses local port `8000`
 - Triton launcher defaults to no Docker GPU flag for bring-up and supports explicit `-Gpu`
 - temporary Python backend uses `KIND_CPU` so Triton can load without NVIDIA container runtime, while model code still chooses CUDA when available
+- debug fallback reason now includes the unavailable backend descriptor detail, for example `Triton endpoint is unavailable`
 
 ### Validation Evidence
 

@@ -501,6 +501,12 @@ $env:SHADOWGEN_SEGMENTER_BACKEND_KIND="triton"
 $env:SHADOWGEN_BIREFNET_COMPILE_ENABLED="true"
 ```
 
+Or use the Windows helper that sets the Triton segmenter defaults and starts the service:
+
+```cmd
+run-service-triton-segmenter.cmd
+```
+
 4. Start the service and check:
 
 ```powershell

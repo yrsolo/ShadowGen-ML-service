@@ -185,6 +185,12 @@ $env:SHADOWGEN_TRITON_URL="http://127.0.0.1:8010"
 $env:SHADOWGEN_SEGMENTER_BACKEND_KIND="triton"
 ```
 
+Or start the service with those defaults already set:
+
+```cmd
+run-service-triton-segmenter.cmd
+```
+
 The helper builds [ops/triton/Dockerfile.segmenter-python](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/ops/triton/Dockerfile.segmenter-python), bakes [ops/triton/model_repository](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/ops/triton/model_repository) into `/models`, and exposes Triton HTTP on host `8010`, gRPC on host `8011`, and metrics on host `8012`.
 
 The default launcher mode starts without Docker GPU flags so the Triton wiring can be checked even if NVIDIA container runtime is not configured yet. Use `tools\run_triton_segmenter_python.cmd -Gpu` when Docker Desktop GPU support is working.

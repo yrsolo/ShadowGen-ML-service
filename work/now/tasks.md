@@ -48,6 +48,7 @@
 - [x] Add opt-in Torch runtime acceleration knobs for BiRefNet (`torch.compile`, matmul precision)
 - [x] Add live Triton bring-up helpers and readiness checks for the temporary Python backend
 - [x] Fix Triton local helper ports and add a Windows `.cmd` launcher
+- [x] Add a Windows service launcher that starts FastAPI with Triton segmenter defaults
 - [ ] Run the first live end-to-end Triton smoke against a real `shadowgen_segmenter` server
 - [ ] Implement the real `V2-DIFF` shadow backend
 - [ ] Add shadow-stage input previews for `img`, `mask`, `depth`, and `normal`
