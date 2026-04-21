@@ -181,6 +181,7 @@ The active docs now provide:
 - Triton launcher defaults to no Docker GPU flag for bring-up and supports explicit `-Gpu`
 - temporary Python backend uses `KIND_CPU` so Triton can load without NVIDIA container runtime, while model code still chooses CUDA when available
 - debug fallback reason now includes the unavailable backend descriptor detail, for example `Triton endpoint is unavailable`
+- V2-DIFF model training/export/serving requirements are captured in `docs/shadow-v2-model-contract.md`
 
 ### Validation Evidence
 

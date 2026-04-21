@@ -400,6 +400,7 @@ Important:
 - `V2-DIFF` now exists as the preferred Triton-ready slot
 - `softness` is a model input for real backends
 - coarse post-blur remains only in the mock backend
+- the training/export/serving contract for `V2-DIFF` is documented in [shadow-v2-model-contract.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/shadow-v2-model-contract.md)
 
 ## Cache and Metadata
 
