@@ -370,6 +370,46 @@ Expected debug metadata:
 - `endpoint` is filled
 - `fallback_reason = null`
 
+## Sample Pack For Model Developers
+
+Use the repository helper to prepare a small model-input pack from external object photos:
+
+```powershell
+.venv\Scripts\python.exe tools\prepare_shadow_v2_sample_pack.py --count 10 --backend-kind local --normal-variant from-depth-v2 --output-dir artifacts\shadow-v2-sample-pack
+```
+
+The generated folder is intentionally under `artifacts/`, so it is ignored by git and can be shared separately with model developers.
+
+Each sample folder contains:
+
+- `source.png`
+- `img.png`
+- `mask.png`
+- `depth.png`
+- `normal.png`
+- `controls.json`
+- `shadow_input.npz`
+- `source.json`
+- `stages.json`
+
+`shadow_input.npz` contains ready-to-load `FP32` tensors:
+
+- `img`: `[1, 4, H, W]`
+- `mask`: `[1, 1, H, W]`
+- `depth`: `[1, 1, H, W]`
+- `normal`: `[1, 3, H, W]`
+- `angle`: `[1]`
+- `elevation`: `[1]`
+- `softness`: `[1]`
+- `reflection`: `[1]`
+
+Depth sample rule:
+
+- raw depth is treated as float
+- values are normalized using only pixels inside `mask`
+- pixels outside `mask` are written as zero
+- exported `depth.png` is an 8-bit grayscale contract preview
+
 ## Open Decisions
 
 The following decisions may be finalized after first training experiments:

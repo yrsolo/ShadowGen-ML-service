@@ -8,11 +8,11 @@ from shadowgen_ml_service.infrastructure.backends.triton.client import TritonInf
 from shadowgen_ml_service.infrastructure.backends.triton.model_registry import TritonModelBinding
 from shadowgen_ml_service.infrastructure.backends.triton.serializers import (
     batch_input_tensors,
-    grayscale_output_to_image,
     image_to_nchw_float32_input,
     mask_to_nchw_float32_input,
     split_output_tensor,
 )
+from shadowgen_ml_service.infrastructure.stages.depth.normalization import normalize_depth_map
 from shadowgen_ml_service.utils.images import ensure_pil, pil_to_asset
 
 
@@ -48,4 +48,11 @@ class TritonDepthEstimator(DepthEstimator):
         )
         response = self.client.infer(self.binding, inputs=batched_inputs)
         depth_tensors = split_output_tensor(response[self.binding.outputs["depth"].tensor_name], len(stage_inputs))
-        return [DepthResult(depth_map=pil_to_asset(grayscale_output_to_image(tensor))) for tensor in depth_tensors]
+        return [
+            DepthResult(
+                depth_map=pil_to_asset(
+                    normalize_depth_map(tensor, ensure_pil(stage_input.image).size, mask=ensure_pil(stage_input.mask).convert("L"))
+                )
+            )
+            for stage_input, tensor in zip(stage_inputs, depth_tensors, strict=True)
+        ]

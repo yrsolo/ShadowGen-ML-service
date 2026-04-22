@@ -4,12 +4,10 @@ import importlib
 from types import ModuleType
 from typing import Any, ClassVar
 
-import numpy as np
-from PIL import Image
-
 from shadowgen_ml_service.core.contracts import DepthEstimator
 from shadowgen_ml_service.core.models import DepthResult
 from shadowgen_ml_service.core.stage_io import DepthInput
+from shadowgen_ml_service.infrastructure.stages.depth.normalization import normalize_depth_map
 from shadowgen_ml_service.infrastructure.stages.shared.model_support import RealAdapterProbe, import_module, module_available
 from shadowgen_ml_service.utils.images import ensure_pil, pil_to_asset
 
@@ -18,29 +16,6 @@ def load_transformers_depth_classes() -> tuple[type[Any], type[Any]]:
     auto_processing_module = importlib.import_module("transformers.models.auto.image_processing_auto")
     auto_model_module = importlib.import_module("transformers.models.auto.modeling_auto")
     return auto_processing_module.AutoImageProcessor, auto_model_module.AutoModelForDepthEstimation
-
-
-def normalize_depth_map(predicted_depth: Any, output_size: tuple[int, int]) -> Image.Image:
-    depth = predicted_depth
-    if hasattr(depth, "detach"):
-        depth = depth.detach()
-    if hasattr(depth, "cpu"):
-        depth = depth.cpu()
-    if hasattr(depth, "numpy"):
-        depth_array = depth.numpy()
-    else:
-        depth_array = np.asarray(depth)
-    depth_array = np.asarray(depth_array, dtype=np.float32)
-    if depth_array.ndim == 3:
-        depth_array = depth_array[0]
-    min_value = float(depth_array.min())
-    max_value = float(depth_array.max())
-    if max_value - min_value < 1e-6:
-        normalized = np.zeros_like(depth_array, dtype=np.float32)
-    else:
-        normalized = (depth_array - min_value) / (max_value - min_value)
-    image = Image.fromarray((normalized * 255.0).clip(0, 255).astype(np.uint8), mode="L")
-    return image.resize(output_size, Image.Resampling.BILINEAR)
 
 
 class RealDepthEstimator(DepthEstimator):
@@ -93,9 +68,8 @@ class RealDepthEstimator(DepthEstimator):
         with self._torch.no_grad():
             outputs = self._model(**inputs)
         predicted_depth = outputs.predicted_depth if hasattr(outputs, "predicted_depth") else outputs["predicted_depth"]
-        depth_map = normalize_depth_map(predicted_depth, image_rgb.size)
-        if stage_input.mask is not None:
-            depth_map = Image.composite(depth_map, Image.new("L", depth_map.size, 0), ensure_pil(stage_input.mask).convert("L"))
+        mask = ensure_pil(stage_input.mask).convert("L") if stage_input.mask is not None else None
+        depth_map = normalize_depth_map(predicted_depth, image_rgb.size, mask=mask)
         return DepthResult(depth_map=pil_to_asset(depth_map))
 
     def _infer_device_label(self) -> str:

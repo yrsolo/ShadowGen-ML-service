@@ -54,6 +54,7 @@
 - [ ] Add shadow-stage input previews for `img`, `mask`, `depth`, and `normal`
 - [x] Rework the playground into a horizontal stage scroller with wheel-driven horizontal navigation, shift-wheel vertical card scroll, and compact desktop controls
 - [x] Document the training, export, serving, and acceptance contract for the future `V2-DIFF` shadow model
+- [x] Prepare a reproducible Shadow V2 sample-pack generator and local 10-image sample pack
 - [ ] Continue replacing compatibility shims with direct imports from the layered structure
 - [ ] Extend the temporary Triton segmenter bridge with a verified custom image smoke run
 

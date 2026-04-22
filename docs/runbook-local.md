@@ -537,6 +537,18 @@ Operational note:
 That is expected right now.
 The runtime slot and Triton adapter scaffold exist by design, but the actual model backend is not yet connected.
 
+## Prepare Shadow V2 Sample Pack
+
+To create a small handoff pack for model developers:
+
+```powershell
+.venv\Scripts\python.exe tools\prepare_shadow_v2_sample_pack.py --count 10 --backend-kind local --normal-variant from-depth-v2 --output-dir artifacts\shadow-v2-sample-pack
+```
+
+The helper downloads curated external object photos, runs the pipeline through detection, segmentation, foreground refinement, depth, and normals, then writes contract-ready files under `artifacts\shadow-v2-sample-pack`.
+
+Generated outputs are ignored by git. Share the folder separately when handing samples to the model team.
+
 ## Related Docs
 
 - [README.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/README.md)

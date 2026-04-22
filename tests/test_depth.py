@@ -7,6 +7,7 @@ from PIL import Image
 
 from shadowgen_ml_service.adapters.real import RealDepthEstimator
 from shadowgen_ml_service.core.stage_io import DepthInput
+from shadowgen_ml_service.infrastructure.stages.depth.normalization import normalize_depth_map
 
 
 class FakeNoGrad:
@@ -94,6 +95,28 @@ class FakeTransformersDepthModule:
 
 
 class DepthTests(unittest.TestCase):
+    def test_depth_normalization_uses_only_masked_values(self) -> None:
+        depth = np.asarray(
+            [
+                [0.0, 10.0, 10.0, 100.0],
+                [0.0, 20.0, 20.0, 100.0],
+                [0.0, 30.0, 30.0, 100.0],
+                [0.0, 40.0, 40.0, 100.0],
+            ],
+            dtype=np.float32,
+        )
+        mask = Image.new("L", (4, 4), 0)
+        mask.putpixel((1, 0), 255)
+        mask.putpixel((2, 0), 255)
+        mask.putpixel((1, 3), 255)
+        mask.putpixel((2, 3), 255)
+
+        result = np.asarray(normalize_depth_map(depth, (4, 4), mask=mask), dtype=np.uint8)
+
+        self.assertEqual(int(result[0, 1]), 0)
+        self.assertEqual(int(result[3, 1]), 255)
+        self.assertEqual(int(result[0, 3]), 0)
+
     def test_real_depth_estimator_returns_resized_depth_map(self) -> None:
         estimator = RealDepthEstimator(
             transformers_module=FakeTransformersDepthModule,
