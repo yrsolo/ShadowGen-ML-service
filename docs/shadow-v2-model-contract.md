@@ -372,13 +372,13 @@ Expected debug metadata:
 
 ## Sample Pack For Model Developers
 
-Use the repository helper to prepare a small model-input pack from external object photos:
+Use the repository helper to prepare a small model-input pack from curated product-like external object photos:
 
 ```powershell
 .venv\Scripts\python.exe tools\prepare_shadow_v2_sample_pack.py --count 10 --backend-kind local --normal-variant from-depth-v2 --output-dir artifacts\shadow-v2-sample-pack
 ```
 
-The generated folder is intentionally under `artifacts/`, so it is ignored by git and can be shared separately with model developers.
+The generated folder is intentionally under `artifacts/`, so it is ignored by git and can be shared separately with model developers. The default curated set is meant to match the product scenario, not stress segmentation: one meaningful foreground object, large enough in the frame, photographed on a phone or in a simple product/studio setup.
 
 Each sample folder contains:
 

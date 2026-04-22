@@ -4,6 +4,7 @@ import argparse
 import base64
 import json
 import re
+import shutil
 import time
 import urllib.error
 import urllib.parse
@@ -30,27 +31,25 @@ USER_AGENT = "ShadowGen-ML-service sample-pack-preparer/0.1"
 DEFAULT_COMMONS_QUERIES = [
     "mug on table photo",
     "camera on table photo",
-    "shoe on floor photo",
-    "bottle on table photo",
-    "book on desk photo",
-    "plant pot window photo",
     "backpack on chair photo",
-    "toy on floor photo",
     "phone on desk photo",
-    "headphones on table photo",
+    "watch close up photo",
+    "product item table photo",
 ]
 
 DEFAULT_COMMONS_TITLES = [
     "File:Coffee Mug on table with creamer.jpg",
     "File:Nikon camera on a table beside a tripod.jpg",
-    "File:Brown leather boots on a wood floor (Unsplash).jpg",
     "File:Personalized backpack book bag on a yellow chair (21312803791).jpg",
-    "File:Beer bottle on a picnic table at the beach.jpg",
-    "File:Laptop on desk book stacks (Unsplash).jpg",
-    "File:Potted succulents in window (Unsplash).jpg",
-    "File:Toddler Toy Floor Riga (Unsplash).jpg",
     "File:Computer mouse laptop and phone on a desk.jpg",
-    "File:Headphones and smartphone (Unsplash).jpg",
+    "File:Old pocket watch (Unsplash UIUgYu9bENU).jpg",
+    "File:Informatics General Corporation mug.jpg",
+    "File:Kodak processing digital alarm promotional item.jpg",
+    "File:JavaOne backpack and phone case.jpg",
+    "File:Informatics General Corporation TAPS Division magnetic paperclip holder.jpg",
+    "File:Informatics General Corporation visor.jpg",
+    "File:InterContinental Maui Wailea sports visors.jpg",
+    "File:Library Swag! (7952028098).jpg",
 ]
 
 CONTROL_PRESETS = [
@@ -101,7 +100,7 @@ def main() -> int:
 
     source_records = load_or_download_sources(
         sources_dir=sources_dir,
-        count=args.count,
+        count=max(args.count + 8, len(DEFAULT_COMMONS_TITLES)),
         skip_download=args.skip_download,
     )
     settings = Settings()
@@ -115,25 +114,38 @@ def main() -> int:
         "backend_kind_requested": args.backend_kind,
         "normal_variant_requested": args.normal_variant,
         "samples": [],
-        "sources": source_records,
+        "sources": [],
+        "skipped_sources": [],
     }
 
-    for index, source in enumerate(source_records[: args.count], start=1):
-        sample_id = f"sample_{index:02d}"
+    for source in source_records:
+        if len(manifest["samples"]) >= args.count:
+            break
+        sample_id = f"sample_{len(manifest['samples']) + 1:02d}"
         print(f"[{sample_id}] running pipeline for {source['title']}")
         sample_dir = samples_dir / sample_id
+        controls = CONTROL_PRESETS[len(manifest["samples"]) % len(CONTROL_PRESETS)]
+        try:
+            outcome = run_pipeline(
+                use_case=use_case,
+                settings=settings,
+                source_path=Path(source["local_path"]),
+                sample_id=sample_id,
+                backend_kind=args.backend_kind,
+                normal_variant=args.normal_variant,
+                controls=controls,
+            )
+        except Exception as exc:
+            print(f"[{sample_id}] skipped {source['title']}: {exc}")
+            if sample_dir.exists():
+                shutil.rmtree(sample_dir)
+            skipped = dict(source)
+            skipped["reason"] = str(exc)
+            manifest["skipped_sources"].append(skipped)
+            continue
         sample_dir.mkdir(parents=True, exist_ok=True)
-        controls = CONTROL_PRESETS[(index - 1) % len(CONTROL_PRESETS)]
-        outcome = run_pipeline(
-            use_case=use_case,
-            settings=settings,
-            source_path=Path(source["local_path"]),
-            sample_id=sample_id,
-            backend_kind=args.backend_kind,
-            normal_variant=args.normal_variant,
-            controls=controls,
-        )
         export_sample(sample_dir=sample_dir, source_path=Path(source["local_path"]), outcome=outcome, controls=controls, source=source)
+        manifest["sources"].append(source)
         manifest["samples"].append(
             {
                 "sample_id": sample_id,
@@ -157,6 +169,9 @@ def main() -> int:
             }
         )
 
+    if len(manifest["samples"]) < args.count:
+        raise RuntimeError(f"only prepared {len(manifest['samples'])} accepted samples, expected {args.count}")
+
     (output_dir / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
     write_readme(output_dir)
     print(f"sample pack written to {output_dir}")
@@ -178,7 +193,7 @@ def load_or_download_sources(*, sources_dir: Path, count: int, skip_download: bo
         if len(records) >= count:
             break
         used_titles.add(source["title"])
-        local_path = sources_dir / f"{len(records) + 1:02d}_{slugify(source['title'])}.png"
+        local_path = source_path_for(sources_dir, source["title"], len(records) + 1)
         if not local_path.exists():
             download_to_png(source["download_url"], local_path)
             time.sleep(1.0)
@@ -192,7 +207,7 @@ def load_or_download_sources(*, sources_dir: Path, count: int, skip_download: bo
         if source is None:
             continue
         used_titles.add(source["title"])
-        local_path = sources_dir / f"{len(records) + 1:02d}_{slugify(source['title'])}.png"
+        local_path = source_path_for(sources_dir, source["title"], len(records) + 1)
         if not local_path.exists():
             download_to_png(source["download_url"], local_path)
             time.sleep(1.0)
@@ -201,6 +216,14 @@ def load_or_download_sources(*, sources_dir: Path, count: int, skip_download: bo
     if len(records) < count:
         raise RuntimeError(f"only prepared {len(records)} source images, expected {count}")
     return records
+
+
+def source_path_for(sources_dir: Path, title: str, index: int) -> Path:
+    slug = slugify(title)
+    existing = sorted(sources_dir.glob(f"*_{slug}.png"))
+    if existing:
+        return existing[0]
+    return sources_dir / f"{index:02d}_{slug}.png"
 
 
 def fetch_commons_images_by_titles(titles: list[str]) -> list[dict[str, Any]]:
@@ -403,13 +426,51 @@ def stage_to_dict(stage) -> dict[str, Any]:
 
 def write_readme(output_dir: Path) -> None:
     (output_dir / "README.md").write_text(
-        """# Shadow V2-DIFF Sample Pack
+        """# Shadow V2-DIFF Product-Case Sample Pack
 
 This folder is generated by `tools/prepare_shadow_v2_sample_pack.py`.
+
+## Purpose
+
+This pack is a small integration/test handoff for the future `shadow_generator` `v2-diff` model.
+
+It represents the expected product scenario:
+
+- a user chooses one meaningful object
+- the object is photographed on a phone or in a simple studio/product-photo setup
+- the object is large enough in the frame
+- the source image is suitable for segmentation
+- the ML core prepares canonical model inputs for shadow generation
+
+This is not a hard segmentation benchmark. Intentionally difficult cases such as tiny distant objects, heavy occlusion, transparent bottles, clutter-first images, and badly cropped objects are excluded from the default curated set.
+
+## Folder Structure
+
+```text
+shadow-v2-sample-pack/
+  manifest.json
+  contact_sheet.png
+  sources/
+  samples/
+    sample_01/
+      source.png
+      working_crop.png
+      segmenter_cutout.png
+      img.png
+      mask.png
+      depth.png
+      normal.png
+      controls.json
+      shadow_input.npz
+      source.json
+      stages.json
+```
 
 Each `samples/sample_XX/` folder contains:
 
 - `source.png`: downloaded source image
+- `working_crop.png`: canonical crop/pad/resize canvas before segmentation
+- `segmenter_cutout.png`: segmentation cutout before/around foreground refinement
 - `img.png`: RGBA refined foreground cutout, maps to model input `img`
 - `mask.png`: grayscale foreground mask, maps to model input `mask`
 - `depth.png`: grayscale depth normalized inside `mask`, maps to model input `depth`
@@ -418,6 +479,54 @@ Each `samples/sample_XX/` folder contains:
 - `shadow_input.npz`: ready-to-load FP32 tensors in NCHW batch layout
 - `source.json`: source URL/license metadata
 - `stages.json`: pipeline backend metadata for reproducibility
+
+## Tensor Contract
+
+`shadow_input.npz` contains:
+
+- `img`: `[1, 4, 512, 512]`, `float32`, RGBA, `0..1`
+- `mask`: `[1, 1, 512, 512]`, `float32`, grayscale, `0..1`
+- `depth`: `[1, 1, 512, 512]`, `float32`, grayscale, `0..1`
+- `normal`: `[1, 3, 512, 512]`, `float32`, RGB normal map, `0..1`
+- `angle`: `[1]`, `float32`, degrees
+- `elevation`: `[1]`, `float32`, degrees
+- `softness`: `[1]`, `float32`, `0..1`
+- `reflection`: `[1]`, `float32`, `0..1`
+
+## Depth Rule
+
+Depth is normalized inside the object mask:
+
+- raw depth is treated as float
+- min/max are computed only over pixels where `mask > 0`
+- pixels outside the mask are exported as `0`
+- `depth.png` is an 8-bit grayscale preview of the same normalized signal
+
+This rule is important because the model should learn object-relative depth, not background-relative depth.
+
+## How To Load
+
+```python
+import numpy as np
+
+sample = np.load("samples/sample_01/shadow_input.npz")
+img = sample["img"]
+mask = sample["mask"]
+depth = sample["depth"]
+normal = sample["normal"]
+angle = sample["angle"]
+elevation = sample["elevation"]
+softness = sample["softness"]
+reflection = sample["reflection"]
+```
+
+## Regeneration
+
+From the repository root:
+
+```powershell
+.venv\\Scripts\\python.exe tools\\prepare_shadow_v2_sample_pack.py --count 10 --backend-kind local --normal-variant from-depth-v2 --output-dir artifacts\\shadow-v2-sample-pack
+```
 
 The sample pack is for model integration/testing and is not committed to git.
 """,

@@ -183,6 +183,7 @@ The active docs now provide:
 - debug fallback reason now includes the unavailable backend descriptor detail, for example `Triton endpoint is unavailable`
 - V2-DIFF model training/export/serving requirements are captured in `docs/shadow-v2-model-contract.md`
 - Shadow V2 sample pack generated under `artifacts/shadow-v2-sample-pack` with 10 local-backend samples and contract-ready `shadow_input.npz` files
+- Shadow V2 sample pack now uses curated product-case sources and includes an in-folder README for model developers
 
 ### Validation Evidence
 
