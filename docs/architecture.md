@@ -396,9 +396,10 @@ Important:
 
 Important:
 
-- `V1-GAN` remains the current working local model
+- `V1-GAN` remains the current controllable local rot/top-view shadow model
 - `V2-DIFF` now exists as the preferred Triton-ready slot
-- `softness` is a model input for real backends
+- current `V2-DIFF` is control-free and consumes only `img` and `mask`
+- future controlled `V2-DIFF` may consume `depth`, `normal`, `angle`, `elevation`, `softness`, and `reflection`
 - coarse post-blur remains only in the mock backend
 - the training/export/serving contract for `V2-DIFF` is documented in [shadow-v2-model-contract.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/shadow-v2-model-contract.md)
 

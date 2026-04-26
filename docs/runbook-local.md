@@ -252,29 +252,26 @@ Current blocker note:
 
 Important:
 
-- real shadow backends receive `softness` as model input
-- real shadow backends do not use post-blur for softness
+- `V1-GAN` is the current controllable local model for top-view/rotated shadows
+- `V2-DIFF` is currently control-free and ignores `angle`, `elevation`, `softness`, and `reflection`
+- real controlled shadow backends must not use post-blur for softness; coarse blur remains mock-only
 
 #### `V2-DIFF`
 
 - preferred Triton-ready slot
-- scaffolded intentionally
-- not implemented as a working model yet
+- currently simplified to a control-free diffusion model
+- expected to draw a plausible standalone shadow from the object image and mask
 - env vars:
   - `SHADOWGEN_SHADOW_BACKEND_KIND`
   - `SHADOWGEN_SHADOW_MODEL_VARIANT`
   - `SHADOWGEN_TRITON_SHADOW_V2_MODEL`
 
-Expected model inputs:
+Current expected model inputs:
 
 - `img`
 - `mask`
-- `depth`
-- `normal`
-- `angle`
-- `elevation`
-- `softness`
-- `reflection`
+
+Future controlled inputs may add `depth`, `normal`, `angle`, `elevation`, `softness`, and `reflection`. The ML core adapter sends only tensors declared by the active Triton binding.
 
 ## Triton Settings
 

@@ -2,6 +2,13 @@
 
 This document defines the technical requirements for the next-generation shadow model used by the `shadow_generator` stage.
 
+Current integration decision:
+
+- `V1-GAN` remains the controllable local model for top-view/rotated shadows.
+- `V2-DIFF` is temporarily simplified to a control-free diffusion slot.
+- Current `V2-DIFF` inference input is only `img + mask`.
+- `angle`, `elevation`, `softness`, `reflection`, `depth`, and `normal` remain in the wider pipeline/sample-pack contract for future controlled checkpoints, but the current `V2-DIFF` backend must ignore them.
+
 The target model variant is:
 
 - stage key: `shadow_generator`
@@ -13,12 +20,15 @@ The document is intentionally written as a training, export, and serving contrac
 
 ## Goal
 
-The model generates a physically plausible shadow layer for a foreground object already extracted from the source image.
+The current `V2-DIFF` model generates a plausible standalone shadow layer for a foreground object already extracted from the source image.
 
-The model must learn to condition on:
+The current model must condition on:
 
 - object appearance
 - object alpha mask
+
+The full controlled model is deferred. A later checkpoint may additionally learn to condition on:
+
 - estimated depth
 - estimated normals
 - light azimuth
@@ -59,12 +69,12 @@ The model implementation should avoid hard-coding this size internally unless th
 | --- | --- | --- | --- | --- | --- | --- |
 | `img` | yes | `[N, 4, H, W]` | `FP32` | `0..1` | `NCHW` | Refined RGBA object cutout on transparent background. |
 | `mask` | yes | `[N, 1, H, W]` | `FP32` | `0..1` | `NCHW` | Foreground alpha/object mask. |
-| `depth` | yes | `[N, 1, H, W]` | `FP32` | `0..1` | `NCHW` | Relative depth map on the canonical crop. |
-| `normal` | yes | `[N, 3, H, W]` | `FP32` | `0..1` | `NCHW` | Normal map encoded as RGB-like XYZ remap. |
-| `angle` | yes | `[N]` or `[N, 1]` | `FP32` | degrees | scalar | Light azimuth in degrees. |
-| `elevation` | yes | `[N]` or `[N, 1]` | `FP32` | degrees | scalar | Light elevation above horizon in degrees. |
-| `softness` | yes | `[N]` or `[N, 1]` | `FP32` | `0..1` | scalar | Learned shadow edge softness control. |
-| `reflection` | yes | `[N]` or `[N, 1]` | `FP32` | `0..1` | scalar | Optional glossy/reflection control. The first model may ignore it, but the tensor must be accepted. |
+| `depth` | future | `[N, 1, H, W]` | `FP32` | `0..1` | `NCHW` | Relative depth map on the canonical crop. Not required by the current control-free `V2-DIFF`. |
+| `normal` | future | `[N, 3, H, W]` | `FP32` | `0..1` | `NCHW` | Normal map encoded as RGB-like XYZ remap. Not required by the current control-free `V2-DIFF`. |
+| `angle` | future | `[N]` or `[N, 1]` | `FP32` | degrees | scalar | Light azimuth in degrees. Current `V2-DIFF` ignores it; `V1-GAN` uses it for rot/top-view shadow generation. |
+| `elevation` | future | `[N]` or `[N, 1]` | `FP32` | degrees | scalar | Light elevation above horizon in degrees. Current `V2-DIFF` ignores it. |
+| `softness` | future | `[N]` or `[N, 1]` | `FP32` | `0..1` | scalar | Learned shadow edge softness control for a future controlled checkpoint. Current `V2-DIFF` ignores it. |
+| `reflection` | future | `[N]` or `[N, 1]` | `FP32` | `0..1` | scalar | Optional glossy/reflection control for a future controlled checkpoint. Current `V2-DIFF` ignores it. |
 
 ### Angle Semantics
 
@@ -95,11 +105,11 @@ Expected behavior:
 
 ### Softness Semantics
 
-`softness` is a conditioning input to the real model.
+`softness` is not active in the current control-free `V2-DIFF` model. It remains reserved for a future controlled checkpoint.
 
 Important:
 
-- the real `v2-diff` model must not rely on a post-model Gaussian blur to implement softness
+- a future controlled `v2-diff` model must not rely on a post-model Gaussian blur to implement softness
 - coarse post-blur is allowed only in the `mock` backend
 - `softness=0` should produce the sharpest supported shadow
 - `softness=1` should produce the softest supported shadow
@@ -108,9 +118,8 @@ Important:
 
 `reflection` is reserved for reflective or glossy-floor behavior.
 
-The first checkpoint may ignore the value, but it must:
+The current control-free checkpoint ignores this value. A future controlled checkpoint must:
 
-- accept the input tensor
 - keep output stable when reflection is unused
 - document whether reflection is active
 
@@ -139,13 +148,16 @@ The output must:
 
 ## Training Data Requirements
 
-Each training sample should contain, or be reproducibly converted into:
+Each training sample for the current control-free checkpoint should contain, or be reproducibly converted into:
 
 - foreground RGBA object crop
 - foreground mask
+- target shadow RGBA or target shadow alpha plus colour policy
+
+The sample pack may additionally contain future-control fields:
+
 - depth map in the same crop coordinates
 - normal map in the same crop coordinates
-- target shadow RGBA or target shadow alpha plus colour policy
 - light azimuth metadata
 - light elevation metadata
 - softness metadata or estimated softness label
@@ -176,7 +188,9 @@ The same object instance should not appear in both train and test unless the exp
 
 ## Training Behavior Requirements
 
-The model must be controllable.
+The current model does not need to be controllable. It should produce plausible shadows from object appearance and mask only.
+
+The future controlled model must be controllable.
 
 Validation should include controlled sweeps where only one input changes:
 
@@ -251,22 +265,18 @@ The Triton model repository entry should use:
 - `max_batch_size`: `4` for first production integration
 - dynamic batching enabled with a short queue delay
 
-The ML core currently expects this binding shape:
+The ML core currently expects this `V2-DIFF` binding shape:
 
 ```text
 inputs:
   img:        FP32 [N, 4, H, W]
   mask:       FP32 [N, 1, H, W]
-  depth:      FP32 [N, 1, H, W]
-  normal:     FP32 [N, 3, H, W]
-  angle:      FP32 [N] or [N, 1]
-  elevation:  FP32 [N] or [N, 1]
-  softness:   FP32 [N] or [N, 1]
-  reflection: FP32 [N] or [N, 1]
 
 outputs:
   shadow:     FP32 [N, 4, H, W]
 ```
+
+A future controlled `V2-DIFF` may extend the binding with `depth`, `normal`, `angle`, `elevation`, `softness`, and `reflection`. The Triton adapter sends only tensors declared by the active binding, so this extension does not require a public API change.
 
 ## Export Artifact Requirements
 
@@ -339,15 +349,13 @@ The ML core capability metadata should expose:
 
 A checkpoint is ready for ML-core integration when:
 
-- it accepts all required tensors by the exact contract names
+- it accepts `img` and `mask` by the exact contract names
 - it returns `shadow` with shape `[N, 4, H, W]`
 - output values are finite and clipped or naturally bounded to `0..1`
 - batch `1` works
 - batch `4` works or limitation is documented
-- angle sweep visibly changes direction
-- elevation sweep visibly changes length
-- softness sweep visibly changes penumbra behavior
-- reflection input is accepted
+- current control-free output is plausible on product-like object cutouts
+- if a future controlled checkpoint declares control tensors, angle/elevation/softness/reflection sweeps must visibly affect the output
 - inference does not require product API fields beyond this contract
 - model card and validation report are included
 - at least one smoke sample can be run through the ML core debug path
@@ -392,7 +400,7 @@ Each sample folder contains:
 - `source.json`
 - `stages.json`
 
-`shadow_input.npz` contains ready-to-load `FP32` tensors:
+`shadow_input.npz` contains ready-to-load `FP32` tensors. The current control-free `V2-DIFF` should consume only `img` and `mask`; the remaining tensors are included so the same sample pack can support future controlled checkpoints.
 
 - `img`: `[1, 4, H, W]`
 - `mask`: `[1, 1, H, W]`

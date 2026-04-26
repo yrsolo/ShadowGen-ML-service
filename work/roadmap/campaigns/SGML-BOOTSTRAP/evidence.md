@@ -182,12 +182,17 @@ The active docs now provide:
 - temporary Python backend uses `KIND_CPU` so Triton can load without NVIDIA container runtime, while model code still chooses CUDA when available
 - debug fallback reason now includes the unavailable backend descriptor detail, for example `Triton endpoint is unavailable`
 - V2-DIFF model training/export/serving requirements are captured in `docs/shadow-v2-model-contract.md`
+- V2-DIFF integration is temporarily simplified to a control-free `img + mask -> shadow` Triton binding
+- `V1-GAN` remains the controllable local rot/top-view shadow model
+- the Triton shadow adapter now serializes only tensors declared by the active binding, so future controlled V2-DIFF tensors can be added without changing pipeline orchestration
 - Shadow V2 sample pack generated under `artifacts/shadow-v2-sample-pack` with 10 local-backend samples and contract-ready `shadow_input.npz` files
 - Shadow V2 sample pack now uses curated product-case sources and includes an in-folder README for model developers
 - Shadow V2 sample pack replacements: sample `06` now uses `Hot Coffee on a rainy day`; sample `09` now uses `Wallet on a table`
 
 ### Validation Evidence
 
+- `.venv\Scripts\python.exe -m pytest` passed: `85 passed`
+- `.venv\Scripts\python.exe -m compileall src tests` passed
 - `.venv\Scripts\python.exe -m pytest` passed: `81 passed`
 - `python -m compileall src tests tools` passed
 - browser smoke passed for the generated playground HTML:

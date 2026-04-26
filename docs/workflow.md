@@ -111,7 +111,9 @@ For shadow generation:
   - `mock`
   - `V1-GAN`
   - `V2-DIFF`
-- real backends should consume `softness` as model input
+- `V1-GAN` is the current controllable rot/top-view model
+- current `V2-DIFF` is control-free and consumes only `img` and `mask`
+- future controlled real backends should consume `softness` as model input
 - coarse post-blur softness is allowed only in the mock shadow backend
 
 ## Async Execution Rule

@@ -371,8 +371,8 @@ May include:
 Current stage variants:
 
 - `mock`
-- `v1-gan`
-- `v2-diff`
+- `v1-gan`: controllable local GAN path for rot/top-view shadow generation
+- `v2-diff`: control-free diffusion path; current Triton contract is `img + mask -> shadow`
 
 Current execution backend kinds:
 

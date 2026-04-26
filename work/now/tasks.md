@@ -56,6 +56,7 @@
 - [x] Document the training, export, serving, and acceptance contract for the future `V2-DIFF` shadow model
 - [x] Prepare a reproducible Shadow V2 sample-pack generator and local 10-image sample pack
 - [x] Replace unsuitable Shadow V2 sample-pack sources with product-case foreground objects and add pack README
+- [x] Temporarily simplify `V2-DIFF` shadow integration to a control-free `img + mask -> shadow` contract while keeping `V1-GAN` as the controllable rot/top-view model
 - [ ] Continue replacing compatibility shims with direct imports from the layered structure
 - [ ] Extend the temporary Triton segmenter bridge with a verified custom image smoke run
 

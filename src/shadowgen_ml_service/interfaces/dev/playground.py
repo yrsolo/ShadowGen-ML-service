@@ -272,6 +272,7 @@ def render_playground_html() -> str:
           <div class="field"><label>Softness</label><input id="softness" type="range" min="0" max="1" step="0.01" value="0.5" /><div class="value-row"><span>model input</span><span id="softnessValue">0.50</span></div></div>
           <div class="field"><label>Opacity</label><input id="opacity" type="range" min="0" max="1" step="0.01" value="0.65" /><div class="value-row"><span>density</span><span id="opacityValue">0.65</span></div></div>
           <div class="field"><label>Reflection</label><input id="reflection" type="range" min="0" max="1" step="0.01" value="0.10" /><div class="value-row"><span>reserved input</span><span id="reflectionValue">0.10</span></div></div>
+          <div class="note" id="shadowControlNote"></div>
         </div>
         <div class="panel">
           <h2>Output</h2>
@@ -434,13 +435,21 @@ def render_playground_html() -> str:
       pipelineEl.querySelectorAll("[data-backend-kind]").forEach((button) => {
         button.addEventListener("click", () => {
           state.stageBackendKinds[button.dataset.stage] = button.dataset.backendKind;
+          if (button.dataset.stage === "shadow_generator") {
+            syncShadowModelSelection("backend");
+          }
           renderCards();
+          updateShadowControlNote();
         });
       });
       pipelineEl.querySelectorAll("[data-variant]").forEach((button) => {
         button.addEventListener("click", () => {
           state.stageVariants[button.dataset.stage] = button.dataset.variant;
+          if (button.dataset.stage === "shadow_generator") {
+            syncShadowModelSelection("variant");
+          }
           renderCards();
+          updateShadowControlNote();
         });
       });
       pipelineEl.querySelectorAll("[data-rerun]").forEach((button) => {
@@ -565,6 +574,34 @@ def render_playground_html() -> str:
         globalNote.textContent = `Ошибка запуска: ${error.message}`;
       }
       renderCards();
+      updateShadowControlNote();
+    }
+
+    function updateShadowControlNote() {
+      const variant = state.stageVariants.shadow_generator;
+      const note = document.getElementById("shadowControlNote");
+      if (!note) return;
+      if (variant === "v2-diff") {
+        note.textContent = "V2-DIFF сейчас рисует тень без настроек: angle/elevation/softness/reflection игнорируются. Для управляемого rot используйте V1-GAN.";
+      } else if (variant === "v1-gan") {
+        note.textContent = "V1-GAN использует angle/rot для тени на виде сверху. Elevation, softness и reflection оставлены для будущей модели.";
+      } else {
+        note.textContent = "Mock остаётся отладочной моделью: здесь грубая softness-логика допустима только для быстрого preview.";
+      }
+    }
+
+    function syncShadowModelSelection(source) {
+      if (source === "backend") {
+        const backendKind = state.stageBackendKinds.shadow_generator;
+        if (backendKind === "mock") state.stageVariants.shadow_generator = "mock";
+        if (backendKind === "local") state.stageVariants.shadow_generator = "v1-gan";
+        if (backendKind === "triton") state.stageVariants.shadow_generator = "v2-diff";
+        return;
+      }
+      const variant = state.stageVariants.shadow_generator;
+      if (variant === "mock") state.stageBackendKinds.shadow_generator = "mock";
+      if (variant === "v1-gan") state.stageBackendKinds.shadow_generator = "local";
+      if (variant === "v2-diff") state.stageBackendKinds.shadow_generator = "triton";
     }
 
     function buildRequestBody() {
@@ -608,6 +645,7 @@ def render_playground_html() -> str:
       state.stages = {};
       globalNote.textContent = "Результаты очищены.";
       renderCards();
+      updateShadowControlNote();
     }
 
     function fileToBase64(file) {
@@ -630,6 +668,7 @@ def render_playground_html() -> str:
         globalNote.textContent = `Не удалось загрузить runtime capabilities: ${error.message}`;
       }
       renderCards();
+      updateShadowControlNote();
     }
 
     loadCapabilities();

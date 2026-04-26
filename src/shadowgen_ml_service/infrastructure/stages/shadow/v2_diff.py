@@ -7,21 +7,22 @@ from shadowgen_ml_service.core.stage_io import ShadowInput
 
 class V2DiffShadowGenerator(ShadowGenerator):
     """
-    Recommended skeleton for the future diffusion shadow model.
+    Recommended skeleton for the diffusion shadow model.
 
-    Expected model contract:
+    Current temporary model contract:
     - img: refined RGBA cutout or RGB foreground crop
     - mask: foreground mask
-    - depth: depth map
-    - normal: normal map
-    - angle: azimuth in degrees
-    - elevation: light elevation in degrees
-    - softness: conditioning control, not a post-blur
-    - reflection: optional conditioning input, may be ignored by the first checkpoint
+    - output: standalone RGBA shadow layer
+
+    The pipeline still passes depth, normals, angle, elevation, softness, reflection,
+    and opacity through `ShadowInput` for compatibility with `V1-GAN`, mock, and
+    the future controllable diffusion model. This temporary V2-DIFF implementation
+    intentionally ignores those controls because the current research target is
+    "draw a plausible shadow" rather than "draw a fully controllable shadow".
 
     Notes for the future implementation:
     - keep all preprocessing local to this class
-    - do not post-blur the model result to emulate softness
+    - do not post-blur the model result to emulate softness when controls return
     - return a standalone RGBA shadow layer
     - keep runtime metadata on `backend_name`, `model_variant`, and `device_label`
     """

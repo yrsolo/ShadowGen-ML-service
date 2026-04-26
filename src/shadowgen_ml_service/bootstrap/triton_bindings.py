@@ -54,12 +54,6 @@ def build_triton_model_registry(settings: Settings) -> TritonModelRegistry:
                 inputs={
                     "img": TritonTensorBinding("img", "FP32", expected_ranks=(4,), shape_policy="channel-first", channels=4),
                     "mask": TritonTensorBinding("mask", "FP32", expected_ranks=(4,), shape_policy="channel-first", channels=1),
-                    "depth": TritonTensorBinding("depth", "FP32", expected_ranks=(4,), shape_policy="channel-first", channels=1),
-                    "normal": TritonTensorBinding("normal", "FP32", expected_ranks=(4,), shape_policy="channel-first", channels=3),
-                    "angle": TritonTensorBinding("angle", "FP32", expected_ranks=(1,), shape_policy="scalar"),
-                    "elevation": TritonTensorBinding("elevation", "FP32", expected_ranks=(1,), shape_policy="scalar"),
-                    "softness": TritonTensorBinding("softness", "FP32", expected_ranks=(1,), shape_policy="scalar"),
-                    "reflection": TritonTensorBinding("reflection", "FP32", expected_ranks=(1,), shape_policy="scalar"),
                 },
                 outputs={"shadow": TritonTensorBinding("shadow", "FP32", expected_ranks=(3, 4), shape_policy="channel-first", channels=4)},
             ),

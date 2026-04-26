@@ -4,6 +4,7 @@ import unittest
 from unittest.mock import patch
 
 from shadowgen_ml_service.config import Settings
+from shadowgen_ml_service.bootstrap.triton_bindings import build_triton_model_registry
 from shadowgen_ml_service.pipeline.runtime import build_runtime
 
 
@@ -112,6 +113,13 @@ class RuntimeTests(unittest.TestCase):
         triton_descriptors = [item for item in shadow_component.backends if item.backend_kind == "triton"]
         self.assertEqual(len(triton_descriptors), 1)
         self.assertEqual(triton_descriptors[0].model_variant, "v2-diff")
+
+    def test_shadow_v2_triton_binding_is_control_free_for_current_model(self) -> None:
+        registry = build_triton_model_registry(Settings())
+        binding = registry.get("shadow_generator", "v2-diff")
+        self.assertIsNotNone(binding)
+        self.assertEqual(sorted(binding.inputs.keys()), ["img", "mask"])
+        self.assertEqual(sorted(binding.outputs.keys()), ["shadow"])
 
     def test_segmenter_triton_descriptor_is_only_available_when_binding_probe_passes(self) -> None:
         with patch("shadowgen_ml_service.bootstrap.container.TritonInferenceClient.ping", return_value=True):

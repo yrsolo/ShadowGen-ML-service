@@ -50,20 +50,25 @@ class TritonShadowGenerator(ShadowGenerator):
         for stage_input in stage_inputs:
             image = ensure_pil(stage_input.img)
             mask = ensure_pil(stage_input.mask)
-            depth = ensure_pil(stage_input.depth)
-            normal = ensure_pil(stage_input.normal)
-            request_batches.append(
-                [
-                    image_to_nchw_float32_input(self.binding.inputs["img"].tensor_name, image.convert("RGBA")),
-                    grayscale_to_nchw_float32_input(self.binding.inputs["mask"].tensor_name, mask.convert("L")),
-                    grayscale_to_nchw_float32_input(self.binding.inputs["depth"].tensor_name, depth.convert("L")),
-                    rgb_to_nchw_float32_input(self.binding.inputs["normal"].tensor_name, normal.convert("RGB")),
-                    scalar_to_input(self.binding.inputs["angle"].tensor_name, stage_input.angle),
-                    scalar_to_input(self.binding.inputs["elevation"].tensor_name, stage_input.elevation),
-                    scalar_to_input(self.binding.inputs["softness"].tensor_name, stage_input.softness),
-                    scalar_to_input(self.binding.inputs["reflection"].tensor_name, stage_input.reflection),
-                ]
-            )
+            inputs = [
+                image_to_nchw_float32_input(self.binding.inputs["img"].tensor_name, image.convert("RGBA")),
+                grayscale_to_nchw_float32_input(self.binding.inputs["mask"].tensor_name, mask.convert("L")),
+            ]
+            if "depth" in self.binding.inputs:
+                depth = ensure_pil(stage_input.depth)
+                inputs.append(grayscale_to_nchw_float32_input(self.binding.inputs["depth"].tensor_name, depth.convert("L")))
+            if "normal" in self.binding.inputs:
+                normal = ensure_pil(stage_input.normal)
+                inputs.append(rgb_to_nchw_float32_input(self.binding.inputs["normal"].tensor_name, normal.convert("RGB")))
+            if "angle" in self.binding.inputs:
+                inputs.append(scalar_to_input(self.binding.inputs["angle"].tensor_name, stage_input.angle))
+            if "elevation" in self.binding.inputs:
+                inputs.append(scalar_to_input(self.binding.inputs["elevation"].tensor_name, stage_input.elevation))
+            if "softness" in self.binding.inputs:
+                inputs.append(scalar_to_input(self.binding.inputs["softness"].tensor_name, stage_input.softness))
+            if "reflection" in self.binding.inputs:
+                inputs.append(scalar_to_input(self.binding.inputs["reflection"].tensor_name, stage_input.reflection))
+            request_batches.append(inputs)
         batched_inputs = batch_input_tensors(request_batches)
         response = self.client.infer(self.binding, inputs=batched_inputs)
         shadow_tensors = split_output_tensor(response[self.binding.outputs["shadow"].tensor_name], len(stage_inputs))

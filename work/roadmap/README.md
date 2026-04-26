@@ -14,8 +14,8 @@
   - playground uses horizontal stage navigation with per-card vertical scroll
   - shadow stage is prepared for named model generations:
     - `mock`
-    - `V1-GAN`
-    - `V2-DIFF`
+    - `V1-GAN` as the current controllable rot/top-view model
+    - `V2-DIFF` as the current control-free `img + mask -> shadow` Triton slot
   - documentation now has both a fast overview and deeper module-level reference
 
 ## Next Likely Campaigns

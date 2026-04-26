@@ -20,6 +20,9 @@ from shadowgen_ml_service.infrastructure.backends.triton.serializers import (
     tensor_map_from_response,
     validate_tensor_against_binding,
 )
+from shadowgen_ml_service.infrastructure.stages.shadow.triton import TritonShadowGenerator
+from shadowgen_ml_service.core.stage_io import ShadowInput
+from shadowgen_ml_service.utils.images import pil_to_asset
 
 
 class _FakeHttpResponse:
@@ -35,6 +38,15 @@ class _FakeHttpResponse:
 
     def __exit__(self, exc_type, exc, tb):
         return False
+
+
+class _FakeTritonClient:
+    def __init__(self) -> None:
+        self.last_inputs: list[dict] | None = None
+
+    def infer(self, binding: TritonModelBinding, *, inputs: list[dict]):
+        self.last_inputs = inputs
+        return {"shadow": np.zeros((1, 4, 4, 4), dtype=np.float32)}
 
 
 class TritonTransportTests(unittest.TestCase):
@@ -172,6 +184,38 @@ class TritonTransportTests(unittest.TestCase):
         self.assertEqual(binding.inputs["img"].tensor_name, "img")
         self.assertEqual(binding.outputs["shadow"].datatype, "FP32")
         self.assertEqual(binding.outputs["shadow"].channels, 4)
+
+    def test_shadow_v2_triton_adapter_sends_only_declared_inputs(self) -> None:
+        binding = TritonModelBinding(
+            stage_key="shadow_generator",
+            model_variant="v2-diff",
+            model_name="shadowgen_shadow_v2",
+            inputs={
+                "img": TritonTensorBinding("img", "FP32", expected_ranks=(4,), shape_policy="channel-first", channels=4),
+                "mask": TritonTensorBinding("mask", "FP32", expected_ranks=(4,), shape_policy="channel-first", channels=1),
+            },
+            outputs={"shadow": TritonTensorBinding("shadow", "FP32", expected_ranks=(4,), shape_policy="channel-first", channels=4)},
+        )
+        fake_client = _FakeTritonClient()
+        generator = TritonShadowGenerator(fake_client, binding, model_variant="v2-diff")
+        image = Image.new("RGBA", (4, 4), (255, 128, 64, 255))
+        mask = Image.new("L", (4, 4), 255)
+        stage_input = ShadowInput(
+            img=pil_to_asset(image),
+            mask=pil_to_asset(mask),
+            depth=pil_to_asset(mask),
+            normal=pil_to_asset(Image.new("RGB", (4, 4), (127, 127, 255))),
+            angle=45.0,
+            elevation=35.0,
+            softness=0.5,
+            reflection=0.1,
+            opacity=0.65,
+        )
+
+        result = generator.generate(stage_input)
+
+        self.assertEqual(result.shadow_rgba.width, 4)
+        self.assertEqual([item["name"] for item in fake_client.last_inputs or []], ["img", "mask"])
 
     def test_schema_validation_rejects_wrong_channel_count(self) -> None:
         binding = TritonTensorBinding("mask", "FP32", expected_ranks=(4,), shape_policy="channel-first", channels=1)

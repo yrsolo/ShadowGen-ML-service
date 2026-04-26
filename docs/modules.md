@@ -233,8 +233,8 @@ Examples:
 Shadow stage specifics:
 
 - `mock`: analytical fallback
-- `V1-GAN`: current local backend
-- `V2-DIFF`: preferred Triton-ready slot
+- `V1-GAN`: current local controllable rot/top-view backend
+- `V2-DIFF`: preferred Triton-ready slot; current temporary contract is `img + mask -> shadow` without angle/elevation/softness/reflection controls
 
 ### `infrastructure/cache/`
 
