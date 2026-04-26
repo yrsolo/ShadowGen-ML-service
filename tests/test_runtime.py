@@ -119,7 +119,7 @@ class RuntimeTests(unittest.TestCase):
         binding = registry.get("shadow_generator", "v2-diff")
         self.assertIsNotNone(binding)
         self.assertEqual(sorted(binding.inputs.keys()), ["img", "mask"])
-        self.assertEqual(sorted(binding.outputs.keys()), ["shadow"])
+        self.assertEqual(sorted(binding.outputs.keys()), ["shadow_image"])
 
     def test_segmenter_triton_descriptor_is_only_available_when_binding_probe_passes(self) -> None:
         with patch("shadowgen_ml_service.bootstrap.container.TritonInferenceClient.ping", return_value=True):

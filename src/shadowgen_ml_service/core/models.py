@@ -50,7 +50,7 @@ class NormalResult:
 
 @dataclass(frozen=True)
 class ShadowResult:
-    shadow_rgba: RasterAsset
+    shadow_image: RasterAsset
 
 
 @dataclass(frozen=True)

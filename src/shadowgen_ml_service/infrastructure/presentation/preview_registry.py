@@ -44,7 +44,7 @@ class DefaultPreviewBuilderRegistry(PreviewBuilderRegistry):
         if stage_key == "normal_estimator":
             return {"normals": stage_value.normal_map}
         if stage_key == "shadow_generator":
-            return {"shadow": stage_value.shadow_rgba}
+            return {"shadow": stage_value.shadow_image}
         if stage_key == "composer":
             return {"final": stage_value.final_image}
         return {}

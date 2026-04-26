@@ -384,27 +384,27 @@ def generate_shadow_layer(
     shadow_mask = shadow_mask.filter(ImageFilter.GaussianBlur(radius=1.5 + softness * 22.0))
     shadow_alpha = shadow_mask.point(lambda value: int(value * opacity))
 
-    shadow_rgba = Image.new("RGBA", mask.size, (0, 0, 0, 0))
-    shadow_rgba.putalpha(shadow_alpha)
+    shadow_image = Image.new("RGBA", mask.size, (0, 0, 0, 0))
+    shadow_image.putalpha(shadow_alpha)
 
     if reflection > 0:
         reflection_mask = ImageOps.flip(mask).filter(ImageFilter.GaussianBlur(radius=6 + softness * 8))
         reflection_mask = reflection_mask.point(lambda value: int(value * reflection * 0.35))
-        reflection_rgba = Image.new("RGBA", mask.size, (90, 110, 140, 0))
-        reflection_rgba.putalpha(reflection_mask)
-        shadow_rgba = Image.alpha_composite(shadow_rgba, reflection_rgba)
-    return shadow_rgba
+        reflection_image = Image.new("RGBA", mask.size, (90, 110, 140, 0))
+        reflection_image.putalpha(reflection_mask)
+        shadow_image = Image.alpha_composite(shadow_image, reflection_image)
+    return shadow_image
 
 
 def compose_on_background(
     cutout_rgba: Image.Image,
-    shadow_rgba: Image.Image,
+    shadow_image: Image.Image,
     color_hex: str,
     width: int | None,
     height: int | None,
 ) -> Image.Image:
     background = Image.new("RGBA", cutout_rgba.size, ImageColor.getrgb(color_hex) + (255,))
-    background.alpha_composite(shadow_rgba)
+    background.alpha_composite(shadow_image.convert("RGBA"))
     background.alpha_composite(cutout_rgba)
     final_image = background.convert("RGBA")
     if width is None and height is None:

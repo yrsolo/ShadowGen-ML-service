@@ -182,7 +182,8 @@ The active docs now provide:
 - temporary Python backend uses `KIND_CPU` so Triton can load without NVIDIA container runtime, while model code still chooses CUDA when available
 - debug fallback reason now includes the unavailable backend descriptor detail, for example `Triton endpoint is unavailable`
 - V2-DIFF model training/export/serving requirements are captured in `docs/shadow-v2-model-contract.md`
-- V2-DIFF integration is temporarily simplified to a control-free `img + mask -> shadow` Triton binding
+- V2-DIFF integration is temporarily simplified to a control-free `img + mask -> shadow_image` binding
+- shadow stage output contract now represents a full model image instead of a separate `shadow_rgba` layer
 - `V1-GAN` remains the controllable local rot/top-view shadow model
 - the Triton shadow adapter now serializes only tensors declared by the active binding, so future controlled V2-DIFF tensors can be added without changing pipeline orchestration
 - public render requests now accept optional `shadow.model` with `v1-gan` or `v2-diff`
@@ -193,6 +194,8 @@ The active docs now provide:
 
 ### Validation Evidence
 
+- `.venv\Scripts\python.exe -m pytest -q` passed after the `shadow_image` contract switch: `88 passed, 3 warnings`
+- `.venv\Scripts\python.exe -m compileall src tests` passed after the `shadow_image` contract switch
 - `.venv\Scripts\python.exe -m pytest` passed: `88 passed`
 - `.venv\Scripts\python.exe -m compileall src tests` passed
 - `.venv\Scripts\python.exe -m pytest` passed: `85 passed`

@@ -97,7 +97,7 @@ const shadowModelControls = {
 } satisfies Record<ShadowModel, Record<string, boolean>>;
 ```
 
-`opacity` remains useful because it is a compositor-level control. It can still be applied to the final shadow layer even when the model itself ignores light controls.
+`opacity` remains useful for legacy/mock shadow generation and final presentation policy. Current diffusion output is treated as a full shadow image, not as a separate shadow layer.
 
 ## Public API
 
@@ -380,7 +380,7 @@ Frontend recommendation:
 `shadow.opacity`:
 
 - range: `0..1`
-- compositor-level density control
+- accepted for API stability and legacy/mock paths
 
 `shadow.reflection`:
 
@@ -401,4 +401,3 @@ When model is `v2-diff`:
 - disable `Angle`, `Elevation`, `Softness`, `Reflection`
 - keep `Opacity` if the product wants density control
 - show a hint that the model works automatically
-

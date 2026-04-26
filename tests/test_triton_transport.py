@@ -46,7 +46,7 @@ class _FakeTritonClient:
 
     def infer(self, binding: TritonModelBinding, *, inputs: list[dict]):
         self.last_inputs = inputs
-        return {"shadow": np.zeros((1, 4, 4, 4), dtype=np.float32)}
+        return {"shadow_image": np.zeros((1, 4, 4, 4), dtype=np.float32)}
 
 
 class TritonTransportTests(unittest.TestCase):
@@ -179,11 +179,11 @@ class TritonTransportTests(unittest.TestCase):
             model_variant="v2-diff",
             model_name="shadow-v2",
             inputs={"img": TritonTensorBinding("img", "FP32", expected_ranks=(4,), shape_policy="channel-first", channels=4)},
-            outputs={"shadow": TritonTensorBinding("shadow", "FP32", expected_ranks=(4,), shape_policy="channel-first", channels=4)},
+            outputs={"shadow_image": TritonTensorBinding("shadow_image", "FP32", expected_ranks=(4,), shape_policy="channel-first", channels=4)},
         )
         self.assertEqual(binding.inputs["img"].tensor_name, "img")
-        self.assertEqual(binding.outputs["shadow"].datatype, "FP32")
-        self.assertEqual(binding.outputs["shadow"].channels, 4)
+        self.assertEqual(binding.outputs["shadow_image"].datatype, "FP32")
+        self.assertEqual(binding.outputs["shadow_image"].channels, 4)
 
     def test_shadow_v2_triton_adapter_sends_only_declared_inputs(self) -> None:
         binding = TritonModelBinding(
@@ -194,7 +194,7 @@ class TritonTransportTests(unittest.TestCase):
                 "img": TritonTensorBinding("img", "FP32", expected_ranks=(4,), shape_policy="channel-first", channels=4),
                 "mask": TritonTensorBinding("mask", "FP32", expected_ranks=(4,), shape_policy="channel-first", channels=1),
             },
-            outputs={"shadow": TritonTensorBinding("shadow", "FP32", expected_ranks=(4,), shape_policy="channel-first", channels=4)},
+            outputs={"shadow_image": TritonTensorBinding("shadow_image", "FP32", expected_ranks=(4,), shape_policy="channel-first", channels=4)},
         )
         fake_client = _FakeTritonClient()
         generator = TritonShadowGenerator(fake_client, binding, model_variant="v2-diff")
@@ -214,7 +214,7 @@ class TritonTransportTests(unittest.TestCase):
 
         result = generator.generate(stage_input)
 
-        self.assertEqual(result.shadow_rgba.width, 4)
+        self.assertEqual(result.shadow_image.width, 4)
         self.assertEqual([item["name"] for item in fake_client.last_inputs or []], ["img", "mask"])
 
     def test_schema_validation_rejects_wrong_channel_count(self) -> None:

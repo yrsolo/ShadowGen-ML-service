@@ -260,7 +260,7 @@ Important:
 
 - preferred Triton-ready slot
 - currently simplified to a control-free diffusion model
-- expected to draw a plausible standalone shadow from the object image and mask
+- expected to draw a plausible full shadow image from the object image and mask
 - env vars:
   - `SHADOWGEN_SHADOW_BACKEND_KIND`
   - `SHADOWGEN_SHADOW_MODEL_VARIANT`

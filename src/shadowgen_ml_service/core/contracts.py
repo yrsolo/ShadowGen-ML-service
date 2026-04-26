@@ -66,7 +66,7 @@ class Composer(ABC):
     def compose(
         self,
         cutout_rgba: RasterAsset,
-        shadow_rgba: RasterAsset,
+        shadow_image: RasterAsset,
         background: BackgroundSpec,
         output: OutputSpec,
     ) -> CompositionResult:

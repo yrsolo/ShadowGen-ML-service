@@ -71,5 +71,5 @@ class TritonShadowGenerator(ShadowGenerator):
             request_batches.append(inputs)
         batched_inputs = batch_input_tensors(request_batches)
         response = self.client.infer(self.binding, inputs=batched_inputs)
-        shadow_tensors = split_output_tensor(response[self.binding.outputs["shadow"].tensor_name], len(stage_inputs))
-        return [ShadowResult(shadow_rgba=pil_to_asset(rgba_output_to_image(tensor))) for tensor in shadow_tensors]
+        shadow_tensors = split_output_tensor(response[self.binding.outputs["shadow_image"].tensor_name], len(stage_inputs))
+        return [ShadowResult(shadow_image=pil_to_asset(rgba_output_to_image(tensor))) for tensor in shadow_tensors]

@@ -96,7 +96,7 @@ class RenderPipelineUseCase:
                 "crop": context.segmentation.crop_rgba,
                 "depth": context.depth.depth_map,
                 "normals": context.normals.normal_map,
-                "shadow": context.shadow.shadow_rgba,
+                "shadow": context.shadow.shadow_image,
             },
             return_debug=command.output.return_debug,
         )
@@ -170,7 +170,7 @@ class RenderPipelineUseCase:
         if stage_key == "composer":
             return backend.compose(
                 cutout_rgba=context.segmentation.cutout_rgba,
-                shadow_rgba=context.shadow.shadow_rgba,
+                shadow_image=context.shadow.shadow_image,
                 background=context.command.background,
                 output=context.command.output,
             )

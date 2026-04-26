@@ -55,7 +55,7 @@ def build_triton_model_registry(settings: Settings) -> TritonModelRegistry:
                     "img": TritonTensorBinding("img", "FP32", expected_ranks=(4,), shape_policy="channel-first", channels=4),
                     "mask": TritonTensorBinding("mask", "FP32", expected_ranks=(4,), shape_policy="channel-first", channels=1),
                 },
-                outputs={"shadow": TritonTensorBinding("shadow", "FP32", expected_ranks=(3, 4), shape_policy="channel-first", channels=4)},
+                outputs={"shadow_image": TritonTensorBinding("shadow_image", "FP32", expected_ranks=(3, 4), shape_policy="channel-first", channels=4)},
             ),
         ]
     )

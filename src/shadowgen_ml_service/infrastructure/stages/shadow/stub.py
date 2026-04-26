@@ -12,7 +12,7 @@ class DeterministicShadowGenerator(ShadowGenerator):
         self.backend_name = "deterministic-stub"
 
     def generate(self, stage_input: ShadowInput) -> ShadowResult:
-        shadow_rgba = generate_shadow_layer(
+        shadow_image = generate_shadow_layer(
             mask=ensure_pil(stage_input.mask),
             angle_deg=stage_input.angle,
             elevation_deg=stage_input.elevation,
@@ -21,4 +21,4 @@ class DeterministicShadowGenerator(ShadowGenerator):
             reflection=stage_input.reflection,
             camera_pitch=0.0,
         )
-        return ShadowResult(shadow_rgba=pil_to_asset(shadow_rgba))
+        return ShadowResult(shadow_image=pil_to_asset(shadow_image))

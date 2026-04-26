@@ -7,10 +7,10 @@ from shadowgen_ml_service.utils.images import compose_on_background, ensure_pil,
 
 
 class PythonComposer(Composer):
-    def compose(self, cutout_rgba, shadow_rgba, background: BackgroundSpec, output: OutputSpec) -> CompositionResult:
+    def compose(self, cutout_rgba, shadow_image, background: BackgroundSpec, output: OutputSpec) -> CompositionResult:
         final_image = compose_on_background(
             cutout_rgba=ensure_pil(cutout_rgba),
-            shadow_rgba=ensure_pil(shadow_rgba),
+            shadow_image=ensure_pil(shadow_image),
             color_hex=background.color_hex,
             width=output.width,
             height=output.height,

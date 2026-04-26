@@ -20,7 +20,7 @@ The document is intentionally written as a training, export, and serving contrac
 
 ## Goal
 
-The current `V2-DIFF` model generates a plausible standalone shadow layer for a foreground object already extracted from the source image.
+The current `V2-DIFF` model generates a plausible shadow image for a foreground object already extracted from the source image.
 
 The current model must condition on:
 
@@ -36,7 +36,7 @@ The full controlled model is deferred. A later checkpoint may additionally learn
 - softness
 - optional reflection control
 
-The output is not the final composed image. The output is a standalone shadow layer that the ML core compositor can place under the cutout.
+The output is a full working-canvas image produced by the shadow model: background + generated shadow + possibly a regenerated object. The ML core compositor always places the refined cutout over this image afterwards, so model damage to the object is hidden by the original segmentation/refinement output.
 
 ## Non-Goals
 
@@ -125,26 +125,26 @@ The current control-free checkpoint ignores this value. A future controlled chec
 
 ## Output Contract
 
-The model must produce a standalone shadow tensor.
+The model must produce a full shadow image tensor aligned to the canonical working canvas.
 
 | Name | Required | Shape | Dtype | Range | Layout | Meaning |
 | --- | --- | --- | --- | --- | --- | --- |
-| `shadow` | yes | `[N, 4, H, W]` | `FP32` | `0..1` | `NCHW` | RGBA shadow layer aligned to the canonical working canvas. |
+| `shadow_image` | yes | `[N, 4, H, W]` | `FP32` | `0..1` | `NCHW` | Full model image aligned to the canonical working canvas. RGB is background + generated shadow + model object; alpha should be opaque unless the backend has a specific reason to output transparency. |
 
 Recommended channel semantics:
 
-- `R,G,B`: shadow colour/tint in straight alpha convention
-- `A`: shadow opacity mask
+- `R,G,B`: full model-rendered RGB image
+- `A`: normally `1.0` / opaque
 
-The compositor may use the alpha channel as the primary opacity signal. If RGB is not meaningful in the first checkpoint, RGB should still be valid and preferably represent black or softly tinted shadow colour.
+The compositor does not treat the output as a separate shadow layer anymore. It uses the model image as the base image, then composites the refined cutout over it.
 
 The output must:
 
 - be spatially aligned with all inputs
 - keep transparent regions numerically stable
-- not include the foreground object
-- not include the final background
-- not apply final product opacity; global `opacity` remains a compositor-level control
+- may include the foreground object
+- may use the model conditioning background; final product background policy remains outside the model
+- avoid distorting the object when possible, even though the compositor overlays the refined cutout afterwards
 
 ## Training Data Requirements
 
@@ -152,7 +152,7 @@ Each training sample for the current control-free checkpoint should contain, or 
 
 - foreground RGBA object crop
 - foreground mask
-- target shadow RGBA or target shadow alpha plus colour policy
+- target full shadow image RGB/RGBA, preferably with the foreground object composited consistently with the conditioning input
 
 The sample pack may additionally contain future-control fields:
 
@@ -227,7 +227,7 @@ Recommended validation metrics:
 - direction error in degrees
 - shadow extent error
 - contact-region error near object footprint
-- LPIPS or similar perceptual metric for RGB shadow layer if applicable
+- LPIPS or similar perceptual metric for the full shadow image if applicable
 - latency and GPU memory at target batch sizes
 
 ## Inference Requirements
@@ -261,7 +261,7 @@ The Triton model repository entry should use:
 - model name: `shadowgen_shadow_v2`
 - model variant: `v2-diff`
 - input tensor names exactly matching this contract
-- output tensor name: `shadow`
+- output tensor name: `shadow_image`
 - `max_batch_size`: `4` for first production integration
 - dynamic batching enabled with a short queue delay
 
@@ -273,7 +273,7 @@ inputs:
   mask:       FP32 [N, 1, H, W]
 
 outputs:
-  shadow:     FP32 [N, 4, H, W]
+  shadow_image: FP32 [N, 4, H, W]
 ```
 
 A future controlled `V2-DIFF` may extend the binding with `depth`, `normal`, `angle`, `elevation`, `softness`, and `reflection`. The Triton adapter sends only tensors declared by the active binding, so this extension does not require a public API change.
@@ -350,7 +350,7 @@ The ML core capability metadata should expose:
 A checkpoint is ready for ML-core integration when:
 
 - it accepts `img` and `mask` by the exact contract names
-- it returns `shadow` with shape `[N, 4, H, W]`
+- it returns `shadow_image` with shape `[N, 4, H, W]`
 - output values are finite and clipped or naturally bounded to `0..1`
 - batch `1` works
 - batch `4` works or limitation is documented

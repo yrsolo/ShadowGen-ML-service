@@ -97,7 +97,7 @@ class DebugPipelineUseCase:
         if stage_key == "composer":
             return backend.compose(
                 cutout_rgba=context.segmentation.cutout_rgba,
-                shadow_rgba=context.shadow.shadow_rgba,
+                shadow_image=context.shadow.shadow_image,
                 background=context.command.background,
                 output=context.command.output,
             )

@@ -30,15 +30,15 @@ def _compose_input(cutout_rgba: Image.Image) -> tuple[np.ndarray, np.ndarray]:
     return rgb_on_white, alpha_rgb
 
 
-def _extract_shadow_rgba(predicted_rgb: np.ndarray, foreground_mask_rgb: np.ndarray, opacity: float):
+def _extract_shadow_image(predicted_rgb: np.ndarray, foreground_mask_rgb: np.ndarray, opacity: float):
     background_mask = np.clip(1.0 - foreground_mask_rgb[:, :, 0], 0.0, 1.0)
     grayscale = predicted_rgb.mean(axis=2)
     shadow_strength = np.clip(1.0 - grayscale, 0.0, 1.0) * background_mask
     shadow_alpha = np.clip(shadow_strength * float(opacity), 0.0, 1.0)
     alpha_image = Image.fromarray((shadow_alpha * 255.0).astype(np.uint8), mode="L")
-    shadow_rgba = Image.new("RGBA", alpha_image.size, (0, 0, 0, 0))
-    shadow_rgba.putalpha(alpha_image)
-    return shadow_rgba
+    shadow_image = Image.new("RGBA", alpha_image.size, (0, 0, 0, 0))
+    shadow_image.putalpha(alpha_image)
+    return shadow_image
 
 
 def build_generator(torch_module: Any) -> Any:
@@ -129,8 +129,8 @@ class Pix2PixShadowGenerator(ShadowGenerator):
             predicted = self._generator(input_tensor)[0]
         predicted_rgb = predicted.detach().float().cpu().permute(1, 2, 0).numpy()
         predicted_rgb = np.clip(predicted_rgb, 0.0, 1.0)
-        shadow_rgba = _extract_shadow_rgba(predicted_rgb, foreground_mask, stage_input.opacity)
-        return ShadowResult(shadow_rgba=pil_to_asset(shadow_rgba))
+        shadow_image = _extract_shadow_image(predicted_rgb, foreground_mask, stage_input.opacity)
+        return ShadowResult(shadow_image=pil_to_asset(shadow_image))
 
     def _build_input_tensor(self, colors_on_white: np.ndarray, foreground_mask: np.ndarray, angle_deg: float):
         background_mask = 1.0 - foreground_mask

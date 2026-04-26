@@ -49,7 +49,7 @@ Rules:
 - if `model` is omitted, the service uses its configured runtime default
 - `v1-gan` uses `angle_deg` as the active rot/top-view shadow direction control
 - current `v2-diff` is control-free and ignores `angle_deg`, `elevation_deg`, `softness`, and `reflection`
-- `opacity` remains a compositor-level density control
+- `opacity` remains accepted for API stability and legacy/mock paths
 
 ### `preprocess`
 
@@ -398,7 +398,7 @@ Current stage variants:
 
 - `mock`
 - `v1-gan`: controllable local GAN path for rot/top-view shadow generation
-- `v2-diff`: control-free diffusion path; current Triton contract is `img + mask -> shadow`
+- `v2-diff`: control-free diffusion path; current model contract is `img + mask -> shadow_image`
 
 Current execution backend kinds:
 
