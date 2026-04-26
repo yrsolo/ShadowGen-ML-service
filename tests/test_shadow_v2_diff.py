@@ -143,6 +143,8 @@ class V2DiffShadowTests(unittest.TestCase):
         self.assertEqual(pipe.calls[0]["num_inference_steps"], 7)
         self.assertEqual(pipe.calls[0]["guidance_scale"], 1.5)
         self.assertEqual(pipe.calls[0]["mask_image"].mode, "L")
+        self.assertEqual(pipe.calls[0]["mask_image"].getpixel((0, 0)), 255)
+        self.assertEqual(pipe.calls[0]["mask_image"].getpixel((3, 3)), 0)
 
     def test_probe_reports_missing_bundle(self) -> None:
         probe = probe_shadow_v2_diff("missing-bundle", "missing-background.png")

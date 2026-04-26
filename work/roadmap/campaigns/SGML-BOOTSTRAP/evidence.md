@@ -187,6 +187,8 @@ The active docs now provide:
 - Local V2-DIFF backend is connected through the SD1.5 inpaint LoRA bundle under `.models/shadow/v2-diff/shadowgen_inpaint_lora_prod_current`
 - V2-DIFF uses `.models/shadow/v2-diff/mean_background.png` as the neutral conditioning background before inpaint inference
 - Manual `artifacts/manual-inputs/1.jpg` V2-DIFF check stored under `artifacts/manual-runs/screenshot-1-v2-diff-local`; debug metadata reported `shadow_generator completed local v2-diff`
+- V2-DIFF inpaint mask now uses inverted foreground semantics: object is preserved black, editable background/shadow region is white
+- Manual inverted-mask V2-DIFF check stored under `artifacts/manual-runs/screenshot-1-v2-diff-local-inverted-mask`; generated shadow image changed materially from the previous object-mask run
 - shadow stage output contract now represents a full model image instead of a separate `shadow_rgba` layer
 - `V1-GAN` remains the controllable local rot/top-view shadow model
 - the Triton shadow adapter now serializes only tensors declared by the active binding, so future controlled V2-DIFF tensors can be added without changing pipeline orchestration
@@ -211,6 +213,8 @@ The active docs now provide:
 - `.venv\Scripts\python.exe -m compileall src tests` passed after working-canvas margin change
 - `.venv\Scripts\python.exe -m pytest -q` passed after local V2-DIFF integration: `93 passed, 4 warnings`
 - `.venv\Scripts\python.exe -m compileall src tests` passed after local V2-DIFF integration
+- `.venv\Scripts\python.exe -m pytest -q` passed after V2-DIFF mask inversion: `93 passed, 4 warnings`
+- `.venv\Scripts\python.exe -m compileall src tests` passed after V2-DIFF mask inversion
 - `.venv\Scripts\python.exe -m compileall src/shadowgen_ml_service/interfaces/dev/playground.py` passed after playground min-height fix
 - `.venv\Scripts\python.exe -m pytest` passed: `88 passed`
 - `.venv\Scripts\python.exe -m compileall src tests` passed

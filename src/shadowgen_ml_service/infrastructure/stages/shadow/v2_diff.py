@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from typing import Any, ClassVar
 
-from PIL import Image
+from PIL import Image, ImageOps
 
 from shadowgen_ml_service.core.contracts import ShadowGenerator
 from shadowgen_ml_service.core.models import ShadowResult
@@ -81,6 +81,7 @@ class V2DiffShadowGenerator(ShadowGenerator):
     def generate(self, stage_input: ShadowInput) -> ShadowResult:
         cutout = ensure_pil(stage_input.img).convert("RGBA")
         mask = ensure_pil(stage_input.mask).convert("L").resize(cutout.size, Image.Resampling.NEAREST)
+        inpaint_mask = ImageOps.invert(mask)
         background = Image.open(self.background_path)
         conditioning = _compose_conditioning_image(cutout, mask, background)
         pipe = self._load_pipeline()
@@ -99,7 +100,7 @@ class V2DiffShadowGenerator(ShadowGenerator):
             "prompt": prompt,
             "negative_prompt": negative_prompt,
             "image": conditioning,
-            "mask_image": mask,
+            "mask_image": inpaint_mask,
             "num_inference_steps": steps,
             "guidance_scale": guidance,
             "generator": generator,

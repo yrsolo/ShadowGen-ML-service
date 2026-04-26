@@ -51,6 +51,7 @@
 - [x] Add a Windows service launcher that starts FastAPI with Triton segmenter defaults
 - [ ] Run the first live end-to-end Triton smoke against a real `shadowgen_segmenter` server
 - [x] Implement the real local `V2-DIFF` shadow backend
+- [x] Fix V2-DIFF inpaint mask semantics so the model edits background/shadow area instead of the object
 - [ ] Add shadow-stage input previews for `img`, `mask`, `depth`, and `normal`
 - [x] Rework the playground into a horizontal stage scroller with wheel-driven horizontal navigation, shift-wheel vertical card scroll, and compact desktop controls
 - [x] Prevent tablet playground stage area from collapsing by giving the horizontal pipeline a minimum height and page-level vertical scroll
