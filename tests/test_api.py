@@ -205,6 +205,27 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(payload["metrics"]["total_ms"] >= 0, True)
         self.assertIsInstance(payload["warnings"], list)
 
+    def test_render_accepts_explicit_shadow_model_v1_gan(self) -> None:
+        payload = make_request()
+        payload["shadow"]["model"] = "v1-gan"
+        response = self.client.post("/v1/render", json=payload)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("artifacts", response.json())
+
+    def test_render_accepts_explicit_shadow_model_v2_diff_with_fallback(self) -> None:
+        payload = make_request()
+        payload["shadow"]["model"] = "v2-diff"
+        response = self.client.post("/v1/render", json=payload)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("artifacts", response.json())
+        self.assertIsInstance(response.json()["warnings"], list)
+
+    def test_render_rejects_unknown_shadow_model(self) -> None:
+        payload = make_request()
+        payload["shadow"]["model"] = "experimental"
+        response = self.client.post("/v1/render", json=payload)
+        self.assertEqual(response.status_code, 422)
+
     def test_padding_default_and_override(self) -> None:
         default_response = self.client.post("/v1/render", json=make_request())
         custom_request = make_request()

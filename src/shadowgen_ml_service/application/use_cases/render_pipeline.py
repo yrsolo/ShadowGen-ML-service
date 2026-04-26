@@ -118,7 +118,7 @@ class RenderPipelineUseCase:
         )
 
     def _execute_public_stage(self, stage_key: str, context: PipelineContext):
-        selection = self.selector.select_for_public(stage_key)
+        selection = self._select_public_stage(stage_key, context)
         registered = None if selection.backend_id is None else self.runtime.registry.get(selection.backend_id)
         value, execution = self.stage_runner.execute(
             stage_key=stage_key,
@@ -140,6 +140,17 @@ class RenderPipelineUseCase:
         }[stage_key]
         context.metrics.set(metric_key, execution.elapsed_ms or 0)
         return value
+
+    def _select_public_stage(self, stage_key: str, context: PipelineContext):
+        if stage_key == "shadow_generator" and context.command.shadow.model:
+            backend_kind, variant = self._shadow_model_selection(context.command.shadow.model)
+            return self.selector.select_for_debug(stage_key, backend_kind, variant)
+        return self.selector.select_for_public(stage_key)
+
+    def _shadow_model_selection(self, model: str) -> tuple[str, str]:
+        if model == "v2-diff":
+            return "triton", "v2-diff"
+        return "local", "v1-gan"
 
     def _invoke_stage(self, stage_key: str, backend, context: PipelineContext):
         if stage_key == "detector":

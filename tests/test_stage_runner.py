@@ -15,7 +15,7 @@ def _command() -> RenderCommand:
         pipeline_version="ml-shadowgen-v1",
         source=SourceImage(mime_type="image/png", image_base64=""),
         padding_px=100,
-        shadow=ShadowSpec(angle_deg=45.0, elevation_deg=30.0, softness=0.5, opacity=0.5, reflection=0.0),
+        shadow=ShadowSpec(model=None, angle_deg=45.0, elevation_deg=30.0, softness=0.5, opacity=0.5, reflection=0.0),
         background=BackgroundSpec(mode="solid", color_hex="#ffffff"),
         output=OutputSpec(format="png", width=None, height=None, return_debug=False),
     )

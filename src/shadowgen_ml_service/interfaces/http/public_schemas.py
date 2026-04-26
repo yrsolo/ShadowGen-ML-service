@@ -15,6 +15,7 @@ class PreprocessPayload(BaseModel):
 
 
 class ShadowPayload(BaseModel):
+    model: Literal["v1-gan", "v2-diff"] | None = None
     angle_deg: float = Field(ge=0, le=360)
     elevation_deg: float = Field(ge=0, le=90)
     softness: float = Field(ge=0, le=1)

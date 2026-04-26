@@ -25,6 +25,32 @@ Main request blocks:
 - `background`
 - `output`
 
+### `shadow`
+
+Current fields:
+
+```json
+{
+  "shadow": {
+    "model": "v1-gan",
+    "angle_deg": 45,
+    "elevation_deg": 35,
+    "softness": 0.5,
+    "opacity": 0.65,
+    "reflection": 0.0
+  }
+}
+```
+
+Rules:
+
+- `model` is optional for backward compatibility
+- allowed `model` values are `v1-gan` and `v2-diff`
+- if `model` is omitted, the service uses its configured runtime default
+- `v1-gan` uses `angle_deg` as the active rot/top-view shadow direction control
+- current `v2-diff` is control-free and ignores `angle_deg`, `elevation_deg`, `softness`, and `reflection`
+- `opacity` remains a compositor-level density control
+
 ### `preprocess`
 
 Current active field:

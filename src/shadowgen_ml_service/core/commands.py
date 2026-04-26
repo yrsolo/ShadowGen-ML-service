@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 
 @dataclass(frozen=True)
 class ShadowSpec:
+    model: str | None
     angle_deg: float
     elevation_deg: float
     softness: float

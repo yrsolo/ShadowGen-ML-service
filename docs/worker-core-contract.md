@@ -298,9 +298,11 @@ Minimum request shape:
     "padding_px": 100
   },
   "shadow": {
+    "model": "v1-gan",
     "angle_deg": 35,
     "elevation_deg": 45,
     "softness": 0.35,
+    "opacity": 0.65,
     "reflection": 0.0
   },
   "background": {
@@ -314,6 +316,14 @@ Minimum request shape:
 ```
 
 The worker should treat the request body as opaque business payload after mapping from the upstream product job.
+
+Shadow model selection:
+
+- `shadow.model = "v1-gan"` requests the current controllable rot/top-view GAN model
+- `shadow.model = "v2-diff"` requests the current control-free diffusion model
+- `shadow.model` is optional for older clients; if omitted, ML core uses its configured runtime default
+- current `v2-diff` ignores angle/elevation/softness/reflection controls
+- workers should forward the user-selected model when the upstream product job contains it
 
 ## Response Contract
 
