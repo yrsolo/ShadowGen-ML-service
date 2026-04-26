@@ -193,6 +193,9 @@ The active docs now provide:
 - Shadow V2 sample pack replacements: sample `06` now uses `Hot Coffee on a rainy day`; sample `09` now uses `Wallet on a table`
 - BiRefNet cutout alpha is now clamped by the cleaned largest-component foreground mask, preventing low-confidence matting leaks from reaching V1-GAN/V2-DIFF shadow inputs
 - Manual pipeline check stored under `artifacts/manual-runs/v1-after-alpha-cleanup`; sample `01` cutout alpha bbox changed from `(44, 167, 468, 512)` to `(46, 169, 466, 361)`
+- Default working-canvas content scale is now `0.68`, restoring larger margins around foreground objects for shadow generation
+- Preprocess cache keys now include `working_content_scale`, so old tight-crop cache entries do not mask margin changes
+- Manual `artifacts/manual-inputs/1.jpg` check stored under `artifacts/manual-runs/screenshot-1-v1-scale068`; cutout alpha bbox is `(115, 84, 397, 430)` after the margin change
 
 ### Validation Evidence
 
@@ -200,6 +203,8 @@ The active docs now provide:
 - `.venv\Scripts\python.exe -m compileall src tests` passed after the `shadow_image` contract switch
 - `.venv\Scripts\python.exe -m pytest -q` passed after BiRefNet alpha cleanup: `89 passed, 3 warnings`
 - `.venv\Scripts\python.exe -m compileall src tests` passed after BiRefNet alpha cleanup
+- `.venv\Scripts\python.exe -m pytest -q` passed after working-canvas margin change: `91 passed, 3 warnings`
+- `.venv\Scripts\python.exe -m compileall src tests` passed after working-canvas margin change
 - `.venv\Scripts\python.exe -m pytest` passed: `88 passed`
 - `.venv\Scripts\python.exe -m compileall src tests` passed
 - `.venv\Scripts\python.exe -m pytest` passed: `85 passed`

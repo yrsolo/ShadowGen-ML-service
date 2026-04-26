@@ -77,6 +77,21 @@ Open:
 
 The runtime is now execution-aware.
 
+## Working Canvas Margins
+
+After detection, the selected crop is placed into the canonical working canvas. The default margin policy is intentionally airy for shadow generation:
+
+- `SHADOWGEN_WORKING_SIZE`
+  - canonical downstream canvas size
+  - default `512`
+- `SHADOWGEN_WORKING_CONTENT_SCALE`
+  - fraction of the canonical canvas occupied by the detected crop after resize
+  - default `0.68`
+  - lower values leave more margin for generated shadows
+- `preprocess.padding_px`
+  - public-request crop context before canonical resize
+  - default `100`
+
 For heavy stages, separate two dimensions:
 
 - `backend_kind`

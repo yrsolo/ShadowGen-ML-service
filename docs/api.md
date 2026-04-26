@@ -68,6 +68,8 @@ Rules:
 - `padding_px` is optional in payload
 - default is `100`
 - minimum is `0`
+- after detection crop, the service keeps extra canonical canvas margin with `SHADOWGEN_WORKING_CONTENT_SCALE`
+- default `SHADOWGEN_WORKING_CONTENT_SCALE` is `0.68`, so crop content targets about 68% of the `512x512` working canvas and leaves room for generated shadows
 
 ## Sync Success Contract
 

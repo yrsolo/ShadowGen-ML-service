@@ -15,12 +15,20 @@ class FilesystemPreprocessCacheRepository(PreprocessCacheRepository):
         self.root = root
         self.root.mkdir(parents=True, exist_ok=True)
 
-    def make_key(self, raw_bytes: bytes, runtime_signature: str, padding_px: int, working_size: int) -> str:
+    def make_key(
+        self,
+        raw_bytes: bytes,
+        runtime_signature: str,
+        padding_px: int,
+        working_size: int,
+        working_content_scale: float,
+    ) -> str:
         digest = hashlib.sha256()
         digest.update(raw_bytes)
         digest.update(runtime_signature.encode("utf-8"))
         digest.update(str(padding_px).encode("utf-8"))
         digest.update(str(working_size).encode("utf-8"))
+        digest.update(f"{working_content_scale:.4f}".encode("utf-8"))
         return digest.hexdigest()
 
     def _cache_dir(self, key: str) -> Path:

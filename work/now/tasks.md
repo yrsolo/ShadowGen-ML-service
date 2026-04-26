@@ -60,6 +60,7 @@
 - [x] Switch shadow stage output contract from separate `shadow_rgba` layer to full `shadow_image`
 - [x] Add public `shadow.model` contract and frontend-facing model selection documentation
 - [x] Clamp BiRefNet cutout alpha by the cleaned foreground mask so shadow inputs do not include matting-alpha leaks
+- [x] Restore larger default working-canvas margins for shadow generation by lowering `SHADOWGEN_WORKING_CONTENT_SCALE` to `0.68`
 - [ ] Continue replacing compatibility shims with direct imports from the layered structure
 - [ ] Extend the temporary Triton segmenter bridge with a verified custom image smoke run
 

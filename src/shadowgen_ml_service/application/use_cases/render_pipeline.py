@@ -37,6 +37,7 @@ class RenderPipelineUseCase:
             runtime_signature=self.runtime.signature,
             padding_px=command.padding_px,
             working_size=self.settings.working_size,
+            working_content_scale=self.settings.working_content_scale,
         )
         context.cache_key = cache_key
         snapshot = self.runtime.cache.load(cache_key)

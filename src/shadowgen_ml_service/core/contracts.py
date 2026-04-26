@@ -87,7 +87,14 @@ class ArtifactEncoder(ABC):
 
 class PreprocessCacheRepository(ABC):
     @abstractmethod
-    def make_key(self, raw_bytes: bytes, runtime_signature: str, padding_px: int, working_size: int) -> str:
+    def make_key(
+        self,
+        raw_bytes: bytes,
+        runtime_signature: str,
+        padding_px: int,
+        working_size: int,
+        working_content_scale: float,
+    ) -> str:
         raise NotImplementedError
 
     @abstractmethod

@@ -16,6 +16,13 @@ class ImageUtilityTests(unittest.TestCase):
         self.assertEqual(crop.getpixel((0, 0))[3], 0)
         self.assertEqual(crop.getpixel((64, 64))[3], 255)
 
+    def test_prepare_working_crop_uses_scale_as_max_content_fraction(self) -> None:
+        image = Image.new("RGBA", (200, 100), (255, 0, 0, 255))
+        crop = prepare_working_crop(image, (0, 0, 200, 100), 100, content_scale=0.68)
+        alpha_bbox = crop.getchannel("A").getbbox()
+
+        self.assertEqual(alpha_bbox, (16, 33, 84, 67))
+
     def test_normals_from_depth_suppresses_silhouette_edges_and_keeps_internal_variation(self) -> None:
         depth = np.zeros((64, 64), dtype=np.uint8)
         yy, xx = np.indices(depth.shape)
