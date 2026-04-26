@@ -53,6 +53,7 @@
 - [x] Implement the real local `V2-DIFF` shadow backend
 - [ ] Add shadow-stage input previews for `img`, `mask`, `depth`, and `normal`
 - [x] Rework the playground into a horizontal stage scroller with wheel-driven horizontal navigation, shift-wheel vertical card scroll, and compact desktop controls
+- [x] Prevent tablet playground stage area from collapsing by giving the horizontal pipeline a minimum height and page-level vertical scroll
 - [x] Document the training, export, serving, and acceptance contract for the future `V2-DIFF` shadow model
 - [x] Prepare a reproducible Shadow V2 sample-pack generator and local 10-image sample pack
 - [x] Replace unsuitable Shadow V2 sample-pack sources with product-case foreground objects and add pack README

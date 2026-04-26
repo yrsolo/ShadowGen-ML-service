@@ -159,6 +159,7 @@ The active docs now provide:
 - `Shift` + mouse wheel scrolls the active stage card vertically
 - stage cards use internal vertical overflow so previews are scrollable instead of being clipped
 - top controls were compacted so stage cards and previews remain visible without vertical page scroll
+- tablet/desktop playground now keeps a minimum pipeline height instead of shrinking stage previews to fit the viewport; the page scrolls vertically when needed
 
 ### Triton Bring-Up Evidence
 
@@ -210,6 +211,7 @@ The active docs now provide:
 - `.venv\Scripts\python.exe -m compileall src tests` passed after working-canvas margin change
 - `.venv\Scripts\python.exe -m pytest -q` passed after local V2-DIFF integration: `93 passed, 4 warnings`
 - `.venv\Scripts\python.exe -m compileall src tests` passed after local V2-DIFF integration
+- `.venv\Scripts\python.exe -m compileall src/shadowgen_ml_service/interfaces/dev/playground.py` passed after playground min-height fix
 - `.venv\Scripts\python.exe -m pytest` passed: `88 passed`
 - `.venv\Scripts\python.exe -m compileall src tests` passed
 - `.venv\Scripts\python.exe -m pytest` passed: `85 passed`

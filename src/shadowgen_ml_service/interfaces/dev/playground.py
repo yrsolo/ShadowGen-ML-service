@@ -22,6 +22,7 @@ def render_playground_html() -> str:
       --warn: #b86b22;
       --err: #c53030;
       --preview-width: 320px;
+      --pipeline-min-height: 620px;
       --shadow: 0 18px 42px rgba(34, 43, 69, 0.12);
     }
     * { box-sizing: border-box; }
@@ -30,17 +31,18 @@ def render_playground_html() -> str:
       min-height: 100vh;
       font-family: "Segoe UI", sans-serif;
       color: var(--text);
-      overflow: hidden;
+      overflow: auto;
       background:
         radial-gradient(circle at top left, rgba(255,255,255,0.94), transparent 28%),
         linear-gradient(135deg, var(--bg-a), var(--bg-b));
     }
     .shell {
       width: calc(100vw - 28px);
-      height: calc(100vh - 32px);
+      min-height: calc(100vh - 32px);
+      height: auto;
       margin: 16px auto;
       display: grid;
-      grid-template-rows: auto minmax(0, 1fr);
+      grid-template-rows: auto minmax(var(--pipeline-min-height), 1fr);
       gap: 18px;
     }
     .hero, .stage-card {
@@ -120,7 +122,7 @@ def render_playground_html() -> str:
       scroll-snap-type: x proximity;
       overscroll-behavior-x: contain;
       align-items: stretch;
-      min-height: 0;
+      min-height: var(--pipeline-min-height);
     }
     .pipeline::-webkit-scrollbar { height: 12px; }
     .pipeline::-webkit-scrollbar-track { background: rgba(255,255,255,0.3); border-radius: 999px; }
@@ -220,17 +222,19 @@ def render_playground_html() -> str:
       background-position: 0 0, 9px 9px;
     }
     @media (max-width: 1100px) {
+      :root { --pipeline-min-height: 560px; }
       .hero-grid { grid-template-columns: repeat(12, 1fr); }
       .panel, .panel.wide { grid-column: span 12; }
-      .shell { width: calc(100vw - 20px); height: calc(100vh - 20px); margin: 10px auto; }
+      .shell { width: calc(100vw - 20px); min-height: calc(100vh - 20px); margin: 10px auto; }
       .pipeline { grid-auto-columns: minmax(560px, calc(100vw - 28px)); }
     }
     @media (max-width: 720px) {
-      body { overflow: auto; }
-      .shell { height: auto; }
+      :root { --pipeline-min-height: 0px; }
+      .shell { min-height: 0; }
       .pipeline {
         grid-auto-flow: row;
         grid-auto-columns: unset;
+        min-height: 0;
         overflow-x: visible;
         overflow-y: visible;
       }
