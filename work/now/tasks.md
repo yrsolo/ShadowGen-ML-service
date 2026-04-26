@@ -50,7 +50,7 @@
 - [x] Fix Triton local helper ports and add a Windows `.cmd` launcher
 - [x] Add a Windows service launcher that starts FastAPI with Triton segmenter defaults
 - [ ] Run the first live end-to-end Triton smoke against a real `shadowgen_segmenter` server
-- [ ] Implement the real `V2-DIFF` shadow backend
+- [x] Implement the real local `V2-DIFF` shadow backend
 - [ ] Add shadow-stage input previews for `img`, `mask`, `depth`, and `normal`
 - [x] Rework the playground into a horizontal stage scroller with wheel-driven horizontal navigation, shift-wheel vertical card scroll, and compact desktop controls
 - [x] Document the training, export, serving, and acceptance contract for the future `V2-DIFF` shadow model

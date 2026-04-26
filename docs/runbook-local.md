@@ -273,12 +273,21 @@ Important:
 
 #### `V2-DIFF`
 
-- preferred Triton-ready slot
+- working local diffusion backend, plus preferred future Triton slot
 - currently simplified to a control-free diffusion model
 - expected to draw a plausible full shadow image from the object image and mask
+- local bundle default:
+  - `.models/shadow/v2-diff/shadowgen_inpaint_lora_prod_current`
+- neutral background default:
+  - `.models/shadow/v2-diff/mean_background.png`
 - env vars:
   - `SHADOWGEN_SHADOW_BACKEND_KIND`
   - `SHADOWGEN_SHADOW_MODEL_VARIANT`
+  - `SHADOWGEN_SHADOW_V2_DIFF_BUNDLE_PATH`
+  - `SHADOWGEN_SHADOW_V2_DIFF_BACKGROUND_PATH`
+  - `SHADOWGEN_SHADOW_V2_DIFF_SEED`
+  - `SHADOWGEN_SHADOW_V2_DIFF_STEPS`
+  - `SHADOWGEN_SHADOW_V2_DIFF_GUIDANCE_SCALE`
   - `SHADOWGEN_TRITON_SHADOW_V2_MODEL`
 
 Current expected model inputs:

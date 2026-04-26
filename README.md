@@ -53,6 +53,7 @@ Current stage order:
 - `Shadow`:
   - `mock`
   - `V1-GAN local`
+  - `V2-DIFF local`
   - `V2-DIFF triton scaffold`
 - `Composition`: Python compositor, local-only
 

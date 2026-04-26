@@ -342,8 +342,9 @@ The ML core may fallback when a requested backend is unavailable.
 
 Current important case:
 
-- requested `v2-diff` uses Triton
-- if Triton or the model is unavailable, ML core may fallback to `v1-gan` or mock depending on runtime availability
+- requested `v2-diff` uses the local diffusion backend today
+- future deployments may route `v2-diff` through Triton without changing the public request shape
+- if the local/Triton model is unavailable, ML core may fallback to `v1-gan` or mock depending on runtime availability
 - response `warnings` may include `shadow_generator_fallback_active`
 
 Frontend recommendation:

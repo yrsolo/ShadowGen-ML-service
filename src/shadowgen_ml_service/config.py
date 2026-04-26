@@ -79,6 +79,15 @@ class Settings:
     shadow_backend_kind: str = os.getenv("SHADOWGEN_SHADOW_BACKEND_KIND", "")
     shadow_model_variant: str = os.getenv("SHADOWGEN_SHADOW_MODEL_VARIANT", "v1-gan")
     shadow_pix2pix_weights_path: Path = Path(os.getenv("SHADOWGEN_SHADOW_PIX2PIX_WEIGHTS_PATH", ".models/shadow/AveragedModel.pth"))
+    shadow_v2_diff_bundle_path: Path = Path(
+        os.getenv("SHADOWGEN_SHADOW_V2_DIFF_BUNDLE_PATH", ".models/shadow/v2-diff/shadowgen_inpaint_lora_prod_current")
+    )
+    shadow_v2_diff_background_path: Path = Path(os.getenv("SHADOWGEN_SHADOW_V2_DIFF_BACKGROUND_PATH", ".models/shadow/v2-diff/mean_background.png"))
+    shadow_v2_diff_seed: int = _as_int("SHADOWGEN_SHADOW_V2_DIFF_SEED", 1234)
+    shadow_v2_diff_steps: int | None = None if os.getenv("SHADOWGEN_SHADOW_V2_DIFF_STEPS") is None else _as_int("SHADOWGEN_SHADOW_V2_DIFF_STEPS", 24)
+    shadow_v2_diff_guidance_scale: float | None = (
+        None if os.getenv("SHADOWGEN_SHADOW_V2_DIFF_GUIDANCE_SCALE") is None else float(os.getenv("SHADOWGEN_SHADOW_V2_DIFF_GUIDANCE_SCALE", "2.0"))
+    )
     triton_detector_model: str = os.getenv("SHADOWGEN_TRITON_DETECTOR_MODEL", "shadowgen_detector")
     triton_segmenter_model: str = os.getenv("SHADOWGEN_TRITON_SEGMENTER_MODEL", "shadowgen_segmenter")
     triton_depth_model: str = os.getenv("SHADOWGEN_TRITON_DEPTH_MODEL", "shadowgen_depth")

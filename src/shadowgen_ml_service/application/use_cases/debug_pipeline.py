@@ -237,8 +237,6 @@ class DebugPipelineUseCase:
             requested_backend_kind = command.stage_backend_kinds[stage_key]
         elif legacy_mode == "mock":
             requested_backend_kind = "mock"
-        elif stage_key == "shadow_generator" and legacy_mode == "v2-diff":
-            requested_backend_kind = "triton"
         else:
             requested_backend_kind = "local"
 

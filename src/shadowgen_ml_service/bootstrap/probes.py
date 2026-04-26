@@ -5,3 +5,4 @@ from shadowgen_ml_service.infrastructure.stages.geometry.geocalib import probe_g
 from shadowgen_ml_service.infrastructure.stages.normals.stable_normal import probe_stable_normal
 from shadowgen_ml_service.infrastructure.stages.segmentation.birefnet import probe_birefnet
 from shadowgen_ml_service.infrastructure.stages.shadow.pix2pix import probe_shadow_pix2pix
+from shadowgen_ml_service.infrastructure.stages.shadow.v2_diff import probe_shadow_v2_diff

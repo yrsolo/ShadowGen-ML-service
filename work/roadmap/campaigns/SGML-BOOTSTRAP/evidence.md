@@ -183,6 +183,9 @@ The active docs now provide:
 - debug fallback reason now includes the unavailable backend descriptor detail, for example `Triton endpoint is unavailable`
 - V2-DIFF model training/export/serving requirements are captured in `docs/shadow-v2-model-contract.md`
 - V2-DIFF integration is temporarily simplified to a control-free `img + mask -> shadow_image` binding
+- Local V2-DIFF backend is connected through the SD1.5 inpaint LoRA bundle under `.models/shadow/v2-diff/shadowgen_inpaint_lora_prod_current`
+- V2-DIFF uses `.models/shadow/v2-diff/mean_background.png` as the neutral conditioning background before inpaint inference
+- Manual `artifacts/manual-inputs/1.jpg` V2-DIFF check stored under `artifacts/manual-runs/screenshot-1-v2-diff-local`; debug metadata reported `shadow_generator completed local v2-diff`
 - shadow stage output contract now represents a full model image instead of a separate `shadow_rgba` layer
 - `V1-GAN` remains the controllable local rot/top-view shadow model
 - the Triton shadow adapter now serializes only tensors declared by the active binding, so future controlled V2-DIFF tensors can be added without changing pipeline orchestration
@@ -205,6 +208,8 @@ The active docs now provide:
 - `.venv\Scripts\python.exe -m compileall src tests` passed after BiRefNet alpha cleanup
 - `.venv\Scripts\python.exe -m pytest -q` passed after working-canvas margin change: `91 passed, 3 warnings`
 - `.venv\Scripts\python.exe -m compileall src tests` passed after working-canvas margin change
+- `.venv\Scripts\python.exe -m pytest -q` passed after local V2-DIFF integration: `93 passed, 4 warnings`
+- `.venv\Scripts\python.exe -m compileall src tests` passed after local V2-DIFF integration
 - `.venv\Scripts\python.exe -m pytest` passed: `88 passed`
 - `.venv\Scripts\python.exe -m compileall src tests` passed
 - `.venv\Scripts\python.exe -m pytest` passed: `85 passed`
@@ -225,6 +230,6 @@ The active docs now provide:
 
 - no heavy stage has been smoke-tested yet against a real external Triton server
 - current BiRefNet ONNX export is blocked in this environment by `torchvision::deform_conv2d`, so the live `segmenter` bridge currently depends on the temporary Triton Python backend
-- `V2-DIFF` shadow backend is scaffolded but not implemented
+- `V2-DIFF` Triton backend is scaffolded but not implemented
 - compatibility shims still remain in the repository
 - the current workstation has a Docker Desktop / WSL blocker (`docker-desktop` distro missing), so the temporary Triton segmenter image has not yet been validated end-to-end against a real running container

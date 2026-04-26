@@ -115,8 +115,10 @@ class BackendSelector:
 
         if stage_key == "shadow_generator":
             if requested_backend_kind == "triton":
-                fallback.extend([("local", "v1-gan"), ("mock", "mock")])
+                fallback.extend([("local", "v2-diff"), ("local", "v1-gan"), ("mock", "mock")])
             elif requested_backend_kind == "local":
+                if requested_variant == "v2-diff":
+                    fallback.append(("local", "v1-gan"))
                 fallback.append(("mock", "mock"))
             return fallback
 

@@ -54,7 +54,7 @@ def make_request(image_format: str = "PNG") -> dict:
 
 class ApiTests(unittest.TestCase):
     def setUp(self) -> None:
-        app = create_app(Settings())
+        app = create_app(Settings(shadow_v2_diff_bundle_path=Path("missing-test-v2-diff-bundle")))
         self.client = TestClient(app)
 
     def test_health(self) -> None:
@@ -385,7 +385,7 @@ class ApiTests(unittest.TestCase):
         shadow = payload["stages"][-1]
         self.assertEqual(shadow["stage_key"], "shadow_generator")
         self.assertIn(shadow["status"], {"completed", "failed"})
-        self.assertIn(shadow["actual_mode"], {"unavailable", "local-fallback", "mock-fallback"})
+        self.assertIn(shadow["actual_mode"], {"unavailable", "local", "local-fallback", "mock-fallback"})
 
     def test_debug_pipeline_geometry_real_uses_mock_fallback(self) -> None:
         response = self.client.post(

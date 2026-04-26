@@ -9,6 +9,7 @@ from shadowgen_ml_service.bootstrap.probes import (
     probe_grounding_dino,
     probe_stable_normal,
     probe_shadow_pix2pix,
+    probe_shadow_v2_diff,
 )
 from shadowgen_ml_service.bootstrap.runtime_descriptor import backend_descriptor, build_runtime_descriptor, component_status
 from shadowgen_ml_service.bootstrap.triton_bindings import build_triton_model_registry
@@ -42,6 +43,7 @@ from shadowgen_ml_service.infrastructure.stages.segmentation.triton import Trito
 from shadowgen_ml_service.infrastructure.stages.shadow.pix2pix import Pix2PixShadowGenerator
 from shadowgen_ml_service.infrastructure.stages.shadow.stub import DeterministicShadowGenerator
 from shadowgen_ml_service.infrastructure.stages.shadow.triton import TritonShadowGenerator
+from shadowgen_ml_service.infrastructure.stages.shadow.v2_diff import V2DiffShadowGenerator
 
 
 HEAVY_STAGES = {"detector", "segmenter", "depth_estimator", "normal_estimator", "shadow_generator"}
@@ -612,6 +614,41 @@ def _register_shadow(
         ),
         handler,
     )
+    v2_probe = probe_shadow_v2_diff(settings.shadow_v2_diff_bundle_path, settings.shadow_v2_diff_background_path)
+    v2_handler = None
+    v2_detail = v2_probe.detail
+    v2_available = False
+    v2_device = "cpu"
+    if v2_probe.available:
+        try:
+            v2_handler = V2DiffShadowGenerator(
+                bundle_path=settings.shadow_v2_diff_bundle_path,
+                background_path=settings.shadow_v2_diff_background_path,
+                target_device=settings.target_device,
+                seed=settings.shadow_v2_diff_seed,
+                steps=settings.shadow_v2_diff_steps,
+                guidance_scale=settings.shadow_v2_diff_guidance_scale,
+            )
+            v2_available = True
+            v2_detail = f"V2-DIFF local backend active (bundle={settings.shadow_v2_diff_bundle_path})"
+            v2_device = getattr(v2_handler, "device_label", "cpu")
+        except Exception as exc:
+            v2_detail = f"V2-DIFF local init failed: {exc}"
+    registry.register(
+        backend_descriptor(
+            stage_key="shadow_generator",
+            backend_kind="local",
+            model_variant="v2-diff",
+            model_name=v2_probe.model_name,
+            model_version=v2_probe.model_version,
+            available=v2_available,
+            detail=v2_detail,
+            device=v2_device,
+            supports_batching=False,
+            supports_async=True,
+        ),
+        v2_handler,
+    )
     binding = triton_models.get("shadow_generator", "v2-diff")
     triton_available, triton_detail = _probe_triton_backend(
         triton_client=triton_client,
@@ -726,6 +763,31 @@ def _resolve_active_backend(*, registry: PipelineBackendRegistry, stage_key: str
                 candidate_ids.append(StageBackendId(stage_key=stage_key, backend_kind="local", model_variant="stable-normal"))
             candidate_ids.append(StageBackendId(stage_key=stage_key, backend_kind="local", model_variant="from-depth-v2"))
             candidate_ids.append(StageBackendId(stage_key=stage_key, backend_kind="mock", model_variant="mock-v1"))
+        for index, backend_id in enumerate(candidate_ids):
+            registered = registry.get(backend_id)
+            if registered is not None and registered.descriptor.available and registered.handler is not None:
+                if index > 0:
+                    fallback_reason = f"{preferred_backend_kind}:{preferred_variant} unavailable for {stage_key}"
+                return registered, fallback_reason
+
+    if stage_key == "shadow_generator":
+        candidate_ids = []
+        if preferred_backend_kind == "mock":
+            candidate_ids.append(StageBackendId(stage_key=stage_key, backend_kind="mock", model_variant="mock"))
+        elif preferred_backend_kind == "triton":
+            candidate_ids.extend(
+                [
+                    StageBackendId(stage_key=stage_key, backend_kind="triton", model_variant=preferred_variant),
+                    StageBackendId(stage_key=stage_key, backend_kind="local", model_variant=preferred_variant),
+                    StageBackendId(stage_key=stage_key, backend_kind="local", model_variant="v1-gan"),
+                    StageBackendId(stage_key=stage_key, backend_kind="mock", model_variant="mock"),
+                ]
+            )
+        else:
+            candidate_ids.append(StageBackendId(stage_key=stage_key, backend_kind=preferred_backend_kind, model_variant=preferred_variant))
+            if preferred_variant == "v2-diff":
+                candidate_ids.append(StageBackendId(stage_key=stage_key, backend_kind="local", model_variant="v1-gan"))
+            candidate_ids.append(StageBackendId(stage_key=stage_key, backend_kind="mock", model_variant="mock"))
         for index, backend_id in enumerate(candidate_ids):
             registered = registry.get(backend_id)
             if registered is not None and registered.descriptor.available and registered.handler is not None:

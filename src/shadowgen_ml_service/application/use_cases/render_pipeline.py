@@ -150,7 +150,7 @@ class RenderPipelineUseCase:
 
     def _shadow_model_selection(self, model: str) -> tuple[str, str]:
         if model == "v2-diff":
-            return "triton", "v2-diff"
+            return "local", "v2-diff"
         return "local", "v1-gan"
 
     def _invoke_stage(self, stage_key: str, backend, context: PipelineContext):

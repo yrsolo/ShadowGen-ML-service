@@ -594,14 +594,14 @@ def render_playground_html() -> str:
       if (source === "backend") {
         const backendKind = state.stageBackendKinds.shadow_generator;
         if (backendKind === "mock") state.stageVariants.shadow_generator = "mock";
-        if (backendKind === "local") state.stageVariants.shadow_generator = "v1-gan";
+        if (backendKind === "local" && state.stageVariants.shadow_generator !== "v2-diff") state.stageVariants.shadow_generator = "v1-gan";
         if (backendKind === "triton") state.stageVariants.shadow_generator = "v2-diff";
         return;
       }
       const variant = state.stageVariants.shadow_generator;
       if (variant === "mock") state.stageBackendKinds.shadow_generator = "mock";
       if (variant === "v1-gan") state.stageBackendKinds.shadow_generator = "local";
-      if (variant === "v2-diff") state.stageBackendKinds.shadow_generator = "triton";
+      if (variant === "v2-diff") state.stageBackendKinds.shadow_generator = "local";
     }
 
     function buildRequestBody() {
