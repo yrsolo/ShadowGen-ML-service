@@ -7,6 +7,7 @@ from PIL import Image
 
 from shadowgen_ml_service.adapters.real import RealSegmenter
 from shadowgen_ml_service.core.stage_io import SegmentationInput
+from shadowgen_ml_service.infrastructure.stages.segmentation.birefnet import apply_binary_mask_to_alpha
 
 
 class FakeNoGrad:
@@ -133,6 +134,30 @@ class FakeTransformersSegmentationModule:
 
 
 class SegmenterTests(unittest.TestCase):
+    def test_binary_mask_removes_alpha_leaks_outside_main_component(self) -> None:
+        alpha = np.array(
+            [
+                [0, 240, 230, 0],
+                [0, 220, 210, 0],
+                [12, 15, 0, 0],
+            ],
+            dtype=np.uint8,
+        )
+        binary_mask = np.array(
+            [
+                [0, 1, 1, 0],
+                [0, 1, 1, 0],
+                [0, 0, 0, 0],
+            ],
+            dtype=np.uint8,
+        )
+
+        cleaned = apply_binary_mask_to_alpha(alpha, binary_mask)
+
+        self.assertEqual(int(cleaned[2, 0]), 0)
+        self.assertEqual(int(cleaned[2, 1]), 0)
+        self.assertEqual(int(cleaned[0, 1]), 240)
+
     def test_real_segmenter_returns_mask_and_cutout(self) -> None:
         segmenter = RealSegmenter(
             transformers_module=FakeTransformersSegmentationModule,

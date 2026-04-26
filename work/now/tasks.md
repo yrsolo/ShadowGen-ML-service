@@ -59,6 +59,7 @@
 - [x] Temporarily simplify `V2-DIFF` shadow integration to a control-free `img + mask -> shadow_image` contract while keeping `V1-GAN` as the controllable rot/top-view model
 - [x] Switch shadow stage output contract from separate `shadow_rgba` layer to full `shadow_image`
 - [x] Add public `shadow.model` contract and frontend-facing model selection documentation
+- [x] Clamp BiRefNet cutout alpha by the cleaned foreground mask so shadow inputs do not include matting-alpha leaks
 - [ ] Continue replacing compatibility shims with direct imports from the layered structure
 - [ ] Extend the temporary Triton segmenter bridge with a verified custom image smoke run
 

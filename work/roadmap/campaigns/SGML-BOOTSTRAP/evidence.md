@@ -191,11 +191,15 @@ The active docs now provide:
 - Shadow V2 sample pack generated under `artifacts/shadow-v2-sample-pack` with 10 local-backend samples and contract-ready `shadow_input.npz` files
 - Shadow V2 sample pack now uses curated product-case sources and includes an in-folder README for model developers
 - Shadow V2 sample pack replacements: sample `06` now uses `Hot Coffee on a rainy day`; sample `09` now uses `Wallet on a table`
+- BiRefNet cutout alpha is now clamped by the cleaned largest-component foreground mask, preventing low-confidence matting leaks from reaching V1-GAN/V2-DIFF shadow inputs
+- Manual pipeline check stored under `artifacts/manual-runs/v1-after-alpha-cleanup`; sample `01` cutout alpha bbox changed from `(44, 167, 468, 512)` to `(46, 169, 466, 361)`
 
 ### Validation Evidence
 
 - `.venv\Scripts\python.exe -m pytest -q` passed after the `shadow_image` contract switch: `88 passed, 3 warnings`
 - `.venv\Scripts\python.exe -m compileall src tests` passed after the `shadow_image` contract switch
+- `.venv\Scripts\python.exe -m pytest -q` passed after BiRefNet alpha cleanup: `89 passed, 3 warnings`
+- `.venv\Scripts\python.exe -m compileall src tests` passed after BiRefNet alpha cleanup
 - `.venv\Scripts\python.exe -m pytest` passed: `88 passed`
 - `.venv\Scripts\python.exe -m compileall src tests` passed
 - `.venv\Scripts\python.exe -m pytest` passed: `85 passed`

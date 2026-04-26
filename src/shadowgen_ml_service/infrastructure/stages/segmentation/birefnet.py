@@ -63,6 +63,10 @@ def largest_connected_component(mask_array: np.ndarray) -> np.ndarray:
     return result
 
 
+def apply_binary_mask_to_alpha(alpha_array: np.ndarray, binary_mask: np.ndarray) -> np.ndarray:
+    return (alpha_array.astype(np.uint8) * binary_mask.astype(np.uint8)).astype(np.uint8)
+
+
 class RealSegmenter(Segmenter):
     _RESOURCE_CACHE: ClassVar[dict[tuple[str, int, bool], tuple[Any, Any]]] = {}
 
@@ -152,9 +156,10 @@ class RealSegmenter(Segmenter):
         alpha_resized = np.asarray(alpha_image, dtype=np.uint8)
         binary_mask = (alpha_resized >= int(self.mask_threshold * 255)).astype(np.uint8)
         binary_mask = largest_connected_component(binary_mask)
+        cleaned_alpha = apply_binary_mask_to_alpha(alpha_resized, binary_mask)
         mask_image = Image.fromarray(binary_mask * 255)
         cutout_rgba = image_rgb.convert("RGBA")
-        cutout_rgba.putalpha(alpha_image)
+        cutout_rgba.putalpha(Image.fromarray(cleaned_alpha, mode="L"))
         return SegmentationResult(
             bbox=(0, 0, image.width, image.height),
             mask=pil_to_asset(mask_image),
