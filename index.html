@@ -160,7 +160,7 @@
       box-shadow: var(--shadow);
     }
 
-    .video-placeholder {
+    .video-panel {
       aspect-ratio: 16 / 9;
       display: grid;
       place-items: center;
@@ -194,7 +194,7 @@
       border-left: 23px solid #fff;
     }
 
-    .video-placeholder strong {
+    .video-panel strong {
       display: block;
       margin-bottom: 6px;
       font-size: 18px;
@@ -249,7 +249,7 @@
     .grid {
       margin-top: 28px;
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 14px;
     }
 
@@ -439,7 +439,8 @@
         <a href="#repos">Репозитории</a>
         <a href="#method">Метод</a>
         <a href="#results">Результаты</a>
-        <a href="#citation">BibTeX</a>
+      <a href="#data">Датасет</a>
+      <a href="#citation">BibTeX</a>
       </div>
     </nav>
   </header>
@@ -453,25 +454,26 @@
       воспроизводимый inference pipeline.
     </p>
     <p class="authors">
-      Yuri Soloviev &nbsp;|&nbsp; ShadowGen &nbsp;|&nbsp; технический preview
+      Yuri Soloviev &nbsp;|&nbsp; ShadowGen
     </p>
     <div class="cta" aria-label="Основные ссылки">
       <a class="button primary" href="#video">Видео</a>
       <a class="button" href="https://github.com/yrsolo/ShadowGen-v2" rel="noreferrer">Продукт</a>
       <a class="button" href="https://github.com/yrsolo/ShadowGen-ML-service" rel="noreferrer">ML-сервис</a>
+      <a class="button" href="https://github.com/yrsolo/ShadowGen-ML-dataset" rel="noreferrer">Датасет</a>
       <a class="button" href="https://github.com/yrsolo/ShadowGen-ML-training" rel="noreferrer">Training</a>
     </div>
     <div id="video" class="media" aria-label="Блок для видео">
-      <div class="video-placeholder">
+      <div class="video-panel">
         <div>
           <div class="play-mark" aria-hidden="true"></div>
-          <strong>Здесь будет демонстрационный ролик</strong>
-          <div>Место для короткого видео с примером пайплайна, результатов и интерфейса.</div>
+          <strong>Демонстрация в разработке</strong>
+          <div>Раздел будет использоваться для короткого ролика с работой системы и примерами результатов.</div>
         </div>
       </div>
     </div>
     <p class="caption">
-      На первом этапе страница уже работает как публичная ссылка для заявки. Видео и финальные визуальные примеры можно добавить позже.
+      Видео готовится отдельно: страница уже описывает устройство проекта, репозитории и текущую ML-архитектуру.
     </p>
   </div>
 
@@ -482,11 +484,12 @@
         <p>
           ShadowGen решает практическую задачу генерации тени для отдельного предмета:
           из входного изображения строится маска объекта, рабочий crop, вспомогательные
-          признаки сцены и итоговая композиция с тенью. Проект разделен на три части:
-          продуктовый контур с web/API/worker, отдельный ML inference service и
-          training workspace для будущей ShadowGen v2 модели. Такое разделение делает
-          систему ближе к промышленному ML-продукту: обучение, serving, API и пользовательский
-          сценарий развиваются независимо, но связаны явными контрактами.
+          признаки сцены и итоговая композиция с тенью. Проект разделен на четыре
+          связанных слоя: продуктовый контур с web/API/worker, отдельный ML inference
+          service, датасетный pipeline для синтетических studio renders и training
+          workspace для экспериментов с основной shadow-моделью. Обучение, serving,
+          API и пользовательский сценарий развиваются независимо, но связаны явными
+          контрактами и общей задачей генерации тени для предметных изображений.
         </p>
       </div>
     </section>
@@ -494,8 +497,8 @@
     <section id="repos">
       <h2>Репозитории проекта</h2>
       <p class="section-lead">
-        Проект разбит на несколько публичных репозиториев, чтобы отдельно показать
-        продуктовую архитектуру, ML-serving слой и training-side работу.
+        Репозитории разделяют зоны ответственности: продуктовый runtime, ML-serving,
+        подготовку данных и обучение модели.
       </p>
       <div class="repo-grid">
         <article class="repo">
@@ -517,6 +520,16 @@
             mock/local/Triton-ready backends и typed stage contracts.
           </p>
           <a href="https://github.com/yrsolo/ShadowGen-ML-service" rel="noreferrer">github.com/yrsolo/ShadowGen-ML-service</a>
+        </article>
+        <article class="repo" id="data">
+          <small>Dataset pipeline</small>
+          <strong>ShadowGen-ML-dataset</strong>
+          <p>
+            Инструменты для сборки синтетического датасета: фильтрация Objaverse-XL
+            кандидатов, Blender studio templates, batch rendering, manifests, banlist
+            и QC. На выходе сохраняются RGB preview, depth, normals, object mask и metadata.
+          </p>
+          <a href="https://github.com/yrsolo/ShadowGen-ML-dataset" rel="noreferrer">github.com/yrsolo/ShadowGen-ML-dataset</a>
         </article>
         <article class="repo">
           <small>Training workspace</small>
@@ -548,7 +561,7 @@
         </article>
         <article class="card">
           <h3>Serving</h3>
-          <p>Для ML стадий предусмотрены mock, local и Triton-ready варианты, чтобы pipeline можно было развивать без смены публичного API.</p>
+          <p>Для ML стадий предусмотрены mock, local и Triton-ready варианты, поэтому serving-слой можно менять независимо от продуктового API.</p>
         </article>
       </div>
     </section>
@@ -557,13 +570,13 @@
       <h2>Метод</h2>
       <p class="section-lead">
         Базовый процесс устроен как последовательность независимых стадий, у каждой
-        есть входы, выходы, preview-артефакты и runtime metadata.
+        есть входы, выходы, диагностические артефакты и runtime metadata.
       </p>
       <div class="pipeline" aria-label="Пайплайн метода">
         <div class="step"><div class="step-number">1</div><strong>Найти объект</strong><span>Detection определяет основной предмет и готовит стабильную рабочую область.</span></div>
         <div class="step"><div class="step-number">2</div><strong>Вырезать</strong><span>Segmentation и refinement строят маску и аккуратный RGBA cutout.</span></div>
         <div class="step"><div class="step-number">3</div><strong>Оценить сцену</strong><span>Depth и normals дают геометрические подсказки для последующих моделей.</span></div>
-        <div class="step"><div class="step-number">4</div><strong>Сгенерировать тень</strong><span>Shadow stage выбирает mock, V1-GAN или будущую V2-DIFF модель.</span></div>
+        <div class="step"><div class="step-number">4</div><strong>Сгенерировать тень</strong><span>Shadow stage работает с V1-GAN и развиваемым V2-DIFF направлением.</span></div>
         <div class="step"><div class="step-number">5</div><strong>Собрать результат</strong><span>Composer объединяет объект, тень, фон и debug-артефакты.</span></div>
       </div>
     </section>
@@ -571,8 +584,8 @@
     <section id="results">
       <h2>Результаты</h2>
       <p class="section-lead">
-        Этот блок оставлен под финальные изображения, ablation-примеры и демонстрационный ролик.
-        Сейчас он фиксирует структуру страницы для заявки.
+        В этом разделе публикуются визуальные примеры: входной объект, промежуточная тень
+        и итоговая композиция.
       </p>
       <div class="results">
         <figure class="figure">
@@ -592,12 +605,12 @@
 
     <section id="citation">
       <h2>Citation</h2>
-      <p class="section-lead">Черновой BibTeX для будущего технического отчета или model card.</p>
+      <p class="section-lead">Формат ссылки на проект для технических описаний и model cards.</p>
       <pre><code>@misc{shadowgen2026,
   title  = {ShadowGen: генерация теней для предметных изображений},
   author = {Soloviev, Yuri},
   year   = {2026},
-  note   = {Technical preview}
+  note   = {Project page}
 }</code></pre>
     </section>
   </main>
