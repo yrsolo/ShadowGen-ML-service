@@ -287,7 +287,13 @@ Compatibility notes:
 
 ### `geometry_estimator`
 
-May include:
+Default state:
+
+- disabled by default with `SHADOWGEN_GEOMETRY_ENABLED=false`
+- omitted from normal `run-all` playground execution while disabled
+- direct `run-stage/geometry_estimator` calls return a skipped stage while disabled
+
+When enabled, details may include:
 
 - `camera_fov`
 - `camera_pitch`
@@ -387,6 +393,15 @@ May include:
 Previews:
 
 - `normals`
+
+Default variant:
+
+- `from-depth-v2`
+
+Notes:
+
+- `from-depth-v2` is the fast depth-derived local path
+- `stable-normal` is an opt-in neural local variant and may fallback when its model/runtime is unavailable
 
 ### `shadow_generator`
 

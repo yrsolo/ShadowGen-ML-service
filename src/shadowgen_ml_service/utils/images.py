@@ -318,9 +318,12 @@ def normals_from_depth(depth_map: Image.Image) -> Image.Image:
     if valid_mask.sum() == 0:
         return Image.new("RGB", depth_map.size, (127, 127, 255))
 
-    inverse_mask = ((1 - valid_mask) * 255).astype(np.uint8)
-    filled_depth = cv2.inpaint(depth_u8, inverse_mask, 5, cv2.INPAINT_NS)
-    smoothed_depth = cv2.GaussianBlur(filled_depth.astype(np.float32) / 255.0, (0, 0), sigmaX=2.2, sigmaY=2.2)
+    depth = depth_u8.astype(np.float32) / 255.0
+    valid = valid_mask.astype(np.float32)
+    blurred_depth = cv2.GaussianBlur(depth * valid, (0, 0), sigmaX=2.2, sigmaY=2.2)
+    blurred_weight = cv2.GaussianBlur(valid, (0, 0), sigmaX=2.2, sigmaY=2.2)
+    smoothed_depth = blurred_depth / np.maximum(blurred_weight, 1e-4)
+    smoothed_depth = np.where(valid_mask > 0, smoothed_depth, 0.0).astype(np.float32)
 
     grad_x = cv2.Sobel(smoothed_depth, cv2.CV_32F, 1, 0, ksize=3)
     grad_y = cv2.Sobel(smoothed_depth, cv2.CV_32F, 0, 1, ksize=3)

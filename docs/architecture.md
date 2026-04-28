@@ -327,6 +327,8 @@ First-wave batchable stages:
 - Backends: `mock`, `local`
 - Local backend: GeoCalib
 - Runs on the full image
+- Disabled by default with `SHADOWGEN_GEOMETRY_ENABLED=false`
+- The current shadow pipeline does not consume geometry output, so the stage is kept as an opt-in diagnostic stage until it becomes useful again
 
 #### Foreground Refinement
 
@@ -378,13 +380,14 @@ First-wave batchable stages:
 - Backends:
   - `mock`
   - `local stable-normal`
-  - `local from-depth-v2` fallback
+  - `local from-depth-v2`
   - `triton stable-normal`
 
 Important:
 
 - normals are a first-class stage
-- `from-depth-v2` is still an explicit local fallback
+- `from-depth-v2` is the default local variant for now
+- `stable-normal` remains available as an opt-in neural backend when its local model setup is healthy
 
 #### Shadow
 

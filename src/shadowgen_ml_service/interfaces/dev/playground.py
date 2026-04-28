@@ -306,12 +306,11 @@ def render_playground_html() -> str:
   <script>
     const stageDefinitions = [
       { key: "decode", title: "Decode", description: "Декодирование входного изображения.", backendKinds: ["internal"], variants: ["internal"] },
-      { key: "geometry_estimator", title: "Geometry", description: "Оценка геометрии сцены по исходному изображению.", backendKinds: ["mock", "local"], variants: ["geocalib"] },
       { key: "detector", title: "Detection", description: "Поиск основного объекта на полном изображении.", backendKinds: ["mock", "local", "triton"], variants: ["grounding-dino"] },
       { key: "segmenter", title: "Segmentation", description: "Сегментация после crop/pad/resize.", backendKinds: ["mock", "local", "triton"], variants: ["birefnet"] },
       { key: "foreground_refiner", title: "Foreground", description: "Коррекция цвета полупрозрачных пикселей.", backendKinds: ["mock", "local"], variants: ["fast-foreground-estimation"] },
       { key: "depth_estimator", title: "Depth", description: "Карта глубины на working crop.", backendKinds: ["mock", "local", "triton"], variants: ["depth-anything-v2-small"] },
-      { key: "normal_estimator", title: "Normals", description: "Normals через neural backend или fallback от depth.", backendKinds: ["mock", "local", "triton"], variants: ["stable-normal"] },
+      { key: "normal_estimator", title: "Normals", description: "Normals через быстрый depth fallback или neural backend.", backendKinds: ["mock", "local", "triton"], variants: ["from-depth-v2", "stable-normal"] },
       { key: "shadow_generator", title: "Shadow", description: "Тень через mock, V1-GAN или Triton-ready V2-DIFF.", backendKinds: ["mock", "local", "triton"], variants: ["mock", "v1-gan", "v2-diff"] },
       { key: "composer", title: "Composition", description: "Композиция объекта и тени на фоне.", backendKinds: ["mock", "local"], variants: ["python-composer"] }
     ];
@@ -327,7 +326,6 @@ def render_playground_html() -> str:
       capabilities: {},
       stages: {},
       stageBackendKinds: {
-        geometry_estimator: "local",
         detector: "local",
         segmenter: "local",
         foreground_refiner: "local",
@@ -337,12 +335,11 @@ def render_playground_html() -> str:
         composer: "local"
       },
       stageVariants: {
-        geometry_estimator: "geocalib",
         detector: "grounding-dino",
         segmenter: "birefnet",
         foreground_refiner: "fast-foreground-estimation",
         depth_estimator: "depth-anything-v2-small",
-        normal_estimator: "stable-normal",
+        normal_estimator: "from-depth-v2",
         shadow_generator: "v1-gan",
         composer: "python-composer"
       }

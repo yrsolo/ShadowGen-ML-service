@@ -86,7 +86,7 @@ def build_runtime(settings: Settings) -> PipelineRuntime:
 
     default_stage_backend = {
         "detector": "mock" if execution_default_backend == "mock" else _stage_backend_preference(settings.detector_backend_kind, execution_default_backend),
-        "geometry_estimator": "mock" if execution_default_backend == "mock" else settings.geometry_backend_kind,
+        "geometry_estimator": "mock" if execution_default_backend == "mock" else ("internal" if not settings.geometry_enabled else settings.geometry_backend_kind),
         "segmenter": "mock" if execution_default_backend == "mock" else _stage_backend_preference(settings.segmenter_backend_kind, execution_default_backend),
         "foreground_refiner": "mock" if execution_default_backend == "mock" else settings.foreground_refiner_backend_kind,
         "depth_estimator": "mock" if execution_default_backend == "mock" else _stage_backend_preference(settings.depth_backend_kind, execution_default_backend),
@@ -234,6 +234,22 @@ def _register_geometry(settings: Settings, registry: PipelineBackendRegistry) ->
         ),
         mock,
     )
+    if not settings.geometry_enabled:
+        registry.register(
+            backend_descriptor(
+                stage_key="geometry_estimator",
+                backend_kind="internal",
+                model_variant="disabled",
+                model_name="geometry-disabled",
+                model_version="disabled",
+                available=True,
+                detail="GeoCalib stage disabled by SHADOWGEN_GEOMETRY_ENABLED=false",
+                device="none",
+                supports_async=True,
+            ),
+            None,
+        )
+        return
     handler = None
     detail = probe.detail
     available = False
@@ -507,7 +523,10 @@ def _register_normals(
     detail = probe.detail
     available = False
     device = "cpu"
-    if probe.available:
+    stable_requested = settings.normals_model_variant == "stable-normal"
+    if not stable_requested:
+        detail = "StableNormal local backend is disabled by default; set SHADOWGEN_NORMALS_MODEL_VARIANT=stable-normal to enable it"
+    if stable_requested and probe.available:
         try:
             handler = StableNormalEstimator(
                 model_variant=settings.stable_normal_variant,
@@ -722,7 +741,7 @@ def _preferred_variant(stage_key: str, settings: Settings) -> str:
     if stage_key == "shadow_generator":
         return settings.shadow_model_variant.lower()
     if stage_key == "normal_estimator":
-        return "stable-normal"
+        return settings.normals_model_variant
     if stage_key == "detector":
         return "grounding-dino"
     if stage_key == "segmenter":
@@ -730,7 +749,7 @@ def _preferred_variant(stage_key: str, settings: Settings) -> str:
     if stage_key == "depth_estimator":
         return "depth-anything-v2-small"
     if stage_key == "geometry_estimator":
-        return "geocalib"
+        return "geocalib" if settings.geometry_enabled else "disabled"
     if stage_key == "foreground_refiner":
         return "fast-foreground-estimation"
     if stage_key == "composer":
@@ -759,6 +778,9 @@ def _resolve_active_backend(*, registry: PipelineBackendRegistry, stage_key: str
     if stage_key == "normal_estimator":
         candidate_ids = []
         if preferred_backend_kind == "mock":
+            candidate_ids.append(StageBackendId(stage_key=stage_key, backend_kind="mock", model_variant="mock-v1"))
+        elif preferred_variant == "from-depth-v2":
+            candidate_ids.append(StageBackendId(stage_key=stage_key, backend_kind="local", model_variant="from-depth-v2"))
             candidate_ids.append(StageBackendId(stage_key=stage_key, backend_kind="mock", model_variant="mock-v1"))
         else:
             candidate_ids.append(StageBackendId(stage_key=stage_key, backend_kind=preferred_backend_kind, model_variant="stable-normal"))
@@ -809,7 +831,7 @@ def _resolve_active_backend(*, registry: PipelineBackendRegistry, stage_key: str
     for index, backend_id in enumerate(candidate_ids):
         registered = registry.get(backend_id)
         if registered is not None and registered.descriptor.available and registered.handler is not None or (
-            registered is not None and registered.descriptor.available and stage_key == "artifact_encoder"
+            registered is not None and registered.descriptor.available and stage_key in {"artifact_encoder", "geometry_estimator"} and registered.descriptor.backend_kind == "internal"
         ):
             if index > 0:
                 fallback_reason = f"{preferred_backend_kind}:{preferred_variant} unavailable for {stage_key}"
@@ -830,6 +852,8 @@ def _resolve_active_backend(*, registry: PipelineBackendRegistry, stage_key: str
 
 
 def _default_variant_for_backend(stage_key: str, backend_kind: str, preferred_variant: str) -> str:
+    if backend_kind == "internal" and stage_key == "geometry_estimator":
+        return preferred_variant
     if backend_kind == "mock":
         if stage_key == "shadow_generator":
             return "mock"
@@ -837,7 +861,7 @@ def _default_variant_for_backend(stage_key: str, backend_kind: str, preferred_va
             return "passthrough-v1"
         return "mock-v1"
     if stage_key == "normal_estimator" and backend_kind == "local":
-        return "stable-normal"
+        return preferred_variant if preferred_variant in {"stable-normal", "from-depth-v2"} else "stable-normal"
     if stage_key == "shadow_generator":
         return preferred_variant
     if stage_key == "detector":

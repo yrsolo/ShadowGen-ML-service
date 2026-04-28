@@ -9,7 +9,7 @@ from shadowgen_ml_service.application.services.stage_runner import StageRunner
 from shadowgen_ml_service.config import Settings
 from shadowgen_ml_service.core.commands import RenderCommand
 from shadowgen_ml_service.core.errors import TimeoutServiceError, UnsupportedInputServiceError, ValidationServiceError
-from shadowgen_ml_service.core.models import PreprocessSnapshot, SegmentationResult
+from shadowgen_ml_service.core.models import GeometryResult, PreprocessSnapshot, SegmentationResult
 from shadowgen_ml_service.core.stage_io import DepthInput, DetectionInput, NormalsInput, SegmentationInput, ShadowInput
 from shadowgen_ml_service.utils.images import decode_image, ensure_asset, prepare_working_crop, alpha_asset
 
@@ -45,7 +45,9 @@ class RenderPipelineUseCase:
 
         if snapshot is None:
             context.detection = self._execute_public_stage("detector", context)
-            context.geometry = self._execute_public_stage("geometry_estimator", context)
+            context.geometry = self._execute_public_stage("geometry_estimator", context) if self.settings.geometry_enabled else self._disabled_geometry_result()
+            if not self.settings.geometry_enabled:
+                context.metrics.set("geometry_ms", 0)
             context.working_crop = prepare_working_crop(
                 source_rgba,
                 context.detection.bbox,
@@ -105,7 +107,7 @@ class RenderPipelineUseCase:
         total_ms = context.metrics.total()
         if context.detection.confidence < 0.7:
             context.warnings.append("main_object_low_confidence")
-        if context.geometry.confidence < 0.7:
+        if self.settings.geometry_enabled and context.geometry.confidence < 0.7:
             context.warnings.append("geometry_estimation_low_confidence")
         if total_ms > self.settings.request_timeout_ms:
             raise TimeoutServiceError("render request exceeded configured timeout", request_id=command.request_id)
@@ -235,3 +237,6 @@ class RenderPipelineUseCase:
             cutout_rgba=refined_cutout_rgba,
             crop_rgba=segmentation.crop_rgba,
         )
+
+    def _disabled_geometry_result(self) -> GeometryResult:
+        return GeometryResult(camera_fov=0.0, camera_pitch=0.0, camera_roll=0.0, confidence=1.0)

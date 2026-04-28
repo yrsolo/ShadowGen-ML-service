@@ -57,6 +57,8 @@
 - [x] Prevent tablet playground stage area from collapsing by giving the horizontal pipeline a minimum height and page-level vertical scroll
 - [x] Document the training, export, serving, and acceptance contract for the future `V2-DIFF` shadow model
 - [x] Profile and reduce local `V2-DIFF` shadow latency by lowering the default denoising step count
+- [x] Disable the unused Geometry stage by default and hide it from the playground flow
+- [x] Make `from-depth-v2` the default normals variant and remove the expensive inpaint step from depth-derived normals
 - [x] Prepare a reproducible Shadow V2 sample-pack generator and local 10-image sample pack
 - [x] Replace unsuitable Shadow V2 sample-pack sources with product-case foreground objects and add pack README
 - [x] Temporarily simplify `V2-DIFF` shadow integration to a control-free `img + mask -> shadow_image` contract while keeping `V1-GAN` as the controllable rot/top-view model

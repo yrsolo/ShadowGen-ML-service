@@ -205,6 +205,9 @@ The active docs now provide:
 - Local `V2-DIFF` profiling showed cached runtime is dominated by UNet denoising: about `3178 ms` of `3559 ms` at `24` steps; VAE decode was about `82 ms`, text encoding about `40 ms`, and remaining Python/PIL/postprocess about `259 ms`
 - Local `V2-DIFF` defaults now use `12` denoising steps instead of bundle-driven `24`, while keeping `guidance_scale=2.0`; manual benchmark on `artifacts/manual-inputs/1.jpg` reduced cached shadow inference from about `2652 ms` to about `1433 ms`
 - Manual V2-DIFF optimization comparison images are stored under `artifacts/manual-runs/v2-diff-optimization`
+- Geometry is disabled by default through `SHADOWGEN_GEOMETRY_ENABLED=false`; public render records `geometry_ms=0`, and the playground run-all flow skips the unused stage
+- `normal_estimator` now defaults to `local/from-depth-v2`, avoiding the current broken/slow StableNormal path unless explicitly requested
+- Depth-derived normals no longer use OpenCV inpainting; local timing on the 512px manual depth artifact changed from about `198..231 ms` to about `26..37 ms`
 
 ### Validation Evidence
 
@@ -221,6 +224,9 @@ The active docs now provide:
 - `.venv\Scripts\python.exe -m pytest tests\test_shadow_v2_diff.py -q` passed after V2-DIFF latency optimization: `3 passed, 1 warning`
 - `.venv\Scripts\python.exe -m compileall src tests` passed after V2-DIFF latency optimization
 - `.venv\Scripts\python.exe -m pytest -q` passed after V2-DIFF latency optimization: `94 passed, 4 warnings`
+- `.venv\Scripts\python.exe -m pytest tests\test_api.py tests\test_runtime.py tests\test_normals.py -q` passed after geometry/normal changes: `50 passed, 3 warnings`
+- `.venv\Scripts\python.exe -m compileall src tests` passed after geometry/normal changes
+- `.venv\Scripts\python.exe -m pytest -q` passed after geometry/normal changes: `94 passed, 4 warnings`
 - `.venv\Scripts\python.exe -m compileall src/shadowgen_ml_service/interfaces/dev/playground.py` passed after playground min-height fix
 - `.venv\Scripts\python.exe -m pytest` passed: `88 passed`
 - `.venv\Scripts\python.exe -m compileall src tests` passed

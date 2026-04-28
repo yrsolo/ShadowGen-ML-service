@@ -270,10 +270,7 @@ class ApiTests(unittest.TestCase):
         payload = response.json()
         self.assertEqual(payload["stages"][0]["stage_key"], "decode")
         self.assertEqual(payload["stages"][-1]["stage_key"], "composer")
-        geometry_stage = next(item for item in payload["stages"] if item["stage_key"] == "geometry_estimator")
-        self.assertIn("details", geometry_stage)
-        preview_names = {preview["name"] for preview in geometry_stage["previews"]}
-        self.assertIn("geometry_overlay", preview_names)
+        self.assertNotIn("geometry_estimator", {item["stage_key"] for item in payload["stages"]})
         detection_stage = next(item for item in payload["stages"] if item["stage_key"] == "detector")
         detection_preview_names = {preview["name"] for preview in detection_stage["previews"]}
         self.assertIn("crop_for_resize", detection_preview_names)
@@ -395,13 +392,9 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         geometry = response.json()["stages"][-1]
         self.assertEqual(geometry["stage_key"], "geometry_estimator")
-        self.assertEqual(geometry["status"], "completed")
-        self.assertIn("camera_fov", geometry["details"])
-        self.assertIn(geometry["actual_mode"], {"local", "mock-fallback"})
-        if geometry["actual_mode"] == "local":
-            self.assertEqual(geometry["details"]["backend"], "local")
-        else:
-            self.assertIn(geometry["details"]["backend"], {"mock", "mock-fallback"})
+        self.assertEqual(geometry["status"], "skipped")
+        self.assertEqual(geometry["actual_mode"], "internal")
+        self.assertFalse(geometry["details"]["enabled"])
 
     def test_debug_pipeline_geometry_real_smoke(self) -> None:
         response = self.client.post(
@@ -410,12 +403,9 @@ class ApiTests(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 200)
         geometry = response.json()["stages"][-1]
-        self.assertEqual(geometry["status"], "completed")
+        self.assertEqual(geometry["status"], "skipped")
         self.assertGreaterEqual(geometry["elapsed_ms"], 0)
-        self.assertIn("camera_pitch", geometry["details"])
-        preview_names = {preview["name"] for preview in geometry["previews"]}
-        self.assertIn("geometry_input", preview_names)
-        self.assertIn("geometry_overlay", preview_names)
+        self.assertFalse(geometry["details"]["enabled"])
 
     def test_debug_pipeline_detector_mock_uses_mock_adapter_even_when_real_is_available(self) -> None:
         app = create_app(Settings())
@@ -444,7 +434,7 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(detector["details"]["prompt"], "mock")
 
     def test_debug_pipeline_geometry_mock_uses_mock_adapter_even_when_real_is_available(self) -> None:
-        app = create_app(Settings())
+        app = create_app(Settings(geometry_enabled=True))
 
         class BombGeometry:
             def estimate(self, image):

@@ -142,11 +142,15 @@ Current execution backend choices for heavy stages:
 
 - Backends: `mock`, `local`
 - Local backend: GeoCalib
+- Current default: disabled, because the pipeline does not consume geometry prediction yet
 - Env vars:
+  - `SHADOWGEN_GEOMETRY_ENABLED` (default `false`)
   - `SHADOWGEN_GEOCALIB_WEIGHTS`
   - `SHADOWGEN_GEOCALIB_CAMERA_MODEL`
   - `SHADOWGEN_GEOCALIB_SHARED_INTRINSICS`
   - `SHADOWGEN_GEOMETRY_BACKEND_KIND`
+
+When `SHADOWGEN_GEOMETRY_ENABLED=false`, the public pipeline does not run GeoCalib and records `geometry_ms=0`. The playground hides the Geometry card by default; the old debug endpoint still returns a skipped stage if called directly.
 
 ### Detection
 
@@ -232,15 +236,23 @@ Current blocker note:
 - Backends:
   - `mock`
   - `local stable-normal`
-  - `local from-depth-v2` fallback
+  - `local from-depth-v2`
   - `triton stable-normal`
+- Current default: `local from-depth-v2`
 - Env vars:
   - `SHADOWGEN_STABLE_NORMAL_VARIANT`
   - `SHADOWGEN_STABLE_NORMAL_RESOLUTION`
   - `SHADOWGEN_STABLE_NORMAL_ALLOW_CPU`
   - `SHADOWGEN_NORMALS_BACKEND_KIND`
+  - `SHADOWGEN_NORMALS_MODEL_VARIANT` (default `from-depth-v2`; set `stable-normal` to opt into the neural local backend)
   - `SHADOWGEN_TRITON_NORMALS_MODEL`
   - `SHADOWGEN_TARGET_DEVICE`
+
+Performance note:
+
+- `from-depth-v2` is the default because it is deterministic and cheap enough for the current shadow inputs
+- the previous depth-derived normal implementation used OpenCV inpainting and could take hundreds of milliseconds at `512x512`
+- current `from-depth-v2` uses mask-normalized smoothing before gradients and is typically in the tens of milliseconds on the same input
 
 ### Shadow
 

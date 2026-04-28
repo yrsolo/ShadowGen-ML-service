@@ -43,8 +43,20 @@ class DebugPipelineUseCase:
         if stop_after == "decode":
             return DebugPipelineOutcome(request_id=command.render.request_id, stages=stages, warnings=context.warnings)
 
-        for stage_key in (
-            "geometry_estimator",
+        if stop_after == "geometry_estimator" and not self.settings.geometry_enabled:
+            stages.append(self._skipped_stage("geometry_estimator"))
+            return DebugPipelineOutcome(request_id=command.render.request_id, stages=stages, warnings=context.warnings)
+
+        for stage_key in self._stage_order():
+            execution = self._run_stage(stage_key, command, context)
+            stages.append(execution)
+            if execution.status == "failed" or stop_after == stage_key:
+                return DebugPipelineOutcome(request_id=command.render.request_id, stages=stages, warnings=context.warnings)
+
+        return DebugPipelineOutcome(request_id=command.render.request_id, stages=stages, warnings=context.warnings)
+
+    def _stage_order(self) -> tuple[str, ...]:
+        stages = [
             "detector",
             "segmenter",
             "foreground_refiner",
@@ -52,13 +64,27 @@ class DebugPipelineUseCase:
             "normal_estimator",
             "shadow_generator",
             "composer",
-        ):
-            execution = self._run_stage(stage_key, command, context)
-            stages.append(execution)
-            if execution.status == "failed" or stop_after == stage_key:
-                return DebugPipelineOutcome(request_id=command.render.request_id, stages=stages, warnings=context.warnings)
+        ]
+        if self.settings.geometry_enabled:
+            stages.insert(0, "geometry_estimator")
+        return tuple(stages)
 
-        return DebugPipelineOutcome(request_id=command.render.request_id, stages=stages, warnings=context.warnings)
+    def _skipped_stage(self, stage_key: str) -> StageExecution:
+        definition = get_stage_definition(stage_key)
+        return StageExecution(
+            stage_key=stage_key,
+            title=definition.title,
+            description=definition.description,
+            status="skipped",
+            requested_mode="internal",
+            actual_mode="internal",
+            requested_backend_kind="internal",
+            actual_backend_kind="internal",
+            model_variant="disabled",
+            elapsed_ms=0,
+            error="stage disabled by SHADOWGEN_GEOMETRY_ENABLED=false",
+            details={"enabled": False},
+        )
 
     def _run_stage(self, stage_key: str, command: DebugPipelineCommand, context: PipelineContext) -> StageExecution:
         requested_backend_kind, requested_variant = self._requested_backend(stage_key, command)
@@ -247,7 +273,7 @@ class DebugPipelineUseCase:
         elif stage_key == "shadow_generator":
             requested_variant = legacy_mode if legacy_mode in {"mock", "v1-gan", "v2-diff"} else "v1-gan"
         elif stage_key == "normal_estimator":
-            requested_variant = "stable-normal"
+            requested_variant = self.settings.normals_model_variant
         elif stage_key == "detector":
             requested_variant = "grounding-dino"
         elif stage_key == "segmenter":

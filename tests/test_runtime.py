@@ -51,7 +51,7 @@ class RuntimeTests(unittest.TestCase):
                 probe_geocalib.return_value.model_version = "bootstrap-probe"
                 probe_geocalib.return_value.available = True
                 probe_geocalib.return_value.detail = None
-                runtime = build_runtime(Settings(runtime_mode="auto"))
+                runtime = build_runtime(Settings(runtime_mode="auto", geometry_enabled=True))
                 geometry_component = next(item for item in runtime.descriptor.components if item.name == "geometry_estimator")
                 self.assertEqual(geometry_component.backend_kind, "local")
                 real_geometry.assert_called_once()
@@ -91,7 +91,7 @@ class RuntimeTests(unittest.TestCase):
             self.assertFalse(normal_component.using_mock)
             self.assertEqual(normal_component.backend_kind, "local")
             self.assertEqual(normal_component.model_name, "normal-map-from-depth")
-            self.assertEqual(normal_component.implementation, "local-fallback")
+            self.assertEqual(normal_component.implementation, "local")
 
     def test_auto_runtime_uses_local_shadow_when_weights_exist(self) -> None:
         with patch("shadowgen_ml_service.bootstrap.container.probe_shadow_pix2pix") as probe_shadow:
