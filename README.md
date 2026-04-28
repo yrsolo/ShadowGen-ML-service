@@ -1,6 +1,6 @@
 # ShadowGen Project Page
 
-Статическая промо-страница проекта ShadowGen в стиле академических model release страниц.
+Статическое описание проекта ShadowGen для GitHub Pages.
 
 Публичная ссылка:
 
