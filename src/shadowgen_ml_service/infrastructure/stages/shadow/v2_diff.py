@@ -60,6 +60,9 @@ class V2DiffShadowGenerator(ShadowGenerator):
         seed: int = 1234,
         steps: int | None = None,
         guidance_scale: float | None = None,
+        compile_enabled: bool = False,
+        compile_mode: str = "reduce-overhead",
+        compile_backend: str | None = None,
         torch_module: Any | None = None,
         pipeline_cls: Any | None = None,
         scheduler_classes: dict[str, Any] | None = None,
@@ -70,6 +73,9 @@ class V2DiffShadowGenerator(ShadowGenerator):
         self.seed = int(seed)
         self.steps = steps
         self.guidance_scale = guidance_scale
+        self.compile_enabled = bool(compile_enabled)
+        self.compile_mode = compile_mode
+        self.compile_backend = compile_backend or None
         self.backend_name = "v2-diff"
         self.model_variant = "V2-DIFF"
         self._torch = torch_module or import_module("torch")
@@ -132,10 +138,28 @@ class V2DiffShadowGenerator(ShadowGenerator):
         pipe.scheduler = self._make_scheduler()
         pipe.unet.load_attn_procs(self.bundle_path / "checkpoint")
         pipe = pipe.to(self.device_label)
+        self._apply_runtime_optimizations(pipe)
         if hasattr(pipe, "set_progress_bar_config"):
             pipe.set_progress_bar_config(disable=True)
         self._PIPELINE_CACHE[cache_key] = pipe
         return pipe
+
+    def _apply_runtime_optimizations(self, pipe) -> None:
+        if not str(self.device_label).startswith("cuda"):
+            return
+        if hasattr(self._torch, "set_float32_matmul_precision"):
+            self._torch.set_float32_matmul_precision("high")
+        matmul = getattr(getattr(getattr(self._torch, "backends", None), "cuda", None), "matmul", None)
+        if matmul is not None and hasattr(matmul, "allow_tf32"):
+            matmul.allow_tf32 = True
+        channels_last = getattr(self._torch, "channels_last", None)
+        if channels_last is not None and hasattr(pipe.unet, "to"):
+            pipe.unet.to(memory_format=channels_last)
+        if self.compile_enabled and hasattr(self._torch, "compile"):
+            compile_kwargs = {"mode": self.compile_mode}
+            if self.compile_backend:
+                compile_kwargs["backend"] = self.compile_backend
+            pipe.unet = self._torch.compile(pipe.unet, **compile_kwargs)
 
     def _make_scheduler(self):
         scheduler_name = str(self._bundle.get("default_scheduler", "dpmpp_2m_karras"))

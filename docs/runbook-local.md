@@ -286,9 +286,18 @@ Important:
   - `SHADOWGEN_SHADOW_V2_DIFF_BUNDLE_PATH`
   - `SHADOWGEN_SHADOW_V2_DIFF_BACKGROUND_PATH`
   - `SHADOWGEN_SHADOW_V2_DIFF_SEED`
-  - `SHADOWGEN_SHADOW_V2_DIFF_STEPS`
-  - `SHADOWGEN_SHADOW_V2_DIFF_GUIDANCE_SCALE`
+  - `SHADOWGEN_SHADOW_V2_DIFF_STEPS` (default `12`; use `8..10` for faster previews, `16..24` for slower quality checks)
+  - `SHADOWGEN_SHADOW_V2_DIFF_GUIDANCE_SCALE` (default `2.0`)
+  - `SHADOWGEN_SHADOW_V2_DIFF_COMPILE_ENABLED` (default `false`; opt-in `torch.compile` for long-running local services)
+  - `SHADOWGEN_SHADOW_V2_DIFF_COMPILE_MODE` (default `reduce-overhead`)
+  - `SHADOWGEN_SHADOW_V2_DIFF_COMPILE_BACKEND` (optional)
   - `SHADOWGEN_TRITON_SHADOW_V2_MODEL`
+
+Performance note:
+
+- the local diffusion backend spends most runtime in UNet denoising
+- on the local probe image, cached `V2-DIFF` inference measured about `2.65s` at `24` steps and about `1.43s` at `12` steps
+- `torch.compile` is intentionally disabled by default because the first compile pass can be much slower than a normal request
 
 Current expected model inputs:
 

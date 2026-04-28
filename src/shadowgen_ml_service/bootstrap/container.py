@@ -628,6 +628,9 @@ def _register_shadow(
                 seed=settings.shadow_v2_diff_seed,
                 steps=settings.shadow_v2_diff_steps,
                 guidance_scale=settings.shadow_v2_diff_guidance_scale,
+                compile_enabled=settings.shadow_v2_diff_compile_enabled,
+                compile_mode=settings.shadow_v2_diff_compile_mode,
+                compile_backend=settings.shadow_v2_diff_compile_backend or None,
             )
             v2_available = True
             v2_detail = f"V2-DIFF local backend active (bundle={settings.shadow_v2_diff_bundle_path})"

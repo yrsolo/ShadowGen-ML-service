@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from PIL import Image
 
+from shadowgen_ml_service.config import Settings
 from shadowgen_ml_service.core.stage_io import ShadowInput
 from shadowgen_ml_service.infrastructure.stages.shadow.v2_diff import V2DiffShadowGenerator, probe_shadow_v2_diff
 from shadowgen_ml_service.utils.images import pil_to_asset
@@ -83,6 +86,14 @@ class FakePipeline:
 
 
 class V2DiffShadowTests(unittest.TestCase):
+    def test_settings_use_fast_local_v2_defaults(self) -> None:
+        with patch.dict(os.environ, {}, clear=True):
+            settings = Settings()
+
+        self.assertEqual(settings.shadow_v2_diff_steps, 12)
+        self.assertEqual(settings.shadow_v2_diff_guidance_scale, 2.0)
+        self.assertFalse(settings.shadow_v2_diff_compile_enabled)
+
     def test_generate_uses_bundle_mask_and_returns_full_shadow_image(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
