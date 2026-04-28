@@ -1,21 +1,26 @@
 # ShadowGen Project Page
 
-This folder contains a static GitHub Pages style project page for the ShadowGen model/service release.
+Статическая промо-страница проекта ShadowGen в стиле академических model release страниц.
 
-## Local preview
+Публичная ссылка:
 
-Open `docs/project-page/index.html` directly in a browser.
+- <https://yrsolo.github.io/ShadowGen-ML-service/>
 
-## GitHub Pages
+## Что внутри
 
-Two common publishing options:
+- Русское описание проекта.
+- Блок под будущий демонстрационный ролик.
+- Краткое описание трех публичных репозиториев:
+  - <https://github.com/yrsolo/ShadowGen-v2>
+  - <https://github.com/yrsolo/ShadowGen-ML-service>
+  - <https://github.com/yrsolo/ShadowGen-ML-training>
+- Method/process section.
+- Заготовка под результаты и BibTeX.
 
-- Keep this repository as the source and configure GitHub Pages to publish from the `docs` folder. The page will be available at `/project-page/`.
-- Copy the contents of this folder into a dedicated `<owner>.github.io` or `shadowgen.github.io` repository if you want a cleaner public URL.
+## Локальный просмотр
 
-## Release assets to replace
+Откройте `docs/project-page/index.html` напрямую в браузере.
 
-- Video placeholder in the first viewport.
-- Repository links in `Code and Artifacts`.
-- Result placeholders in `Results`.
-- Citation metadata once the technical report or model card exists.
+## Публикация
+
+Для GitHub Pages используется ветка `gh-pages`, где `index.html` лежит в корне.

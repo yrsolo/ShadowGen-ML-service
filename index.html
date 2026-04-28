@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="ShadowGen project page: object shadow generation for product scenes." />
-  <title>ShadowGen: Object Shadow Generation for Product Scenes</title>
+  <meta name="description" content="ShadowGen: промо-страница проекта генерации теней для предметных изображений." />
+  <title>ShadowGen: генерация теней для предметных изображений</title>
   <style>
     :root {
       --paper: #f7f7f2;
@@ -97,7 +97,7 @@
     }
 
     h1 {
-      max-width: 920px;
+      max-width: 940px;
       margin: 0 auto;
       text-align: center;
       font-size: clamp(34px, 6vw, 74px);
@@ -107,7 +107,7 @@
     }
 
     .subtitle {
-      max-width: 790px;
+      max-width: 820px;
       margin: 22px auto 0;
       color: var(--muted);
       font-size: clamp(18px, 2.2vw, 24px);
@@ -227,7 +227,7 @@
     }
 
     .section-lead {
-      max-width: 820px;
+      max-width: 830px;
       margin: 0 auto;
       color: var(--muted);
       font-size: 18px;
@@ -235,7 +235,7 @@
     }
 
     .abstract {
-      max-width: 860px;
+      max-width: 880px;
       margin: 0 auto;
       padding: 24px;
       border: 1px solid var(--line);
@@ -273,6 +273,43 @@
       margin: 0;
       color: var(--muted);
       font-size: 15px;
+    }
+
+    .repo-grid {
+      margin-top: 28px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      font-family: "Segoe UI", Arial, sans-serif;
+    }
+
+    .repo {
+      min-height: 100%;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      display: grid;
+      gap: 10px;
+      align-content: start;
+    }
+
+    .repo small {
+      color: var(--accent-warm);
+      font-weight: 750;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .repo strong {
+      display: block;
+      font-size: 18px;
+    }
+
+    .repo p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
     }
 
     .pipeline {
@@ -346,32 +383,6 @@
       font-size: 13px;
     }
 
-    .repo-list {
-      margin-top: 26px;
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 14px;
-      font-family: "Segoe UI", Arial, sans-serif;
-    }
-
-    .repo {
-      padding: 18px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: var(--panel);
-    }
-
-    .repo strong {
-      display: block;
-      margin-bottom: 6px;
-    }
-
-    .repo p {
-      margin: 0 0 12px;
-      color: var(--muted);
-      font-size: 14px;
-    }
-
     pre {
       overflow: auto;
       margin: 24px 0 0;
@@ -393,7 +404,7 @@
       font-size: 13px;
     }
 
-    @media (max-width: 860px) {
+    @media (max-width: 900px) {
       .nav {
         align-items: flex-start;
         flex-direction: column;
@@ -411,7 +422,7 @@
       }
 
       .grid,
-      .repo-list,
+      .repo-grid,
       .results,
       .pipeline {
         grid-template-columns: 1fr;
@@ -421,158 +432,170 @@
 </head>
 <body>
   <header class="topbar">
-    <nav class="nav" aria-label="Project navigation">
+    <nav class="nav" aria-label="Навигация по проекту">
       <a class="brand" href="#top">ShadowGen</a>
       <div class="links">
-        <a href="#abstract">Abstract</a>
-        <a href="#method">Method</a>
-        <a href="#results">Results</a>
-        <a href="#links">Code</a>
+        <a href="#abstract">Аннотация</a>
+        <a href="#repos">Репозитории</a>
+        <a href="#method">Метод</a>
+        <a href="#results">Результаты</a>
         <a href="#citation">BibTeX</a>
       </div>
     </nav>
   </header>
 
   <div id="top" class="hero">
-    <p class="kicker">Model release project page</p>
-    <h1>ShadowGen: Object Shadow Generation for Product Scenes</h1>
+    <p class="kicker">Проектная страница в стиле model release</p>
+    <h1>ShadowGen: генерация реалистичных теней для предметных изображений</h1>
     <p class="subtitle">
-      A service-oriented ML pipeline for cutting out an object, estimating scene structure,
-      generating a plausible contact shadow, and composing the final product image.
+      ML-проект для предметной фотографии: система вырезает объект, анализирует сцену,
+      генерирует правдоподобную контактную тень и собирает итоговое изображение через
+      воспроизводимый inference pipeline.
     </p>
     <p class="authors">
-      ShadowGen ML Core Team &nbsp;|&nbsp; Technical preview &nbsp;|&nbsp; 2026
+      Yuri Soloviev &nbsp;|&nbsp; ShadowGen &nbsp;|&nbsp; технический preview
     </p>
-    <div class="cta" aria-label="Primary links">
-      <a class="button primary" href="#video">Video</a>
-      <a class="button" href="#links">Code</a>
-      <a class="button" href="#citation">BibTeX</a>
-      <a class="button" href="https://github.com/" rel="noreferrer">GitHub</a>
+    <div class="cta" aria-label="Основные ссылки">
+      <a class="button primary" href="#video">Видео</a>
+      <a class="button" href="https://github.com/yrsolo/ShadowGen-v2" rel="noreferrer">Продукт</a>
+      <a class="button" href="https://github.com/yrsolo/ShadowGen-ML-service" rel="noreferrer">ML-сервис</a>
+      <a class="button" href="https://github.com/yrsolo/ShadowGen-ML-training" rel="noreferrer">Training</a>
     </div>
-    <div id="video" class="media" aria-label="Video area">
+    <div id="video" class="media" aria-label="Блок для видео">
       <div class="video-placeholder">
         <div>
           <div class="play-mark" aria-hidden="true"></div>
-          <strong>Place the release video here</strong>
-          <div>Use this block for an embedded demo, teaser, or model walkthrough.</div>
+          <strong>Здесь будет демонстрационный ролик</strong>
+          <div>Место для короткого видео с примером пайплайна, результатов и интерфейса.</div>
         </div>
       </div>
     </div>
     <p class="caption">
-      Replace the placeholder with a local MP4 in this folder, a YouTube embed, or a GitHub-hosted release asset.
+      На первом этапе страница уже работает как публичная ссылка для заявки. Видео и финальные визуальные примеры можно добавить позже.
     </p>
   </div>
 
   <main>
     <section id="abstract">
-      <h2>Abstract</h2>
+      <h2>Аннотация</h2>
       <div class="abstract">
         <p>
-          ShadowGen turns a single product image into a shadow-aware composed output.
-          The current system separates orchestration from heavy inference backends:
-          detection, segmentation, depth, normals, shadow synthesis, and composition
-          can run locally, through mock adapters, or through Triton-ready stage
-          boundaries. This page is structured like a standard academic model-release
-          page so that video, method notes, results, repositories, and citation details
-          can be filled in as the model matures.
+          ShadowGen решает практическую задачу генерации тени для отдельного предмета:
+          из входного изображения строится маска объекта, рабочий crop, вспомогательные
+          признаки сцены и итоговая композиция с тенью. Проект разделен на три части:
+          продуктовый контур с web/API/worker, отдельный ML inference service и
+          training workspace для будущей ShadowGen v2 модели. Такое разделение делает
+          систему ближе к промышленному ML-продукту: обучение, serving, API и пользовательский
+          сценарий развиваются независимо, но связаны явными контрактами.
         </p>
       </div>
     </section>
 
-    <section id="highlights">
-      <h2>Highlights</h2>
+    <section id="repos">
+      <h2>Репозитории проекта</h2>
       <p class="section-lead">
-        The release story is framed around practical image production: controllable
-        shadows, inspectable stages, and serving-friendly model boundaries.
+        Проект разбит на несколько публичных репозиториев, чтобы отдельно показать
+        продуктовую архитектуру, ML-serving слой и training-side работу.
+      </p>
+      <div class="repo-grid">
+        <article class="repo">
+          <small>Product runtime</small>
+          <strong>ShadowGen-v2</strong>
+          <p>
+            Верхнеуровневый продуктовый слой: Next.js web UI, FastAPI API, очередь,
+            worker, shared contracts, shared state и хранение артефактов. Runtime
+            устроен как cloud-shaped pipeline: web -> api -> queue -> worker -> ML service.
+          </p>
+          <a href="https://github.com/yrsolo/ShadowGen-v2" rel="noreferrer">github.com/yrsolo/ShadowGen-v2</a>
+        </article>
+        <article class="repo">
+          <small>Inference service</small>
+          <strong>ShadowGen-ML-service</strong>
+          <p>
+            Stateless FastAPI ML-сервис для foreground extraction, scene analysis,
+            shadow generation и final composition. Внутри есть stage-by-stage playground,
+            mock/local/Triton-ready backends и typed stage contracts.
+          </p>
+          <a href="https://github.com/yrsolo/ShadowGen-ML-service" rel="noreferrer">github.com/yrsolo/ShadowGen-ML-service</a>
+        </article>
+        <article class="repo">
+          <small>Training workspace</small>
+          <strong>ShadowGen-ML-training</strong>
+          <p>
+            Отдельная зона для dataset checks, experiment configs, воспроизводимого
+            обучения и evaluation. Текущий фокус: подготовить ShadowGen v2 модель на
+            базе Stable Diffusion 1.5 с LoRA, ControlNet-style conditioning или гибридным подходом.
+          </p>
+          <a href="https://github.com/yrsolo/ShadowGen-ML-training" rel="noreferrer">github.com/yrsolo/ShadowGen-ML-training</a>
+        </article>
+      </div>
+    </section>
+
+    <section id="highlights">
+      <h2>Что уже сделано</h2>
+      <p class="section-lead">
+        ShadowGen показывает не только модельную идею, но и инженерный путь от
+        экспериментов к работающему сервису.
       </p>
       <div class="grid">
         <article class="card">
-          <h3>Pipeline first</h3>
-          <p>Each stage exposes typed inputs, previews, metrics, and backend metadata for repeatable debugging.</p>
+          <h3>Пайплайн</h3>
+          <p>Декодирование, detection, segmentation, foreground refinement, depth, normals, shadow generation, composition и artifact encoding.</p>
         </article>
         <article class="card">
-          <h3>Model slots</h3>
-          <p>V1-GAN and V2-DIFF shadow variants can be presented as named generations with clear tradeoffs.</p>
+          <h3>Архитектура</h3>
+          <p>Сервис разделен на domain/application/infrastructure/interfaces слои, а тяжелые стадии подключаются через явные контракты.</p>
         </article>
         <article class="card">
-          <h3>Serving ready</h3>
-          <p>Heavy stages are prepared for mock, local, and Triton execution without changing public API paths.</p>
+          <h3>Serving</h3>
+          <p>Для ML стадий предусмотрены mock, local и Triton-ready варианты, чтобы pipeline можно было развивать без смены публичного API.</p>
         </article>
       </div>
     </section>
 
     <section id="method">
-      <h2>Method</h2>
+      <h2>Метод</h2>
       <p class="section-lead">
-        A compact process view for the work you did: from foreground extraction to
-        shadow generation and final artifact encoding.
+        Базовый процесс устроен как последовательность независимых стадий, у каждой
+        есть входы, выходы, preview-артефакты и runtime metadata.
       </p>
-      <div class="pipeline" aria-label="Method pipeline">
-        <div class="step"><div class="step-number">1</div><strong>Detect</strong><span>Find the primary object and prepare a stable working crop.</span></div>
-        <div class="step"><div class="step-number">2</div><strong>Segment</strong><span>Produce a clean alpha mask and object cutout.</span></div>
-        <div class="step"><div class="step-number">3</div><strong>Estimate</strong><span>Build depth and normal hints for spatial reasoning.</span></div>
-        <div class="step"><div class="step-number">4</div><strong>Generate</strong><span>Synthesize the shadow with the selected model variant.</span></div>
-        <div class="step"><div class="step-number">5</div><strong>Compose</strong><span>Merge object, generated shadow, and background into final output.</span></div>
+      <div class="pipeline" aria-label="Пайплайн метода">
+        <div class="step"><div class="step-number">1</div><strong>Найти объект</strong><span>Detection определяет основной предмет и готовит стабильную рабочую область.</span></div>
+        <div class="step"><div class="step-number">2</div><strong>Вырезать</strong><span>Segmentation и refinement строят маску и аккуратный RGBA cutout.</span></div>
+        <div class="step"><div class="step-number">3</div><strong>Оценить сцену</strong><span>Depth и normals дают геометрические подсказки для последующих моделей.</span></div>
+        <div class="step"><div class="step-number">4</div><strong>Сгенерировать тень</strong><span>Shadow stage выбирает mock, V1-GAN или будущую V2-DIFF модель.</span></div>
+        <div class="step"><div class="step-number">5</div><strong>Собрать результат</strong><span>Composer объединяет объект, тень, фон и debug-артефакты.</span></div>
       </div>
     </section>
 
     <section id="results">
-      <h2>Results</h2>
+      <h2>Результаты</h2>
       <p class="section-lead">
-        Drop in before and after examples, ablations, failure cases, and short captions.
+        Этот блок оставлен под финальные изображения, ablation-примеры и демонстрационный ролик.
+        Сейчас он фиксирует структуру страницы для заявки.
       </p>
       <div class="results">
         <figure class="figure">
-          <div class="figure-art">Input / Cutout</div>
-          <figcaption>Show the source product and cleaned object mask.</figcaption>
+          <div class="figure-art">Input / Mask</div>
+          <figcaption>Исходное предметное изображение и маска объекта.</figcaption>
         </figure>
         <figure class="figure">
           <div class="figure-art">Shadow</div>
-          <figcaption>Show shadow-only or intermediate model output.</figcaption>
+          <figcaption>Сгенерированная тень или промежуточный выход shadow-модели.</figcaption>
         </figure>
         <figure class="figure">
           <div class="figure-art">Final</div>
-          <figcaption>Show the composed image in the target scene.</figcaption>
+          <figcaption>Итоговая композиция объекта с тенью на целевом фоне.</figcaption>
         </figure>
-      </div>
-    </section>
-
-    <section id="links">
-      <h2>Code and Artifacts</h2>
-      <p class="section-lead">
-        Replace the placeholder URLs with public repositories, model weights, demos,
-        dataset notes, or technical reports.
-      </p>
-      <div class="repo-list">
-        <article class="repo">
-          <strong>Service repository</strong>
-          <p>FastAPI orchestration, stage contracts, playground, and deployment helpers.</p>
-          <a href="https://github.com/" rel="noreferrer">Add repository link</a>
-        </article>
-        <article class="repo">
-          <strong>Model repository</strong>
-          <p>Training code, checkpoints, export scripts, and model cards.</p>
-          <a href="https://github.com/" rel="noreferrer">Add repository link</a>
-        </article>
-        <article class="repo">
-          <strong>Demo video</strong>
-          <p>Short release video, qualitative walkthrough, or benchmark clip.</p>
-          <a href="#video">Jump to video block</a>
-        </article>
-        <article class="repo">
-          <strong>Technical report</strong>
-          <p>Architecture notes, experiments, limitations, and acceptance criteria.</p>
-          <a href="../README.md">Read the docs</a>
-        </article>
       </div>
     </section>
 
     <section id="citation">
       <h2>Citation</h2>
-      <p class="section-lead">Use this once you publish the report or model card.</p>
+      <p class="section-lead">Черновой BibTeX для будущего технического отчета или model card.</p>
       <pre><code>@misc{shadowgen2026,
-  title  = {ShadowGen: Object Shadow Generation for Product Scenes},
-  author = {ShadowGen ML Core Team},
+  title  = {ShadowGen: генерация теней для предметных изображений},
+  author = {Soloviev, Yuri},
   year   = {2026},
   note   = {Technical preview}
 }</code></pre>
@@ -580,7 +603,7 @@
   </main>
 
   <footer>
-    ShadowGen project page. Designed for GitHub Pages from docs/project-page.
+    ShadowGen project page. Публичная страница для краткого представления проекта, репозиториев и текущей ML-архитектуры.
   </footer>
 </body>
 </html>
