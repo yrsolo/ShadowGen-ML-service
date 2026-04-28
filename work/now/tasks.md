@@ -2,6 +2,7 @@
 
 ## Active
 
+- [x] Add a GitHub Pages style academic project page scaffold for the ShadowGen release
 - [x] Bootstrap the service repository, API, workflow, and tracking
 - [x] Build the layered architecture (`core/application/bootstrap/infrastructure/interfaces`)
 - [x] Add browser playground for stage-by-stage testing

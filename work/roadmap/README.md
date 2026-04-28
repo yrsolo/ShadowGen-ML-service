@@ -9,6 +9,7 @@
   - layered service architecture is in place
   - runtime is now registry-based and Triton-ready
   - sync and async execution paths coexist behind the same orchestration model
+  - GitHub Pages style academic project page scaffold exists under `docs/project-page/`
   - heavy stages are prepared for `mock|local|triton`
   - segmenter has a temporary Triton Python backend launcher with local offset Triton ports
   - playground uses horizontal stage navigation with per-card vertical scroll
