@@ -2,7 +2,7 @@
 
 ## Active
 
-- [x] Add a Russian GitHub Pages style academic project page with repository links for the ShadowGen release
+- [x] Add a Russian GitHub Pages style academic project page with product, service, dataset, and training repository links
 - [x] Bootstrap the service repository, API, workflow, and tracking
 - [x] Build the layered architecture (`core/application/bootstrap/infrastructure/interfaces`)
 - [x] Add browser playground for stage-by-stage testing

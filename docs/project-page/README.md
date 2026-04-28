@@ -9,13 +9,14 @@
 ## Что внутри
 
 - Русское описание проекта.
-- Блок под будущий демонстрационный ролик.
-- Краткое описание трех публичных репозиториев:
+- Блок демонстрационного ролика со статусом "в разработке".
+- Краткое описание четырех публичных репозиториев:
   - <https://github.com/yrsolo/ShadowGen-v2>
   - <https://github.com/yrsolo/ShadowGen-ML-service>
+  - <https://github.com/yrsolo/ShadowGen-ML-dataset>
   - <https://github.com/yrsolo/ShadowGen-ML-training>
 - Method/process section.
-- Заготовка под результаты и BibTeX.
+- Results section и BibTeX.
 
 ## Локальный просмотр
 

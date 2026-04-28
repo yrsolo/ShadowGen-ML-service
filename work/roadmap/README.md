@@ -9,7 +9,7 @@
   - layered service architecture is in place
   - runtime is now registry-based and Triton-ready
   - sync and async execution paths coexist behind the same orchestration model
-  - Russian GitHub Pages style academic project page exists under `docs/project-page/` and links the product, ML service, and training repositories
+  - Russian GitHub Pages style academic project page exists under `docs/project-page/` and links the product, ML service, dataset, and training repositories
   - heavy stages are prepared for `mock|local|triton`
   - segmenter has a temporary Triton Python backend launcher with local offset Triton ports
   - playground uses horizontal stage navigation with per-card vertical scroll
