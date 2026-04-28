@@ -647,6 +647,7 @@ def _register_shadow(
                 seed=settings.shadow_v2_diff_seed,
                 steps=settings.shadow_v2_diff_steps,
                 guidance_scale=settings.shadow_v2_diff_guidance_scale,
+                fast_lcm=settings.shadow_v2_diff_fast_lcm,
                 compile_enabled=settings.shadow_v2_diff_compile_enabled,
                 compile_mode=settings.shadow_v2_diff_compile_mode,
                 compile_backend=settings.shadow_v2_diff_compile_backend or None,

@@ -86,8 +86,11 @@ class Settings:
     )
     shadow_v2_diff_background_path: Path = Path(os.getenv("SHADOWGEN_SHADOW_V2_DIFF_BACKGROUND_PATH", ".models/shadow/v2-diff/mean_background.png"))
     shadow_v2_diff_seed: int = _as_int("SHADOWGEN_SHADOW_V2_DIFF_SEED", 1234)
-    shadow_v2_diff_steps: int = _as_int("SHADOWGEN_SHADOW_V2_DIFF_STEPS", 12)
-    shadow_v2_diff_guidance_scale: float = float(os.getenv("SHADOWGEN_SHADOW_V2_DIFF_GUIDANCE_SCALE", "2.0"))
+    shadow_v2_diff_fast_lcm: bool = _as_bool("SHADOWGEN_SHADOW_V2_DIFF_FAST_LCM", True)
+    shadow_v2_diff_steps: int | None = None if os.getenv("SHADOWGEN_SHADOW_V2_DIFF_STEPS") is None else _as_int("SHADOWGEN_SHADOW_V2_DIFF_STEPS", 5)
+    shadow_v2_diff_guidance_scale: float | None = (
+        None if os.getenv("SHADOWGEN_SHADOW_V2_DIFF_GUIDANCE_SCALE") is None else float(os.getenv("SHADOWGEN_SHADOW_V2_DIFF_GUIDANCE_SCALE", "1.0"))
+    )
     shadow_v2_diff_compile_enabled: bool = _as_bool("SHADOWGEN_SHADOW_V2_DIFF_COMPILE_ENABLED", False)
     shadow_v2_diff_compile_mode: str = os.getenv("SHADOWGEN_SHADOW_V2_DIFF_COMPILE_MODE", "reduce-overhead")
     shadow_v2_diff_compile_backend: str = os.getenv("SHADOWGEN_SHADOW_V2_DIFF_COMPILE_BACKEND", "")

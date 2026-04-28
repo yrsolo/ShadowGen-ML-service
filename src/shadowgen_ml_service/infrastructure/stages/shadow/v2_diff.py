@@ -60,6 +60,7 @@ class V2DiffShadowGenerator(ShadowGenerator):
         seed: int = 1234,
         steps: int | None = None,
         guidance_scale: float | None = None,
+        fast_lcm: bool = True,
         compile_enabled: bool = False,
         compile_mode: str = "reduce-overhead",
         compile_backend: str | None = None,
@@ -73,6 +74,7 @@ class V2DiffShadowGenerator(ShadowGenerator):
         self.seed = int(seed)
         self.steps = steps
         self.guidance_scale = guidance_scale
+        self.fast_lcm = bool(fast_lcm)
         self.compile_enabled = bool(compile_enabled)
         self.compile_mode = compile_mode
         self.compile_backend = compile_backend or None
@@ -92,10 +94,25 @@ class V2DiffShadowGenerator(ShadowGenerator):
         conditioning = _compose_conditioning_image(cutout, mask, background)
         pipe = self._load_pipeline()
         prompt = _render_prompt(self._bundle, stage_input.elevation)
-        negative_prompt = str(self._bundle.get("default_negative_prompt", ""))
+        negative_prompt = "" if self.fast_lcm else str(self._bundle.get("default_negative_prompt", ""))
         generator = self._torch.Generator(device=self.device_label).manual_seed(self.seed)
-        steps = int(self.steps or self._bundle["default_num_inference_steps"])
-        guidance = float(self.guidance_scale or self._bundle["default_guidance_scale"])
+        steps = int(
+            self.steps
+            or (
+                self._bundle.get("fast_lcm_default_num_inference_steps", 5)
+                if self.fast_lcm
+                else self._bundle["default_num_inference_steps"]
+            )
+        )
+        guidance = float(
+            self.guidance_scale
+            if self.guidance_scale is not None
+            else (
+                self._bundle.get("fast_lcm_default_guidance_scale", 1.0)
+                if self.fast_lcm
+                else self._bundle["default_guidance_scale"]
+            )
+        )
         dtype = self._tensor_dtype()
         autocast_context = (
             self._torch.autocast(device_type="cuda", dtype=dtype)
@@ -123,7 +140,15 @@ class V2DiffShadowGenerator(ShadowGenerator):
         return ShadowResult(shadow_image=pil_to_asset(output))
 
     def _load_pipeline(self):
-        cache_key = (str(self.bundle_path.resolve()), self.device_label)
+        cache_key = (
+            str(self.bundle_path.resolve()),
+            self.device_label,
+            self._scheduler_name(),
+            "fast-lcm" if self.fast_lcm else "normal",
+            "compile" if self.compile_enabled else "eager",
+            self.compile_mode,
+            self.compile_backend or "",
+        )
         cached = self._PIPELINE_CACHE.get(cache_key)
         if cached is not None:
             return cached
@@ -137,6 +162,8 @@ class V2DiffShadowGenerator(ShadowGenerator):
         )
         pipe.scheduler = self._make_scheduler()
         pipe.unet.load_attn_procs(self.bundle_path / "checkpoint")
+        if self.fast_lcm:
+            self._load_fast_lcm_adapter(pipe)
         pipe = pipe.to(self.device_label)
         self._apply_runtime_optimizations(pipe)
         if hasattr(pipe, "set_progress_bar_config"):
@@ -161,8 +188,25 @@ class V2DiffShadowGenerator(ShadowGenerator):
                 compile_kwargs["backend"] = self.compile_backend
             pipe.unet = self._torch.compile(pipe.unet, **compile_kwargs)
 
+    def _load_fast_lcm_adapter(self, pipe) -> None:
+        if not hasattr(pipe, "fuse_lora") or not hasattr(pipe, "load_lora_weights"):
+            raise RuntimeError("V2-DIFF fast LCM mode requires a diffusers pipeline with LoRA fuse/load support")
+        pipe.fuse_lora()
+        if hasattr(pipe, "unload_lora_weights"):
+            pipe.unload_lora_weights()
+        pipe.load_lora_weights(
+            str(self._bundle["fast_lcm_lora_repo_id"]),
+            weight_name="pytorch_lora_weights.safetensors",
+        )
+        pipe.fuse_lora()
+        if hasattr(pipe, "unload_lora_weights"):
+            pipe.unload_lora_weights()
+
+    def _scheduler_name(self) -> str:
+        return "lcm" if self.fast_lcm else str(self._bundle.get("default_scheduler", "dpmpp_2m_karras"))
+
     def _make_scheduler(self):
-        scheduler_name = str(self._bundle.get("default_scheduler", "dpmpp_2m_karras"))
+        scheduler_name = self._scheduler_name()
         base_model = str(self._bundle["base_model"])
         classes = self._scheduler_classes
         if classes is None:
@@ -171,8 +215,12 @@ class V2DiffShadowGenerator(ShadowGenerator):
                 "ddim": diffusers.DDIMScheduler,
                 "dpmpp_2m": diffusers.DPMSolverMultistepScheduler,
                 "dpmpp_2m_karras": diffusers.DPMSolverMultistepScheduler,
+                "lcm": diffusers.LCMScheduler,
                 "unipc": diffusers.UniPCMultistepScheduler,
             }
+        if scheduler_name == "lcm":
+            ddim = classes["ddim"].from_pretrained(base_model, subfolder="scheduler")
+            return classes["lcm"].from_config(ddim.config)
         if scheduler_name == "ddim":
             return classes["ddim"].from_pretrained(base_model, subfolder="scheduler")
         if scheduler_name in {"dpmpp_2m", "dpmpp_2m_karras"}:

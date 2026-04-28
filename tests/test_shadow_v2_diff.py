@@ -45,7 +45,13 @@ class FakeTorch:
 class FakeScheduler:
     @classmethod
     def from_pretrained(cls, *args, **kwargs):
-        return {"args": args, "kwargs": kwargs}
+        return type("Scheduler", (), {"args": args, "kwargs": kwargs, "config": {"fake": True}})()
+
+
+class FakeLCMScheduler:
+    @classmethod
+    def from_config(cls, config):
+        return {"config": config}
 
 
 class FakeUnet:
@@ -64,6 +70,9 @@ class FakePipeline:
         self.scheduler = None
         self.device = None
         self.calls = []
+        self.fuse_count = 0
+        self.unload_count = 0
+        self.lora_loads = []
 
     @classmethod
     def from_pretrained(cls, *args, **kwargs):
@@ -79,6 +88,15 @@ class FakePipeline:
     def set_progress_bar_config(self, **kwargs) -> None:
         self.progress_bar_config = kwargs
 
+    def fuse_lora(self) -> None:
+        self.fuse_count += 1
+
+    def unload_lora_weights(self) -> None:
+        self.unload_count += 1
+
+    def load_lora_weights(self, *args, **kwargs) -> None:
+        self.lora_loads.append((args, kwargs))
+
     def __call__(self, **kwargs):
         self.calls.append(kwargs)
         output = Image.new("RGB", kwargs["image"].size, (120, 121, 122))
@@ -90,8 +108,9 @@ class V2DiffShadowTests(unittest.TestCase):
         with patch.dict(os.environ, {}, clear=True):
             settings = Settings()
 
-        self.assertEqual(settings.shadow_v2_diff_steps, 12)
-        self.assertEqual(settings.shadow_v2_diff_guidance_scale, 2.0)
+        self.assertTrue(settings.shadow_v2_diff_fast_lcm)
+        self.assertIsNone(settings.shadow_v2_diff_steps)
+        self.assertIsNone(settings.shadow_v2_diff_guidance_scale)
         self.assertFalse(settings.shadow_v2_diff_compile_enabled)
 
     def test_generate_uses_bundle_mask_and_returns_full_shadow_image(self) -> None:
@@ -109,6 +128,9 @@ class V2DiffShadowTests(unittest.TestCase):
                         "default_negative_prompt": "bad",
                         "default_num_inference_steps": 7,
                         "default_guidance_scale": 1.5,
+                        "fast_lcm_default_num_inference_steps": 5,
+                        "fast_lcm_default_guidance_scale": 1.0,
+                        "fast_lcm_lora_repo_id": "lcm-lora",
                         "view_buckets": [{"max_camera_elevation_deg": None, "phrase": "top view"}],
                     }
                 ),
@@ -128,6 +150,7 @@ class V2DiffShadowTests(unittest.TestCase):
                 bundle_path=bundle,
                 background_path=background,
                 target_device="cpu",
+                fast_lcm=False,
                 torch_module=FakeTorch(),
                 pipeline_cls=FakePipeline,
                 scheduler_classes={"dpmpp_2m_karras": FakeScheduler},
@@ -156,6 +179,67 @@ class V2DiffShadowTests(unittest.TestCase):
         self.assertEqual(pipe.calls[0]["mask_image"].mode, "L")
         self.assertEqual(pipe.calls[0]["mask_image"].getpixel((0, 0)), 255)
         self.assertEqual(pipe.calls[0]["mask_image"].getpixel((3, 3)), 0)
+
+    def test_generate_uses_fast_lcm_bundle_defaults(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            bundle = root / "bundle"
+            checkpoint = bundle / "checkpoint"
+            checkpoint.mkdir(parents=True)
+            (bundle / "bundle_config.json").write_text(
+                json.dumps(
+                    {
+                        "base_model": "base-model",
+                        "default_scheduler": "dpmpp_2m_karras",
+                        "default_prompt_base": "soft shadow",
+                        "default_negative_prompt": "bad",
+                        "default_num_inference_steps": 24,
+                        "default_guidance_scale": 2.0,
+                        "fast_lcm_default_num_inference_steps": 5,
+                        "fast_lcm_default_guidance_scale": 1.0,
+                        "fast_lcm_lora_repo_id": "lcm-lora",
+                        "view_buckets": [],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            background = root / "background.png"
+            Image.new("RGB", (8, 8), (196, 196, 196)).save(background)
+            cutout = Image.new("RGBA", (8, 8), (255, 0, 0, 255))
+            mask = Image.new("L", (8, 8), 255)
+            asset = pil_to_asset(cutout)
+            mask_asset = pil_to_asset(mask)
+            generator = V2DiffShadowGenerator(
+                bundle_path=bundle,
+                background_path=background,
+                target_device="cpu",
+                fast_lcm=True,
+                torch_module=FakeTorch(),
+                pipeline_cls=FakePipeline,
+                scheduler_classes={"ddim": FakeScheduler, "lcm": FakeLCMScheduler},
+            )
+
+            generator.generate(
+                ShadowInput(
+                    img=asset,
+                    mask=mask_asset,
+                    depth=mask_asset,
+                    normal=asset,
+                    angle=0,
+                    elevation=45,
+                    softness=0,
+                    reflection=0,
+                    opacity=1,
+                )
+            )
+
+        pipe = FakePipeline.last_instance
+        self.assertEqual(pipe.calls[0]["num_inference_steps"], 5)
+        self.assertEqual(pipe.calls[0]["guidance_scale"], 1.0)
+        self.assertEqual(pipe.calls[0]["negative_prompt"], "")
+        self.assertEqual(pipe.fuse_count, 2)
+        self.assertEqual(pipe.unload_count, 2)
+        self.assertEqual(pipe.lora_loads[0][0][0], "lcm-lora")
 
     def test_probe_reports_missing_bundle(self) -> None:
         probe = probe_shadow_v2_diff("missing-bundle", "missing-background.png")
