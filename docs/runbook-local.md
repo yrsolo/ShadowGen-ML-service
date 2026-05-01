@@ -168,6 +168,9 @@ When `SHADOWGEN_GEOMETRY_ENABLED=false`, the public pipeline does not run GeoCal
 
 - Backends: `mock`, `local`, `triton`
 - Local backend: BiRefNet
+- Default local model: `ZhengPeng7/BiRefNet-matting`
+- Previous fast default was `ZhengPeng7/BiRefNet_lite-matting`; use it only when speed matters more than edge quality
+- Higher-quality experimental override: `ZhengPeng7/BiRefNet_HR-matting`
 - First live Triton target: `shadowgen_segmenter`
 - Current live Triton packaging: temporary `python` backend
 - Long-term production Triton format: `ONNX`

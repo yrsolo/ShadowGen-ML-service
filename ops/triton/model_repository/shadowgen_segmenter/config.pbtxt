@@ -27,7 +27,7 @@ instance_group [
 ]
 parameters {
   key: "model_id"
-  value { string_value: "ZhengPeng7/BiRefNet_lite-matting" }
+  value { string_value: "ZhengPeng7/BiRefNet-matting" }
 }
 parameters {
   key: "resolution"

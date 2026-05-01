@@ -61,7 +61,7 @@ class Settings:
     grounding_dino_box_threshold: float = float(os.getenv("SHADOWGEN_GROUNDING_DINO_BOX_THRESHOLD", "0.25"))
     grounding_dino_text_threshold: float = float(os.getenv("SHADOWGEN_GROUNDING_DINO_TEXT_THRESHOLD", "0.25"))
     detector_backend_kind: str = os.getenv("SHADOWGEN_DETECTOR_BACKEND_KIND", "")
-    birefnet_model_id: str = os.getenv("SHADOWGEN_BIREFNET_MODEL_ID", "ZhengPeng7/BiRefNet_lite-matting")
+    birefnet_model_id: str = os.getenv("SHADOWGEN_BIREFNET_MODEL_ID", "ZhengPeng7/BiRefNet-matting")
     birefnet_resolution: int = _as_int("SHADOWGEN_BIREFNET_RESOLUTION", 1024)
     birefnet_mask_threshold: float = float(os.getenv("SHADOWGEN_BIREFNET_MASK_THRESHOLD", "0.5"))
     birefnet_allow_cpu: bool = _as_bool("SHADOWGEN_BIREFNET_ALLOW_CPU", False)

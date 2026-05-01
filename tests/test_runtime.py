@@ -59,7 +59,7 @@ class RuntimeTests(unittest.TestCase):
     def test_auto_runtime_uses_local_segmenter_when_available(self) -> None:
         with patch("shadowgen_ml_service.bootstrap.container.probe_birefnet") as probe_birefnet:
             with patch("shadowgen_ml_service.bootstrap.container.RealSegmenter") as real_segmenter:
-                probe_birefnet.return_value.model_name = "ZhengPeng7/BiRefNet_lite-matting"
+                probe_birefnet.return_value.model_name = "ZhengPeng7/BiRefNet-matting"
                 probe_birefnet.return_value.model_version = "bootstrap-probe"
                 probe_birefnet.return_value.available = True
                 probe_birefnet.return_value.detail = None

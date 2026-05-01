@@ -291,7 +291,7 @@ def _register_segmenter(
     triton_ready: bool,
     triton_batcher: TritonStageBatchCoordinator,
 ) -> None:
-    probe = probe_birefnet(allow_cpu=settings.birefnet_allow_cpu)
+    probe = probe_birefnet(model_id=settings.birefnet_model_id, allow_cpu=settings.birefnet_allow_cpu)
     mock = MockSegmenter()
     registry.register(
         backend_descriptor(

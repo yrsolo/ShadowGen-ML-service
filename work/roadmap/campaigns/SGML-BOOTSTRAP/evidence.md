@@ -198,6 +198,7 @@ The active docs now provide:
 - Shadow V2 sample pack now uses curated product-case sources and includes an in-folder README for model developers
 - Shadow V2 sample pack replacements: sample `06` now uses `Hot Coffee on a rainy day`; sample `09` now uses `Wallet on a table`
 - BiRefNet cutout alpha is now clamped by the cleaned largest-component foreground mask, preventing low-confidence matting leaks from reaching V1-GAN/V2-DIFF shadow inputs
+- Default local and Triton-Python segmenter model id changed from the lite matting checkpoint to `ZhengPeng7/BiRefNet-matting` for better cutout quality; the lite checkpoint remains available through `SHADOWGEN_BIREFNET_MODEL_ID`
 - Manual pipeline check stored under `artifacts/manual-runs/v1-after-alpha-cleanup`; sample `01` cutout alpha bbox changed from `(44, 167, 468, 512)` to `(46, 169, 466, 361)`
 - Default working-canvas content scale is now `0.68`, restoring larger margins around foreground objects for shadow generation
 - Preprocess cache keys now include `working_content_scale`, so old tight-crop cache entries do not mask margin changes
@@ -230,6 +231,9 @@ The active docs now provide:
 - `.venv\Scripts\python.exe -m pytest tests\test_shadow_v2_diff.py -q` passed after fast LCM integration: `4 passed, 1 warning`
 - `.venv\Scripts\python.exe -m compileall src tests` passed after fast LCM integration
 - `.venv\Scripts\python.exe -m pytest -q` passed after fast LCM integration: `95 passed, 4 warnings`
+- `.venv\Scripts\python.exe -m pytest tests\test_segmenter.py tests\test_runtime.py -q` passed after BiRefNet quality default switch: `14 passed`
+- `.venv\Scripts\python.exe -m compileall src tests ops\triton\model_repository\shadowgen_segmenter\1\model.py` passed after BiRefNet quality default switch
+- `.venv\Scripts\python.exe -m pytest -q` passed after BiRefNet quality default switch: `95 passed, 4 warnings`
 - `.venv\Scripts\python.exe -m pytest tests\test_api.py tests\test_runtime.py tests\test_normals.py -q` passed after geometry/normal changes: `50 passed, 3 warnings`
 - `.venv\Scripts\python.exe -m compileall src tests` passed after geometry/normal changes
 - `.venv\Scripts\python.exe -m pytest -q` passed after geometry/normal changes: `94 passed, 4 warnings`

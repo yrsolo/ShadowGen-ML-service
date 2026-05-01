@@ -76,7 +76,7 @@ class RealSegmenter(Segmenter):
         torch_module: Any | None = None,
         transforms_module: Any | None = None,
         *,
-        model_id: str = "ZhengPeng7/BiRefNet_lite-matting",
+        model_id: str = "ZhengPeng7/BiRefNet-matting",
         resolution: int = 1024,
         mask_threshold: float = 0.5,
         target_device: str = "cuda",
@@ -183,11 +183,11 @@ class RealSegmenter(Segmenter):
         return "cpu"
 
 
-def probe_birefnet(*, allow_cpu: bool = False) -> RealAdapterProbe:
+def probe_birefnet(*, model_id: str = "ZhengPeng7/BiRefNet-matting", allow_cpu: bool = False) -> RealAdapterProbe:
     dependencies_ready = module_available("torch") and module_available("transformers") and module_available("torchvision")
     if not dependencies_ready:
         return RealAdapterProbe(
-            "ZhengPeng7/BiRefNet_lite-matting",
+            model_id,
             "bootstrap-probe",
             False,
             "requires torch, torchvision, transformers, and the BiRefNet model files",
@@ -199,4 +199,4 @@ def probe_birefnet(*, allow_cpu: bool = False) -> RealAdapterProbe:
         detail = "CUDA runtime detected" if has_cuda else "CPU mode explicitly enabled"
     else:
         detail = "BiRefNet real mode is disabled on CPU by default; set SHADOWGEN_BIREFNET_ALLOW_CPU=true to opt in"
-    return RealAdapterProbe("ZhengPeng7/BiRefNet_lite-matting", "bootstrap-probe", available, detail)
+    return RealAdapterProbe(model_id, "bootstrap-probe", available, detail)

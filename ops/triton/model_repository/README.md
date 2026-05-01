@@ -14,6 +14,7 @@ Current repository shape for `shadowgen_segmenter`:
 Current operational path:
 
 - temporary Triton `python` backend for BiRefNet
+- default model id: `ZhengPeng7/BiRefNet-matting`
 - model returns a mask-first tensor contract
 - `cutout`, `crop`, and compatibility `bbox` remain ML-core postprocess responsibilities
 
