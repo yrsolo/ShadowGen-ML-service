@@ -103,6 +103,7 @@
   - tracked Triton custom image scaffold under `ops/triton/Dockerfile.segmenter-python`
   - tracked bring-up helper under `tools/run_triton_segmenter_python.ps1`
   - tracked readiness checker under `tools/check_triton_segmenter_ready.py`
+  - tracked live smoke helper under `tools/smoke_triton_segmenter.py`
   - reproducible ONNX export tool under `tools/export_segmenter_onnx.py`
   - export tool now tries both modern and legacy ONNX exporters and reports the current `torchvision::deform_conv2d` blocker explicitly
   - local BiRefNet runtime now exposes opt-in Torch acceleration controls (`torch.compile`, matmul precision)
@@ -168,6 +169,9 @@ The active docs now provide:
 - Triton image bakes the model repository into `/models` by default to avoid Windows bind-mount issues
 - optional `-BindModelRepository` remains available for live model repository mounts
 - Triton launcher supports `-Detach` for background local bring-up
+- Triton launcher supports `-Wait` to block until `shadowgen_segmenter` is ready
+- Triton launcher mounts host HuggingFace cache into `/root/.cache/huggingface` to avoid filling Docker overlay storage
+- Triton launcher defaults to CPU-safe `SHADOWGEN_TRITON_SEGMENTER_RESOLUTION=512` without `-Gpu` and quality `1024` with `-Gpu`
 - Triton Python image includes BiRefNet dynamic-module dependencies (`einops`, `kornia`, `timm`)
 - local Triton `shadowgen_segmenter` readiness passed on `http://127.0.0.1:8010`
 - ML-core capabilities reported `segmenter` as `backend_kind=triton`, `available=true`, `model_name=shadowgen_segmenter`, with no fallback reason
@@ -181,6 +185,10 @@ The active docs now provide:
 - ML-core should use `SHADOWGEN_TRITON_URL=http://127.0.0.1:8010` when FastAPI uses local port `8000`
 - Triton launcher defaults to no Docker GPU flag for bring-up and supports explicit `-Gpu`
 - temporary Python backend uses `KIND_CPU` so Triton can load without NVIDIA container runtime, while model code still chooses CUDA when available
+- temporary Python backend accepts runtime env overrides for model id, device, and resolution
+- local heavy fallback adapters are now lazy when their stage is not selected as the active backend, avoiding unnecessary local model loads during Triton smoke and Triton-first service startup
+- direct live Triton segmenter smoke on `C:\Users\solofarm\Pictures\Screenshots\1.jpg` succeeded through `TritonSegmenter`: input `(512, 508)`, bbox `(239, 172, 384, 362)`, mask extrema `(0, 254)`
+- full live `/v1/render` smoke with `segmenter=triton` and other heavy stages set to `mock` succeeded against the running Triton container; no-cache metrics reported `segmentation_ms=22982`, `total_ms=24041` in the tracked smoke script run
 - debug fallback reason now includes the unavailable backend descriptor detail, for example `Triton endpoint is unavailable`
 - V2-DIFF model training/export/serving requirements are captured in `docs/shadow-v2-model-contract.md`
 - V2-DIFF integration is temporarily simplified to a control-free `img + mask -> shadow_image` binding
@@ -251,13 +259,19 @@ The active docs now provide:
 - PowerShell syntax parse passed for `tools/run_triton_segmenter_python.ps1`
 - `tools\run_triton_segmenter_python.cmd -NoBuild -Detach` started Triton successfully after baking the model repository into the image
 - `.venv\Scripts\python.exe tools\check_triton_segmenter_ready.py http://127.0.0.1:8010` passed
+- `tools\run_triton_segmenter_python.cmd -NoBuild -Detach -Wait -Resolution 512` started Triton successfully with host-mounted HuggingFace cache
+- direct `TritonSegmenter` smoke against `http://127.0.0.1:8010` passed and saved artifacts under `artifacts/triton-smoke-real`
+- full `/v1/render` smoke with `segmenter=triton` passed and saved artifacts under `artifacts/triton-smoke-full`
+- `.venv\Scripts\python.exe tools\smoke_triton_segmenter.py --base-url http://127.0.0.1:8010 --image C:\Users\solofarm\Pictures\Screenshots\1.jpg --output-dir artifacts\triton-smoke-script` passed and saved direct/render artifacts
+- `.venv\Scripts\python.exe -m pytest tests\test_runtime.py tests\test_api.py tests\test_triton_transport.py tests\test_segmenter_triton.py -q` passed after live Triton hardening: `65 passed, 3 warnings`
+- `.venv\Scripts\python.exe -m pytest -q` passed after live Triton hardening: `95 passed, 4 warnings`
+- `.venv\Scripts\python.exe -m compileall src tests tools ops\triton\model_repository\shadowgen_segmenter\1\model.py` passed after live Triton hardening
 - `python -m py_compile ops/triton/model_repository/shadowgen_segmenter/1/model.py` passed
 - `tools/run_triton_segmenter_python.ps1` fails fast with a clear Docker / WSL diagnostic when the local Triton container backend is unavailable
 
 ## Remaining Bootstrap Gaps
 
-- no heavy stage has been smoke-tested yet against a real external Triton server
 - current BiRefNet ONNX export is blocked in this environment by `torchvision::deform_conv2d`, so the live `segmenter` bridge currently depends on the temporary Triton Python backend
 - `V2-DIFF` Triton backend is scaffolded but not implemented
 - compatibility shims still remain in the repository
-- the current workstation has a Docker Desktop / WSL blocker (`docker-desktop` distro missing), so the temporary Triton segmenter image has not yet been validated end-to-end against a real running container
+- Docker Desktop GPU mode still fails on this workstation with NVIDIA runtime `legacy` mode, so current Triton validation is CPU-only until Docker Desktop / NVIDIA runtime is fixed

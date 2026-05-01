@@ -50,7 +50,7 @@
 - [x] Add live Triton bring-up helpers and readiness checks for the temporary Python backend
 - [x] Fix Triton local helper ports and add a Windows `.cmd` launcher
 - [x] Add a Windows service launcher that starts FastAPI with Triton segmenter defaults
-- [ ] Run the first live end-to-end Triton smoke against a real `shadowgen_segmenter` server
+- [x] Run the first live end-to-end Triton smoke against a real `shadowgen_segmenter` server
 - [x] Implement the real local `V2-DIFF` shadow backend
 - [x] Fix V2-DIFF inpaint mask semantics so the model edits background/shadow area instead of the object
 - [ ] Add shadow-stage input previews for `img`, `mask`, `depth`, and `normal`
@@ -70,7 +70,7 @@
 - [x] Switch default BiRefNet segmenter from lite matting to the quality matting checkpoint
 - [x] Restore larger default working-canvas margins for shadow generation by lowering `SHADOWGEN_WORKING_CONTENT_SCALE` to `0.68`
 - [ ] Continue replacing compatibility shims with direct imports from the layered structure
-- [ ] Extend the temporary Triton segmenter bridge with a verified custom image smoke run
+- [x] Extend the temporary Triton segmenter bridge with a verified custom image smoke run
 
 ## Notes
 

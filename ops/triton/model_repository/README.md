@@ -26,6 +26,7 @@ Relevant files:
 - `tools/run_triton_segmenter_python.cmd`
 - `tools/run_triton_segmenter_python.ps1`
 - `tools/check_triton_segmenter_ready.py`
+- `tools/smoke_triton_segmenter.py`
 - `tools/export_segmenter_onnx.py`
 
 `Dockerfile.segmenter-python` copies this repository into `/models` during image build. The run helper defaults to that baked-in model repository because Windows bind mounts from non-standard workspace drives can be unreliable. Use the helper's `-BindModelRepository` switch only when bind mounts are known to work in your Docker Desktop setup.
@@ -39,3 +40,21 @@ Host ports used by the helper:
 - `8012`: Triton metrics
 
 The temporary Python backend uses `KIND_CPU` in `config.pbtxt` so Triton can load the model without Docker GPU runtime during local bring-up. When the launcher is run with `-Gpu`, the Python model code still chooses CUDA if PyTorch can see it.
+
+The launcher also provides runtime overrides through environment variables consumed by `model.py`:
+
+- `SHADOWGEN_TRITON_SEGMENTER_MODEL_ID`
+- `SHADOWGEN_TRITON_SEGMENTER_RESOLUTION`
+- `SHADOWGEN_TRITON_SEGMENTER_DEVICE`
+
+Default behavior:
+
+- without `-Gpu`: `device=cpu`, `resolution=512`
+- with `-Gpu`: `device=cuda`, `resolution=1024`
+- HuggingFace cache is mounted from the host into `/root/.cache/huggingface`
+
+Validation command:
+
+```powershell
+.venv\Scripts\python.exe tools\smoke_triton_segmenter.py --base-url http://127.0.0.1:8010 --image C:\Users\solofarm\Pictures\Screenshots\1.jpg
+```

@@ -12,6 +12,7 @@
   - Russian GitHub Pages style academic project page exists under `docs/project-page/` and links the product, ML service, dataset, and training repositories
   - heavy stages are prepared for `mock|local|triton`
   - segmenter has a temporary Triton Python backend launcher with local offset Triton ports
+  - segmenter has been live-smoked through Triton on `http://127.0.0.1:8010`
   - playground uses horizontal stage navigation with per-card vertical scroll
   - shadow stage is prepared for named model generations:
     - `mock`

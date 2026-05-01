@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass
 
 import numpy as np
@@ -18,6 +19,13 @@ def _as_bool(value: str | None, default: bool) -> bool:
     if value is None:
         return default
     return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _env_override(name: str) -> str | None:
+    value = os.getenv(f"SHADOWGEN_TRITON_SEGMENTER_{name.upper()}")
+    if value is None or value.strip() == "":
+        return None
+    return value
 
 
 @dataclass(frozen=True)
@@ -74,7 +82,12 @@ class TritonPythonModel:
             grouped_indices.setdefault((int(array.shape[2]), int(array.shape[3])), []).append(index)
 
         for shape_key, request_indices in grouped_indices.items():
-            masks = self._infer_group([arrays[index] for index in request_indices], shape_key)
+            try:
+                masks = self._infer_group([arrays[index] for index in request_indices], shape_key)
+            except Exception as exc:
+                raise pb_utils.TritonModelException(
+                    f"shadowgen_segmenter inference failed: {type(exc).__name__}: {exc}"
+                ) from exc
             for request_index, mask in zip(request_indices, masks, strict=True):
                 responses[request_index] = pb_utils.InferenceResponse(
                     output_tensors=[pb_utils.Tensor("mask", mask.astype(self.output_mask_dtype, copy=False))]
@@ -96,7 +109,7 @@ class TritonPythonModel:
             align_corners=False,
         )
         normalized = (resized - self.mean) / self.std
-        with torch.no_grad():
+        with torch.inference_mode():
             prediction = self.model(normalized)[-1].sigmoid()
         if prediction.ndim == 3:
             prediction = prediction.unsqueeze(1)
@@ -119,6 +132,9 @@ class TritonPythonModel:
         parameters = model_config.get("parameters", {})
 
         def _string(name: str, default: str) -> str:
+            env_value = _env_override(name)
+            if env_value is not None:
+                return env_value
             raw = parameters.get(name)
             if not isinstance(raw, dict):
                 return default

@@ -37,6 +37,7 @@ from shadowgen_ml_service.infrastructure.stages.normals.from_depth import Normal
 from shadowgen_ml_service.infrastructure.stages.normals.mock import MockNormalEstimator
 from shadowgen_ml_service.infrastructure.stages.normals.stable_normal import StableNormalEstimator
 from shadowgen_ml_service.infrastructure.stages.normals.triton import TritonNormalEstimator
+from shadowgen_ml_service.infrastructure.stages.lazy import LazyStageAdapter
 from shadowgen_ml_service.infrastructure.stages.segmentation.birefnet import RealSegmenter
 from shadowgen_ml_service.infrastructure.stages.segmentation.mock import MockSegmenter
 from shadowgen_ml_service.infrastructure.stages.segmentation.triton import TritonSegmenter
@@ -163,22 +164,35 @@ def _register_detector(settings: Settings, registry: PipelineBackendRegistry, tr
     device = "cpu"
     available = False
     if probe.available:
-        try:
-            handler = RealDetector(
+        def make_local_detector() -> RealDetector:
+            return RealDetector(
                 model_id=settings.grounding_dino_model_id,
                 prompt=settings.grounding_dino_prompt,
                 box_threshold=settings.grounding_dino_box_threshold,
                 text_threshold=settings.grounding_dino_text_threshold,
                 target_device=settings.target_device,
             )
+
+        preferred_detector_backend = _stage_backend_preference(
+            settings.detector_backend_kind,
+            _effective_default_backend(settings),
+        )
+        if preferred_detector_backend == "local":
+            try:
+                handler = make_local_detector()
+                available = True
+                detail = (
+                    "GroundingDINO local backend active "
+                    f"(model_id={settings.grounding_dino_model_id}, prompt={settings.grounding_dino_prompt!r})"
+                )
+                device = getattr(handler, "device_label", "cpu")
+            except Exception as exc:
+                detail = f"GroundingDINO local init failed: {exc}"
+        else:
+            handler = LazyStageAdapter(make_local_detector, backend_name="lazy-grounding-dino", device_label=settings.target_device)
             available = True
-            detail = (
-                "GroundingDINO local backend active "
-                f"(model_id={settings.grounding_dino_model_id}, prompt={settings.grounding_dino_prompt!r})"
-            )
-            device = getattr(handler, "device_label", "cpu")
-        except Exception as exc:
-            detail = f"GroundingDINO local init failed: {exc}"
+            detail = f"GroundingDINO local backend available for lazy fallback (model_id={settings.grounding_dino_model_id})"
+            device = settings.target_device
     registry.register(
         backend_descriptor(
             stage_key="detector",
@@ -310,8 +324,8 @@ def _register_segmenter(
     device = "cpu"
     available = False
     if probe.available:
-        try:
-            handler = RealSegmenter(
+        def make_local_segmenter() -> RealSegmenter:
+            return RealSegmenter(
                 model_id=settings.birefnet_model_id,
                 resolution=settings.birefnet_resolution,
                 mask_threshold=settings.birefnet_mask_threshold,
@@ -321,14 +335,27 @@ def _register_segmenter(
                 compile_backend=settings.birefnet_compile_backend,
                 matmul_precision=settings.birefnet_matmul_precision,
             )
+
+        preferred_segmenter_backend = _stage_backend_preference(
+            settings.segmenter_backend_kind,
+            _effective_default_backend(settings),
+        )
+        if preferred_segmenter_backend == "triton":
+            handler = LazyStageAdapter(make_local_segmenter, backend_name="lazy-birefnet", device_label=settings.target_device)
             available = True
-            detail = (
-                f"BiRefNet local backend active (model_id={settings.birefnet_model_id}, "
-                f"compile={getattr(handler, 'compile_status', 'disabled')})"
-            )
-            device = getattr(handler, "device_label", "cpu")
-        except Exception as exc:
-            detail = f"BiRefNet local init failed: {exc}"
+            detail = f"BiRefNet local backend available for lazy fallback (model_id={settings.birefnet_model_id})"
+            device = settings.target_device
+        else:
+            try:
+                handler = make_local_segmenter()
+                available = True
+                detail = (
+                    f"BiRefNet local backend active (model_id={settings.birefnet_model_id}, "
+                    f"compile={getattr(handler, 'compile_status', 'disabled')})"
+                )
+                device = getattr(handler, "device_label", "cpu")
+            except Exception as exc:
+                detail = f"BiRefNet local init failed: {exc}"
     registry.register(
         backend_descriptor(
             stage_key="segmenter",
@@ -435,13 +462,26 @@ def _register_depth(
     device = "cpu"
     available = False
     if probe.available:
-        try:
-            handler = RealDepthEstimator(model_id=settings.depth_anything_model_id, target_device=settings.target_device)
+        def make_local_depth() -> RealDepthEstimator:
+            return RealDepthEstimator(model_id=settings.depth_anything_model_id, target_device=settings.target_device)
+
+        preferred_depth_backend = _stage_backend_preference(
+            settings.depth_backend_kind,
+            _effective_default_backend(settings),
+        )
+        if preferred_depth_backend == "local":
+            try:
+                handler = make_local_depth()
+                available = True
+                detail = f"Depth Anything local backend active (model_id={settings.depth_anything_model_id})"
+                device = getattr(handler, "device_label", "cpu")
+            except Exception as exc:
+                detail = f"Depth Anything local init failed: {exc}"
+        else:
+            handler = LazyStageAdapter(make_local_depth, backend_name="lazy-depth-anything", device_label=settings.target_device)
             available = True
-            detail = f"Depth Anything local backend active (model_id={settings.depth_anything_model_id})"
-            device = getattr(handler, "device_label", "cpu")
-        except Exception as exc:
-            detail = f"Depth Anything local init failed: {exc}"
+            detail = f"Depth Anything local backend available for lazy fallback (model_id={settings.depth_anything_model_id})"
+            device = settings.target_device
     registry.register(
         backend_descriptor(
             stage_key="depth_estimator",
@@ -608,16 +648,30 @@ def _register_shadow(
     available = False
     device = "cpu"
     if probe.available:
-        try:
-            handler = Pix2PixShadowGenerator(
+        def make_v1_shadow() -> Pix2PixShadowGenerator:
+            return Pix2PixShadowGenerator(
                 weights_path=settings.shadow_pix2pix_weights_path,
                 target_device=settings.target_device,
             )
+
+        preferred_shadow_backend = _stage_backend_preference(
+            settings.shadow_backend_kind,
+            _effective_default_backend(settings),
+        )
+        preferred_shadow_variant = settings.shadow_model_variant.lower()
+        if preferred_shadow_backend == "local" and preferred_shadow_variant == "v1-gan":
+            try:
+                handler = make_v1_shadow()
+                available = True
+                detail = f"V1-GAN local backend active (weights={settings.shadow_pix2pix_weights_path})"
+                device = getattr(handler, "device_label", "cpu")
+            except Exception as exc:
+                detail = f"V1-GAN local init failed: {exc}"
+        else:
+            handler = LazyStageAdapter(make_v1_shadow, backend_name="lazy-v1-gan", device_label=settings.target_device)
             available = True
-            detail = f"V1-GAN local backend active (weights={settings.shadow_pix2pix_weights_path})"
-            device = getattr(handler, "device_label", "cpu")
-        except Exception as exc:
-            detail = f"V1-GAN local init failed: {exc}"
+            detail = f"V1-GAN local backend available for lazy fallback (weights={settings.shadow_pix2pix_weights_path})"
+            device = settings.target_device
     registry.register(
         backend_descriptor(
             stage_key="shadow_generator",
@@ -639,8 +693,8 @@ def _register_shadow(
     v2_available = False
     v2_device = "cpu"
     if v2_probe.available:
-        try:
-            v2_handler = V2DiffShadowGenerator(
+        def make_v2_shadow() -> V2DiffShadowGenerator:
+            return V2DiffShadowGenerator(
                 bundle_path=settings.shadow_v2_diff_bundle_path,
                 background_path=settings.shadow_v2_diff_background_path,
                 target_device=settings.target_device,
@@ -652,11 +706,25 @@ def _register_shadow(
                 compile_mode=settings.shadow_v2_diff_compile_mode,
                 compile_backend=settings.shadow_v2_diff_compile_backend or None,
             )
+
+        preferred_shadow_backend = _stage_backend_preference(
+            settings.shadow_backend_kind,
+            _effective_default_backend(settings),
+        )
+        preferred_shadow_variant = settings.shadow_model_variant.lower()
+        if preferred_shadow_backend == "local" and preferred_shadow_variant == "v2-diff":
+            try:
+                v2_handler = make_v2_shadow()
+                v2_available = True
+                v2_detail = f"V2-DIFF local backend active (bundle={settings.shadow_v2_diff_bundle_path})"
+                v2_device = getattr(v2_handler, "device_label", "cpu")
+            except Exception as exc:
+                v2_detail = f"V2-DIFF local init failed: {exc}"
+        else:
+            v2_handler = LazyStageAdapter(make_v2_shadow, backend_name="lazy-v2-diff", device_label=settings.target_device)
             v2_available = True
-            v2_detail = f"V2-DIFF local backend active (bundle={settings.shadow_v2_diff_bundle_path})"
-            v2_device = getattr(v2_handler, "device_label", "cpu")
-        except Exception as exc:
-            v2_detail = f"V2-DIFF local init failed: {exc}"
+            v2_detail = f"V2-DIFF local backend available for lazy fallback (bundle={settings.shadow_v2_diff_bundle_path})"
+            v2_device = settings.target_device
     registry.register(
         backend_descriptor(
             stage_key="shadow_generator",

@@ -100,7 +100,7 @@ class TritonInferenceClient:
         except error.HTTPError as exc:
             if exc.code == 404:
                 raise TritonModelUnavailableError(f"Triton model {binding.model_name} is unavailable") from exc
-            raise TritonBackendError(f"Triton HTTP error {exc.code}: {exc.reason}") from exc
+            raise TritonBackendError(self._http_error_message(exc)) from exc
         except (TimeoutError, socket.timeout) as exc:
             raise TritonTimeoutError(f"Triton request timed out for model {binding.model_name}") from exc
         except error.URLError as exc:
@@ -119,7 +119,7 @@ class TritonInferenceClient:
         except error.HTTPError as exc:
             if exc.code == 404:
                 raise TritonModelUnavailableError(f"Triton resource {path} is unavailable") from exc
-            raise TritonBackendError(f"Triton HTTP error {exc.code}: {exc.reason}") from exc
+            raise TritonBackendError(self._http_error_message(exc)) from exc
         except (TimeoutError, socket.timeout) as exc:
             raise TritonTimeoutError(f"Triton request timed out for resource {path}") from exc
         except error.URLError as exc:
@@ -199,3 +199,13 @@ class TritonInferenceClient:
             except ValueError:
                 return None
         return None
+
+    @staticmethod
+    def _http_error_message(exc: error.HTTPError) -> str:
+        detail = ""
+        try:
+            detail = exc.read().decode("utf-8", errors="replace").strip()
+        except Exception:
+            detail = ""
+        suffix = f": {detail}" if detail else ""
+        return f"Triton HTTP error {exc.code}: {exc.reason}{suffix}"

@@ -495,7 +495,7 @@ tools\run_triton_segmenter_python.cmd
 Run in the background:
 
 ```powershell
-tools\run_triton_segmenter_python.cmd -Detach
+tools\run_triton_segmenter_python.cmd -Detach -Wait
 ```
 
 Detached containers are intentionally not started with `--rm`, so startup failures keep their logs:
@@ -518,13 +518,23 @@ This helper script:
 - builds the custom Triton image
 - starts Triton without Docker GPU flags by default so the container and HTTP wiring can be verified first
 - starts Triton with `--gpus all` when `-Gpu` is provided
+- mounts HuggingFace cache from the host into `/root/.cache/huggingface` so model downloads do not fill Docker overlay storage
+- defaults to `SHADOWGEN_TRITON_SEGMENTER_RESOLUTION=512` without `-Gpu` to avoid CPU/OOM crashes in Docker Desktop dev mode
+- defaults to `SHADOWGEN_TRITON_SEGMENTER_RESOLUTION=1024` with `-Gpu` for quality
 - publishes HTTP/gRPC/metrics ports
 - serves the image-baked model repository from `/models`
+
+Useful launcher overrides:
+
+```powershell
+tools\run_triton_segmenter_python.cmd -Detach -Wait -Resolution 512
+tools\run_triton_segmenter_python.cmd -Detach -Wait -HfCacheDir C:\Users\solofarm\AppData\Local\ShadowGen\triton-hf-cache
+```
 
 GPU mode:
 
 ```powershell
-tools\run_triton_segmenter_python.cmd -Gpu -Detach
+tools\run_triton_segmenter_python.cmd -Gpu -Detach -Wait
 ```
 
 If `-Gpu` fails with an NVIDIA runtime error, Docker Desktop is running but Docker cannot expose the NVIDIA runtime to containers yet. Check:
@@ -539,10 +549,20 @@ The temporary Python backend model config uses `KIND_CPU` intentionally. The Pyt
 2. Check the Triton model readiness:
 
 ```powershell
-.venv\Scripts\python.exe tools\check_triton_segmenter_ready.py http://127.0.0.1:8010
+.venv\Scripts\python.exe tools\check_triton_segmenter_ready.py http://127.0.0.1:8010 --wait-seconds 240
 ```
 
-3. Point ML-core at Triton:
+3. Run a live smoke check. This performs:
+
+- direct `TritonSegmenter` inference
+- full `/v1/render` with `segmenter=triton` and other heavy stages set to `mock`
+- artifact export to `artifacts/triton-smoke/`
+
+```powershell
+.venv\Scripts\python.exe tools\smoke_triton_segmenter.py --base-url http://127.0.0.1:8010 --image C:\Users\solofarm\Pictures\Screenshots\1.jpg
+```
+
+4. Point ML-core at Triton:
 
 ```powershell
 $env:SHADOWGEN_TRITON_URL="http://127.0.0.1:8010"
@@ -556,7 +576,7 @@ Or use the Windows helper that sets the Triton segmenter defaults and starts the
 run-service-triton-segmenter.cmd
 ```
 
-4. Start the service and check:
+5. Start the service and check:
 
 ```powershell
 curl http://127.0.0.1:8000/v1/capabilities
@@ -569,7 +589,7 @@ Expected segmenter signals:
 - `available = true`
 - `endpoint` is filled
 
-5. In `/playground`, rerun `Segmentation` with `backend_kind = triton`.
+6. In `/playground`, rerun `Segmentation` with `backend_kind = triton`.
 
 Expected stage metadata:
 
@@ -579,7 +599,9 @@ Expected stage metadata:
 
 Operational note:
 
-- on the current workstation, a missing Docker Desktop WSL distro `docker-desktop` blocks live Triton container startup until Docker Desktop is repaired
+- the current Python backend is a bridge while ONNX export is blocked; the target production path remains ONNX first, then TensorRT
+- if `-Gpu` fails with `Auto-detected mode as 'legacy'`, the service can still run CPU smoke checks, but Docker Desktop/NVIDIA runtime must be fixed before GPU Triton inference
+- CPU Triton smoke is intentionally slow; on this workstation a no-cache 512px segmenter call is roughly tens of seconds
 
 ### `V2-DIFF` is unavailable
 

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import argparse
 import json
 import sys
+import time
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -13,24 +15,34 @@ def _fetch_json(url: str) -> dict:
 
 
 def main(argv: list[str] | None = None) -> int:
-    argv = argv or sys.argv[1:]
-    base_url = argv[0] if argv else "http://127.0.0.1:8010"
-    base_url = base_url.rstrip("/")
-    model_name = argv[1] if len(argv) > 1 else "shadowgen_segmenter"
+    parser = argparse.ArgumentParser(description="Check Triton readiness for the ShadowGen segmenter model.")
+    parser.add_argument("base_url", nargs="?", default="http://127.0.0.1:8010")
+    parser.add_argument("model_name", nargs="?", default="shadowgen_segmenter")
+    parser.add_argument("--wait-seconds", type=float, default=0.0)
+    parser.add_argument("--interval-seconds", type=float, default=2.0)
+    args = parser.parse_args(argv or sys.argv[1:])
+
+    base_url = args.base_url.rstrip("/")
+    model_name = args.model_name
     ready_url = f"{base_url}/v2/models/{model_name}/ready"
     config_url = f"{base_url}/v2/models/{model_name}/config"
 
-    try:
-        with urlopen(Request(ready_url), timeout=10) as response:
-            if response.status != 200:
-                print(f"segmenter model is not ready: HTTP {response.status}", file=sys.stderr)
-                return 1
-    except HTTPError as exc:
-        print(f"segmenter model readiness check failed: HTTP {exc.code}", file=sys.stderr)
-        return 1
-    except (ConnectionAbortedError, ConnectionResetError, TimeoutError, URLError) as exc:
-        print(f"failed to reach Triton at {base_url}: {exc}", file=sys.stderr)
-        return 1
+    deadline = time.monotonic() + max(args.wait_seconds, 0.0)
+    last_error = ""
+    while True:
+        try:
+            with urlopen(Request(ready_url), timeout=10) as response:
+                if response.status == 200:
+                    break
+                last_error = f"segmenter model is not ready: HTTP {response.status}"
+        except HTTPError as exc:
+            last_error = f"segmenter model readiness check failed: HTTP {exc.code}"
+        except (ConnectionAbortedError, ConnectionResetError, TimeoutError, URLError) as exc:
+            last_error = f"failed to reach Triton at {base_url}: {exc}"
+        if time.monotonic() >= deadline:
+            print(last_error, file=sys.stderr)
+            return 1
+        time.sleep(max(args.interval_seconds, 0.1))
 
     try:
         config = _fetch_json(config_url)
