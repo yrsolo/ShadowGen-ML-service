@@ -178,6 +178,7 @@ The active docs now provide:
 - Windows launcher exists at `tools/run_triton_segmenter_python.cmd`
 - PowerShell launcher exists at `tools/run_triton_segmenter_python.ps1`
 - service launcher exists at `run-service-triton-segmenter.cmd` to set Triton segmenter env defaults
+- `run-service-triton-segmenter.cmd` now defaults to `RELOAD=0` so Windows `uvicorn --reload` does not preserve stale local-mode settings when switching to Triton mode
 - local helper maps standard Triton container ports to offset host ports:
   - HTTP `8010`
   - gRPC `8011`
@@ -263,6 +264,8 @@ The active docs now provide:
 - direct `TritonSegmenter` smoke against `http://127.0.0.1:8010` passed and saved artifacts under `artifacts/triton-smoke-real`
 - full `/v1/render` smoke with `segmenter=triton` passed and saved artifacts under `artifacts/triton-smoke-full`
 - `.venv\Scripts\python.exe tools\smoke_triton_segmenter.py --base-url http://127.0.0.1:8010 --image C:\Users\solofarm\Pictures\Screenshots\1.jpg --output-dir artifacts\triton-smoke-script` passed and saved direct/render artifacts
+- `http://127.0.0.1:8003/v1/capabilities` reported `segmenter.backend_kind=triton`, `endpoint=http://127.0.0.1:8010` after starting the service with `RELOAD=0`
+- `http://127.0.0.1:8003/v1/dev/pipeline/run-stage/segmenter` returned `segmenter completed triton triton` with `elapsed_ms=19871`
 - `.venv\Scripts\python.exe -m pytest tests\test_runtime.py tests\test_api.py tests\test_triton_transport.py tests\test_segmenter_triton.py -q` passed after live Triton hardening: `65 passed, 3 warnings`
 - `.venv\Scripts\python.exe -m pytest -q` passed after live Triton hardening: `95 passed, 4 warnings`
 - `.venv\Scripts\python.exe -m compileall src tests tools ops\triton\model_repository\shadowgen_segmenter\1\model.py` passed after live Triton hardening

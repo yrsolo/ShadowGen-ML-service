@@ -13,9 +13,15 @@ if not exist "%PYTHON_EXE%" (
 
 if "%HOST%"=="" set "HOST=127.0.0.1"
 if "%PORT%"=="" set "PORT=8000"
+if "%RELOAD%"=="" set "RELOAD=1"
+
+set "RELOAD_ARG=--reload"
+if "%RELOAD%"=="0" set "RELOAD_ARG="
+if /I "%RELOAD%"=="false" set "RELOAD_ARG="
+if /I "%RELOAD%"=="no" set "RELOAD_ARG="
 
 echo Starting ShadowGen ML Service on http://%HOST%:%PORT%
 echo Playground UI: http://%HOST%:%PORT%/playground
-"%PYTHON_EXE%" -m uvicorn shadowgen_ml_service.main:app --host %HOST% --port %PORT% --reload
+"%PYTHON_EXE%" -m uvicorn shadowgen_ml_service.main:app --host %HOST% --port %PORT% %RELOAD_ARG%
 
 endlocal

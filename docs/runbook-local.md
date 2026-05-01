@@ -576,6 +576,10 @@ Or use the Windows helper that sets the Triton segmenter defaults and starts the
 run-service-triton-segmenter.cmd
 ```
 
+The Triton service helper defaults to `RELOAD=0`. On Windows this avoids `uvicorn --reload`
+keeping stale imported settings while switching between local and Triton modes. For normal
+local development, `run-service.cmd` still uses reload by default.
+
 5. Start the service and check:
 
 ```powershell
