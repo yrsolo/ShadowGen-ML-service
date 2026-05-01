@@ -101,6 +101,8 @@ def render_playground_html() -> str:
     }
     .primary { background: linear-gradient(135deg, var(--accent), #f79c7f); color: white; }
     .ghost { background: rgba(255,255,255,0.9); color: var(--text); border: 1px solid var(--line); }
+    .danger { background: rgba(197,48,48,0.1); color: var(--err); border: 1px solid rgba(197,48,48,0.22); }
+    button:disabled { cursor: not-allowed; opacity: 0.65; }
     .note {
       margin-top: 0;
       padding: 12px 14px;
@@ -295,6 +297,9 @@ def render_playground_html() -> str:
         </div>
         <div class="panel wide">
           <h2>Runtime</h2>
+          <div class="actions" style="margin-bottom: 10px;">
+            <button class="danger" id="shutdownServiceBtn" type="button">Завершить сервис</button>
+          </div>
           <div class="note" id="globalNote">Сервис готов. Загрузите изображение и запускайте pipeline.</div>
         </div>
       </div>
@@ -390,6 +395,7 @@ def render_playground_html() -> str:
 
     document.getElementById("runAllBtn").addEventListener("click", () => runPipeline());
     document.getElementById("clearBtn").addEventListener("click", clearResults);
+    document.getElementById("shutdownServiceBtn").addEventListener("click", shutdownService);
 
     function renderCards() {
       pipelineEl.innerHTML = "";
@@ -647,6 +653,25 @@ def render_playground_html() -> str:
       globalNote.textContent = "Результаты очищены.";
       renderCards();
       updateShadowControlNote();
+    }
+
+    async function shutdownService() {
+      const button = document.getElementById("shutdownServiceBtn");
+      const confirmed = window.confirm("Завершить текущий процесс ShadowGen ML Service? Если сервис запущен через --reload, reloader может поднять его снова.");
+      if (!confirmed) return;
+      button.disabled = true;
+      button.textContent = "Завершаю...";
+      globalNote.textContent = "Отправляю команду завершения текущему ML-service процессу...";
+      try {
+        const response = await fetch("/v1/dev/service/shutdown", { method: "POST" });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(payload?.error?.message || "shutdown request failed");
+        }
+        globalNote.textContent = `Сервис завершается. PID: ${payload.pid || "unknown"}. Окно консоли можно закрыть после остановки.`;
+      } catch (error) {
+        globalNote.textContent = `Команда отправлена, соединение могло оборваться при остановке сервиса: ${error.message}`;
+      }
     }
 
     function fileToBase64(file) {

@@ -142,6 +142,12 @@ Or on Windows:
 run-service.cmd
 ```
 
+Open the service in its own visible Windows console:
+
+```cmd
+start-service-window.cmd
+```
+
 Open:
 
 - `http://127.0.0.1:8000/`
@@ -192,6 +198,14 @@ Or start the service with those defaults already set:
 ```cmd
 run-service-triton-segmenter.cmd
 ```
+
+For day-to-day debugging, prefer the visible-window launcher:
+
+```cmd
+start-service-triton-window.cmd
+```
+
+It starts FastAPI without reload and defaults to `PORT=8003`, so the Playground shutdown button can stop the visible process cleanly.
 
 The helper builds [ops/triton/Dockerfile.segmenter-python](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/ops/triton/Dockerfile.segmenter-python), bakes [ops/triton/model_repository](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/ops/triton/model_repository) into `/models`, and exposes Triton HTTP on host `8010`, gRPC on host `8011`, and metrics on host `8012`.
 

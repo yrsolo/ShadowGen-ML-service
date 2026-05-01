@@ -68,6 +68,14 @@ Healthy result:
 run-service.cmd
 ```
 
+Open the service in an explicit Windows console window:
+
+```cmd
+start-service-window.cmd
+```
+
+This launcher defaults to `RELOAD=0`, so the `/playground` shutdown button stops the visible FastAPI process instead of having `uvicorn --reload` immediately spawn it again.
+
 Open:
 
 - `http://127.0.0.1:8000/`
@@ -123,6 +131,7 @@ The playground supports:
 - explicit shadow model variant switching
 - horizontal stage navigation with the mouse wheel
 - vertical scrolling inside a stage card with `Shift` + mouse wheel
+- dev-only shutdown button for the current ML-service process
 
 Current shadow stage variants in the UI:
 
@@ -575,6 +584,14 @@ Or use the Windows helper that sets the Triton segmenter defaults and starts the
 ```cmd
 run-service-triton-segmenter.cmd
 ```
+
+Open the Triton-configured ML service in a dedicated visible console window:
+
+```cmd
+start-service-triton-window.cmd
+```
+
+The visible Triton launcher defaults to `PORT=8003` so it can run next to another local service during debugging. Override `PORT` before launching if you want a different host port.
 
 The Triton service helper defaults to `RELOAD=0`. On Windows this avoids `uvicorn --reload`
 keeping stale imported settings while switching between local and Triton modes. For normal

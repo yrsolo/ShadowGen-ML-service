@@ -102,6 +102,23 @@ class ApiTests(unittest.TestCase):
         response = self.client.get("/playground")
         self.assertEqual(response.status_code, 200)
         self.assertIn("ShadowGen Pipeline Playground", response.text)
+        self.assertIn("shutdownServiceBtn", response.text)
+
+    def test_dev_shutdown_endpoint_uses_injected_handler(self) -> None:
+        calls: list[bool] = []
+
+        def fake_shutdown_handler() -> dict[str, object]:
+            calls.append(True)
+            return {"status": "terminating", "pid": 12345, "message": "test shutdown"}
+
+        self.client.app.state.dev_shutdown_handler = fake_shutdown_handler
+
+        response = self.client.post("/v1/dev/service/shutdown")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["status"], "terminating")
+        self.assertEqual(response.json()["pid"], 12345)
+        self.assertEqual(calls, [True])
 
     def test_async_render_job_lifecycle(self) -> None:
         submit = self.client.post("/v1/render/jobs", json=make_request())

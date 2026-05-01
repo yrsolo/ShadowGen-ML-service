@@ -71,6 +71,7 @@
 - [x] Restore larger default working-canvas margins for shadow generation by lowering `SHADOWGEN_WORKING_CONTENT_SCALE` to `0.68`
 - [ ] Continue replacing compatibility shims with direct imports from the layered structure
 - [x] Extend the temporary Triton segmenter bridge with a verified custom image smoke run
+- [x] Add visible Windows FastAPI launchers and a Playground shutdown control for the current ML-service process
 
 ## Notes
 

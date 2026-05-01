@@ -179,6 +179,8 @@ The active docs now provide:
 - PowerShell launcher exists at `tools/run_triton_segmenter_python.ps1`
 - service launcher exists at `run-service-triton-segmenter.cmd` to set Triton segmenter env defaults
 - `run-service-triton-segmenter.cmd` now defaults to `RELOAD=0` so Windows `uvicorn --reload` does not preserve stale local-mode settings when switching to Triton mode
+- visible Windows service launchers exist at `start-service-window.cmd` and `start-service-triton-window.cmd`; they open FastAPI in a separate console window and default to `RELOAD=0`
+- Playground includes a dev-only shutdown button backed by `POST /v1/dev/service/shutdown`, so the current ML-service process can be stopped from the UI
 - local helper maps standard Triton container ports to offset host ports:
   - HTTP `8010`
   - gRPC `8011`
@@ -271,6 +273,8 @@ The active docs now provide:
 - `.venv\Scripts\python.exe -m compileall src tests tools ops\triton\model_repository\shadowgen_segmenter\1\model.py` passed after live Triton hardening
 - `python -m py_compile ops/triton/model_repository/shadowgen_segmenter/1/model.py` passed
 - `tools/run_triton_segmenter_python.ps1` fails fast with a clear Docker / WSL diagnostic when the local Triton container backend is unavailable
+- `.venv\Scripts\python.exe -m pytest tests\test_api.py -q` passed after adding the visible service launcher and Playground shutdown control: `38 passed, 3 warnings`
+- `.venv\Scripts\python.exe -m compileall src tests` passed after adding the visible service launcher and Playground shutdown control
 
 ## Remaining Bootstrap Gaps
 

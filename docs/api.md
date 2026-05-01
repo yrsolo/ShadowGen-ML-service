@@ -14,6 +14,7 @@
 - `GET /playground`
 - `POST /v1/dev/pipeline/run-all`
 - `POST /v1/dev/pipeline/run-stage/{stage_key}`
+- `POST /v1/dev/service/shutdown`
 
 ## `POST /v1/render`
 
@@ -282,6 +283,24 @@ Compatibility notes:
 
 - `requested_mode` and `actual_mode` still exist
 - execution-aware fields are now the source of truth
+
+## Dev Service Shutdown
+
+`POST /v1/dev/service/shutdown` asks the currently running ML-service process to terminate.
+
+This endpoint exists only as a local playground convenience. It is useful when the service was started through a visible Windows launcher such as `start-service-window.cmd` or `start-service-triton-window.cmd`.
+
+Response shape:
+
+- `status`
+- `pid`
+- `message`
+
+Operational notes:
+
+- when the service is started without reload, the process exits and the visible console remains available for logs
+- when the service is started with `uvicorn --reload`, the reloader may spawn a new worker process after shutdown
+- this endpoint does not stop the Triton Docker container; stop Triton separately with `docker rm -f shadowgen-triton-segmenter`
 
 ## Stage Detail Summary
 
