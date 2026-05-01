@@ -288,7 +288,7 @@ Compatibility notes:
 
 `POST /v1/dev/service/shutdown` asks the currently running ML-service process to terminate.
 
-This endpoint exists only as a local playground convenience. It is useful when the service was started through a visible Windows launcher such as `start-service-window.cmd` or `start-service-triton-window.cmd`.
+This endpoint exists only as a local playground convenience. It is useful when the service was started through `start-service.cmd`, which opens a visible Windows console and runs FastAPI without reload by default.
 
 Response shape:
 

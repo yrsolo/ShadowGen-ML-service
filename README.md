@@ -130,23 +130,19 @@ GPU-oriented ML setup:
 .venv\Scripts\python.exe -m pip install -e .[dev,ml]
 ```
 
-Run the service:
-
-```powershell
-.venv\Scripts\python.exe -m uvicorn shadowgen_ml_service.main:app --reload
-```
-
-Or on Windows:
+Rebuild the Triton image after changing code under `ops/triton/model_repository`:
 
 ```cmd
-run-service.cmd
+rebuild-triton.cmd
 ```
 
-Open the service in its own visible Windows console:
+Start the full local service:
 
 ```cmd
-start-service-window.cmd
+start-service.cmd
 ```
+
+`start-service.cmd` opens a visible Windows console, starts the prebuilt Triton container when needed, waits for `shadowgen_segmenter`, and then starts FastAPI without reload.
 
 Open:
 
@@ -180,37 +176,18 @@ Current live Triton bridge:
 - `torch.compile` remains an opt-in acceleration lever while ONNX export is blocked by `torchvision::deform_conv2d`
 - `ONNX` stays the planned first long-term production model format
 
-Quick local Triton start:
+Normal local lifecycle:
 
 ```cmd
-tools\run_triton_segmenter_python.cmd -Detach -Wait
+rebuild-triton.cmd
+start-service.cmd
 ```
 
-Then point ML-core at Triton:
+Run `rebuild-triton.cmd` only after Triton model/backend code changes. Run `start-service.cmd` for day-to-day work.
 
-```powershell
-$env:SHADOWGEN_TRITON_URL="http://127.0.0.1:8010"
-$env:SHADOWGEN_SEGMENTER_BACKEND_KIND="triton"
-```
+The rebuild script builds [ops/triton/Dockerfile.segmenter-python](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/ops/triton/Dockerfile.segmenter-python), bakes [ops/triton/model_repository](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/ops/triton/model_repository) into `/models`, and the start script exposes Triton HTTP on host `8010`, gRPC on host `8011`, and metrics on host `8012`.
 
-Or start the service with those defaults already set:
-
-```cmd
-run-service-triton-segmenter.cmd
-```
-
-For day-to-day debugging, prefer the visible-window launcher:
-
-```cmd
-start-service-triton-window.cmd
-```
-
-It starts FastAPI without reload and defaults to `PORT=8003`, so the Playground shutdown button can stop the visible process cleanly.
-
-The helper builds [ops/triton/Dockerfile.segmenter-python](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/ops/triton/Dockerfile.segmenter-python), bakes [ops/triton/model_repository](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/ops/triton/model_repository) into `/models`, and exposes Triton HTTP on host `8010`, gRPC on host `8011`, and metrics on host `8012`.
-
-The default launcher mode starts without Docker GPU flags so the Triton wiring can be checked even if NVIDIA container runtime is not configured yet. In that mode the helper uses a CPU-safe 512px segmenter resolution and mounts HuggingFace cache from the host to avoid filling Docker overlay storage. Use `tools\run_triton_segmenter_python.cmd -Gpu -Detach -Wait` when Docker Desktop GPU support is working.
-Use `-BindModelRepository` only when Docker Desktop can reliably mount the workspace path.
+The default launcher mode starts without Docker GPU flags so the Triton wiring can be checked even if NVIDIA container runtime is not configured yet. In that mode the helper uses a CPU-safe 512px segmenter resolution and mounts HuggingFace cache from the host to avoid filling Docker overlay storage. Set `TRITON_GPU=1` before `start-service.cmd` when Docker Desktop GPU support is working.
 
 Live smoke check:
 
