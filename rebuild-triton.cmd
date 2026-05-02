@@ -25,7 +25,7 @@ if errorlevel 1 (
   exit /b 1
 )
 
-for /f "delims=" %%A in ('"%DOCKER_EXE%" ps -a --filter "name=^/%TRITON_CONTAINER%$" --format "{{.Names}}"') do set "EXISTING_CONTAINER=%%A"
+for /f "delims=" %%A in ('%DOCKER_EXE% ps -a --filter "name=^/%TRITON_CONTAINER%$" --format "{{.Names}}"') do set "EXISTING_CONTAINER=%%A"
 if /I "%EXISTING_CONTAINER%"=="%TRITON_CONTAINER%" (
   echo Removing old Triton container so the next service start uses the rebuilt image...
   "%DOCKER_EXE%" rm -f "%TRITON_CONTAINER%" >nul
@@ -53,7 +53,7 @@ echo Usage:
 echo   rebuild-triton.cmd
 echo.
 echo Rebuilds the Triton Docker image with the current ops\triton\model_repository code baked into /models.
-echo It also removes the old shadowgen-triton-segmenter container so the next service start uses the new image.
+echo It also removes the old Triton container so the next service start uses the new image.
 echo.
 echo Optional environment variables:
 echo   TRITON_IMAGE=shadowgen-triton-segmenter:py

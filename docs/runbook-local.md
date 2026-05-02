@@ -70,7 +70,7 @@ Start the full service:
 start-service.cmd
 ```
 
-`start-service.cmd` opens a visible Windows console, starts the prebuilt Triton container when needed, waits until `shadowgen_segmenter` is ready, sets the ML-core Triton environment, and starts FastAPI with `RELOAD=0` by default. That makes the `/playground` shutdown button stop the visible FastAPI process instead of having `uvicorn --reload` immediately spawn it again.
+`start-service.cmd` opens a visible Windows console, starts the prebuilt Triton container when needed, waits until `shadowgen_detector` and `shadowgen_segmenter` are ready, sets the ML-core Triton environment, and starts FastAPI with `RELOAD=0` by default. That makes the `/playground` shutdown button stop the visible FastAPI process instead of having `uvicorn --reload` immediately spawn it again.
 
 Open:
 
@@ -176,7 +176,7 @@ When `SHADOWGEN_GEOMETRY_ENABLED=false`, the public pipeline does not run GeoCal
 - Default local model: `ZhengPeng7/BiRefNet-matting`
 - Previous fast default was `ZhengPeng7/BiRefNet_lite-matting`; use it only when speed matters more than edge quality
 - Higher-quality experimental override: `ZhengPeng7/BiRefNet_HR-matting`
-- First live Triton target: `shadowgen_segmenter`
+- First live Triton targets: `shadowgen_detector`, `shadowgen_segmenter`
 - Current live Triton packaging: temporary `python` backend
 - Long-term production Triton format: `ONNX`
 - Env vars:
@@ -198,6 +198,8 @@ Tracked repository scaffold:
 - [ops/triton/model_repository/README.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/ops/triton/model_repository/README.md)
 - [ops/triton/model_repository/shadowgen_segmenter/config.pbtxt](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/ops/triton/model_repository/shadowgen_segmenter/config.pbtxt)
 - [ops/triton/model_repository/shadowgen_segmenter/1/model.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/ops/triton/model_repository/shadowgen_segmenter/1/model.py)
+- [ops/triton/model_repository/shadowgen_detector/config.pbtxt](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/ops/triton/model_repository/shadowgen_detector/config.pbtxt)
+- [ops/triton/model_repository/shadowgen_detector/1/model.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/ops/triton/model_repository/shadowgen_detector/1/model.py)
 - [ops/triton/Dockerfile.segmenter-python](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/ops/triton/Dockerfile.segmenter-python)
 - [rebuild-triton.cmd](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/rebuild-triton.cmd)
 - [start-service.cmd](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/start-service.cmd)
@@ -217,6 +219,7 @@ Current blocker note:
 
 - in the current environment BiRefNet ONNX export is blocked by `torchvision::deform_conv2d`
 - the export tool now tries both the modern and legacy ONNX exporters and reports this blocker explicitly
+- `shadowgen_detector` now uses a temporary Triton Python backend around GroundingDINO
 - `shadowgen_segmenter` now uses a temporary Triton Python backend so we can run a live Triton stage without replacing the model
 - `torch.compile` is exposed as an opt-in acceleration path for both the local backend and the Triton Python backend
 
@@ -514,10 +517,11 @@ This script:
 
 - opens a visible Windows console window
 - starts the prebuilt Triton container if it is not already running
-- waits until `shadowgen_segmenter` is ready
+- waits until `shadowgen_detector` and `shadowgen_segmenter` are ready
 - defaults to `TRITON_GPU=1`, `TRITON_DEVICE=cuda:0`, `TRITON_RESOLUTION=512`
 - sets `SHADOWGEN_TRITON_SEGMENTER_COMPILE_ENABLED=false` to avoid a long first-request `torch.compile` pause in the playground
 - sets `SHADOWGEN_TRITON_URL=http://127.0.0.1:8010`
+- sets `SHADOWGEN_DETECTOR_BACKEND_KIND=triton`
 - sets `SHADOWGEN_SEGMENTER_BACKEND_KIND=triton`
 - starts FastAPI on `http://127.0.0.1:8000/playground`
 - starts FastAPI with `RELOAD=0` by default so the Playground shutdown button stops the actual process
@@ -544,15 +548,18 @@ The temporary Python backend model config uses `KIND_CPU` intentionally. The Pyt
 
 ```powershell
 .venv\Scripts\python.exe tools\check_triton_segmenter_ready.py http://127.0.0.1:8010 --wait-seconds 240
+.venv\Scripts\python.exe tools\check_triton_segmenter_ready.py http://127.0.0.1:8010 shadowgen_detector --wait-seconds 240
 ```
 
 4. Run a live smoke check. This performs:
 
+- direct `TritonDetector` inference
 - direct `TritonSegmenter` inference
-- full `/v1/render` with `segmenter=triton` and other heavy stages set to `mock`
+- full `/v1/render` with one Triton stage active and other heavy stages set to `mock`
 - artifact export to `artifacts/triton-smoke/`
 
 ```powershell
+.venv\Scripts\python.exe tools\smoke_triton_detector.py --base-url http://127.0.0.1:8010 --image C:\Users\solofarm\Pictures\Screenshots\1.jpg
 .venv\Scripts\python.exe tools\smoke_triton_segmenter.py --base-url http://127.0.0.1:8010 --image C:\Users\solofarm\Pictures\Screenshots\1.jpg
 ```
 
@@ -562,6 +569,13 @@ The temporary Python backend model config uses `KIND_CPU` intentionally. The Pyt
 curl http://127.0.0.1:8000/v1/capabilities
 ```
 
+Expected detector signals:
+
+- `backend_kind = triton`
+- `model_name = shadowgen_detector`
+- `available = true`
+- `endpoint` is filled
+
 Expected segmenter signals:
 
 - `backend_kind = triton`
@@ -569,7 +583,7 @@ Expected segmenter signals:
 - `available = true`
 - `endpoint` is filled
 
-6. In `/playground`, rerun `Segmentation` with `backend_kind = triton`.
+6. In `/playground`, rerun `Detection` and `Segmentation` with `backend_kind = triton`.
 
 Expected stage metadata:
 

@@ -195,8 +195,12 @@ This is also the primary worker-facing handshake endpoint for deciding:
 - whether batching is supported by the active heavy-stage backends
 - whether the core is currently able to accept more jobs
 
-For the first live Triton rollout, the most important capability check is:
+For the live Triton rollout, the most important capability checks are:
 
+- `detector.backends[]`
+  - `backend_kind = triton`
+  - `available = true`
+  - `model_name = shadowgen_detector`
 - `segmenter.backends[]`
   - `backend_kind = triton`
   - `available = true`
@@ -346,6 +350,11 @@ Previews:
 
 - `detection_overlay`
 - `crop_for_resize`
+
+Operational note:
+
+- when `actual_backend_kind = triton`, the current live contract is a GroundingDINO Triton Python backend returning `bbox` and `confidence`
+- detection overlay and crop preview are still reconstructed inside ML-core postprocess
 
 ### `segmenter`
 

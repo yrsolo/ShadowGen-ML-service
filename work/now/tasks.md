@@ -43,6 +43,11 @@
   - [x] add BiRefNet ONNX export tool
   - [x] switch segmenter Triton adapter to live mask-first postprocess flow
 
+- [x] Bring up live Triton detector path for `detector`:
+  - [x] add `shadowgen_detector` Triton Python backend scaffold
+  - [x] wire local launcher to request detector through Triton
+  - [x] add direct detector Triton smoke helper
+  - [x] rebuild image and validate live detector inference
 ## Next Likely
 
 - [x] Switch `segmenter` to a temporary Triton Python backend while BiRefNet ONNX export remains blocked

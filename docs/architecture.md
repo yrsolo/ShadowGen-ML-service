@@ -240,14 +240,16 @@ Current Triton-ready stage families:
 - `normal_estimator`
 - `shadow_generator` for `V2-DIFF`
 
-Current live-first Triton target:
+Current live-first Triton targets:
 
+- `detector` via temporary Triton `python` backend
 - `segmenter` via temporary Triton `python` backend
 
 Notes:
 
 - the first long-term production Triton model format remains `ONNX`
 - `TensorRT` is intentionally deferred as phase 2 optimization
+- the Triton `detector` contract currently returns minimal `bbox` and `confidence` tensors
 - the Triton `segmenter` contract currently returns a minimal `mask` tensor
 - `cutout`, `crop`, and compatibility `bbox` are reconstructed inside the ML core postprocess path
 - current BiRefNet export blocker in this environment is `torchvision::deform_conv2d`, so the live stage currently runs through a temporary Triton Python backend
@@ -355,6 +357,12 @@ First-wave batchable stages:
 - Backends: `mock`, `local`, `triton`
 - Local backend: GroundingDINO
 - Triton variant: `grounding-dino`
+- First live Triton packaging target: `shadowgen_detector` (`python`)
+- Current Triton tensor contract:
+  - input `image`: `FP32`, batched `NCHW`, normalized `0..1`
+  - input `padding_px`: `INT32`, compatibility scalar
+  - output `bbox`: `FP32`, `[N, 4]`
+  - output `confidence`: `FP32`, `[N, 1]`
 
 #### Segmentation
 

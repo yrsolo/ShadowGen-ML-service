@@ -13,11 +13,11 @@ def build_triton_model_registry(settings: Settings) -> TritonModelRegistry:
                 settings.triton_detector_model,
                 inputs={
                     "image": TritonTensorBinding("image", "FP32", expected_ranks=(4,), shape_policy="channel-first", channels=3),
-                    "padding_px": TritonTensorBinding("padding_px", "INT32", expected_ranks=(1,), shape_policy="scalar"),
+                    "padding_px": TritonTensorBinding("padding_px", "INT32", expected_ranks=(1, 2), shape_policy="scalar"),
                 },
                 outputs={
                     "bbox": TritonTensorBinding("bbox", "FP32", expected_ranks=(1, 2), shape_policy="bbox4"),
-                    "confidence": TritonTensorBinding("confidence", "FP32", expected_ranks=(1,), shape_policy="scalar"),
+                    "confidence": TritonTensorBinding("confidence", "FP32", expected_ranks=(1, 2), shape_policy="scalar"),
                 },
             ),
             TritonModelBinding(

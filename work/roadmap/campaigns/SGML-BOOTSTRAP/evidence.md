@@ -90,8 +90,11 @@
 - `detector`
   - GroundingDINO local backend
   - mock backend
-  - Triton scaffold backend
+  - live Triton Python backend
   - bbox previews and working-crop preview
+  - tracked Triton model repository scaffold under `ops/triton/model_repository/shadowgen_detector/`
+  - tracked Triton Python backend implementation under `ops/triton/model_repository/shadowgen_detector/1/model.py`
+  - tracked live smoke helper under `tools/smoke_triton_detector.py`
 
 - `segmenter`
   - BiRefNet local backend
@@ -189,6 +192,9 @@ The active docs now provide:
 - temporary Python backend accepts runtime env overrides for model id, device, and resolution
 - local heavy fallback adapters are now lazy when their stage is not selected as the active backend, avoiding unnecessary local model loads during Triton smoke and Triton-first service startup
 - direct live Triton segmenter smoke on `C:\Users\solofarm\Pictures\Screenshots\1.jpg` succeeded through `TritonSegmenter`: input `(512, 508)`, bbox `(239, 172, 384, 362)`, mask extrema `(0, 254)`
+- direct live Triton detector smoke on `C:\Users\solofarm\Pictures\Screenshots\1.jpg` succeeded through `TritonDetector`: input `(768, 762)`, bbox `(354, 257, 586, 544)`, confidence `0.419`
+- full `/v1/render` smoke with `detector=triton` and other heavy stages set to `mock` succeeded; no-cache metrics reported `detection_ms=923`, `total_ms=1905`
+- `docker exec shadowgen-triton-segmenter python3 -c "import torch; ..."` confirmed CUDA is available and container `cuda:0` is `NVIDIA GeForce RTX 4090` after adding the detector model
 - full live `/v1/render` smoke with `segmenter=triton` and other heavy stages set to `mock` succeeded against the running Triton container; no-cache metrics reported `segmentation_ms=22982`, `total_ms=24041` in the tracked smoke script run
 - debug fallback reason now includes the unavailable backend descriptor detail, for example `Triton endpoint is unavailable`
 - V2-DIFF model training/export/serving requirements are captured in `docs/shadow-v2-model-contract.md`
@@ -280,6 +286,11 @@ The active docs now provide:
 - `docker exec shadowgen-triton-segmenter python3 -c "import torch; ..."` confirmed CUDA is available and container `cuda:0` is `NVIDIA GeForce RTX 4090`
 - `.venv\Scripts\python.exe tools\check_triton_segmenter_ready.py http://127.0.0.1:8010 --wait-seconds 300` passed after GPU Triton restart
 - `.venv\Scripts\python.exe tools\smoke_triton_segmenter.py --base-url http://127.0.0.1:8010 --image C:\Users\solofarm\Pictures\Screenshots\1.jpg --output-dir artifacts\triton-gpu-smoke-compile-off` passed; full render reported `segmentation_ms=1057` and Triton logs showed the warm 512px infer executing in about `0.31s`
+- `.venv\Scripts\python.exe tools\check_triton_segmenter_ready.py http://127.0.0.1:8010 shadowgen_detector --wait-seconds 300` passed after adding `shadowgen_detector`
+- `.venv\Scripts\python.exe tools\check_triton_segmenter_ready.py http://127.0.0.1:8010 shadowgen_segmenter --wait-seconds 300` passed after adding `shadowgen_detector`
+- `.venv\Scripts\python.exe tools\smoke_triton_detector.py --base-url http://127.0.0.1:8010 --image C:\Users\solofarm\Pictures\Screenshots\1.jpg --output-dir artifacts\triton-detector-smoke --timeout-ms 300000` passed after adding live Triton detector support
+- `.venv\Scripts\python.exe tools\smoke_triton_segmenter.py --base-url http://127.0.0.1:8010 --image C:\Users\solofarm\Pictures\Screenshots\1.jpg --output-dir artifacts\triton-segmenter-after-detector-smoke --direct-only --timeout-ms 300000` passed after adding live Triton detector support
+- `.venv\Scripts\python.exe -m pytest -q` passed after adding live Triton detector support: `96 passed, 4 warnings`
 
 ## Remaining Bootstrap Gaps
 

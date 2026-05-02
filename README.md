@@ -142,7 +142,7 @@ Start the full local service:
 start-service.cmd
 ```
 
-`start-service.cmd` opens a visible Windows console, starts the prebuilt Triton container when needed, waits for `shadowgen_segmenter`, and then starts FastAPI without reload.
+`start-service.cmd` opens a visible Windows console, starts the prebuilt Triton container when needed, waits for `shadowgen_detector` and `shadowgen_segmenter`, and then starts FastAPI without reload.
 
 Open:
 
@@ -172,6 +172,7 @@ This means web UI, sync render, async jobs, cache, and previews remain in this s
 
 Current live Triton bridge:
 
+- `detector` uses a temporary Triton `python` backend around GroundingDINO
 - `segmenter` uses a temporary Triton `python` backend around BiRefNet
 - `torch.compile` remains an opt-in acceleration lever while ONNX export is blocked by `torchvision::deform_conv2d`
 - `ONNX` stays the planned first long-term production model format
@@ -187,11 +188,12 @@ Run `rebuild-triton.cmd` only after Triton model/backend code changes. Run `star
 
 The rebuild script builds [ops/triton/Dockerfile.segmenter-python](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/ops/triton/Dockerfile.segmenter-python), bakes [ops/triton/model_repository](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/ops/triton/model_repository) into `/models`, and the start script exposes Triton HTTP on host `8010`, gRPC on host `8011`, and metrics on host `8012`.
 
-The default launcher mode uses Docker GPU (`TRITON_GPU=1`), `TRITON_DEVICE=cuda:0`, and a 512px segmenter resolution. Set `TRITON_GPU=0` only for CPU bring-up checks; CPU Triton is intentionally much slower.
+The default launcher mode uses Docker GPU (`TRITON_GPU=1`), `TRITON_DEVICE=cuda:0`, a 512px segmenter resolution, and Triton defaults for both detector and segmenter. Set `TRITON_GPU=0` only for CPU bring-up checks; CPU Triton is intentionally much slower.
 
 Live smoke check:
 
 ```cmd
+.venv\Scripts\python.exe tools\smoke_triton_detector.py --base-url http://127.0.0.1:8010 --image C:\Users\solofarm\Pictures\Screenshots\1.jpg
 .venv\Scripts\python.exe tools\smoke_triton_segmenter.py --base-url http://127.0.0.1:8010 --image C:\Users\solofarm\Pictures\Screenshots\1.jpg
 ```
 

@@ -2,21 +2,27 @@
 
 This directory contains git-tracked Triton model repository scaffolds.
 
-Current live-first model:
+Current live-first models:
 
 - `shadowgen_segmenter`
+- `shadowgen_detector`
 
-Current repository shape for `shadowgen_segmenter`:
+Current repository shape:
 
 - `ops/triton/model_repository/shadowgen_segmenter/config.pbtxt`
 - `ops/triton/model_repository/shadowgen_segmenter/1/model.py`
+- `ops/triton/model_repository/shadowgen_detector/config.pbtxt`
+- `ops/triton/model_repository/shadowgen_detector/1/model.py`
 
 Current operational path:
 
 - temporary Triton `python` backend for BiRefNet
+- temporary Triton `python` backend for GroundingDINO
 - default model id: `ZhengPeng7/BiRefNet-matting`
+- default detector model id: `IDEA-Research/grounding-dino-base`
 - model returns a mask-first tensor contract
 - `cutout`, `crop`, and compatibility `bbox` remain ML-core postprocess responsibilities
+- detector returns bbox/confidence tensors; detection overlay and crop remain ML-core responsibilities
 
 Optional ONNX tooling is still tracked, but current BiRefNet export is blocked in this environment by `torchvision::deform_conv2d`.
 
@@ -46,6 +52,11 @@ The launcher also provides runtime overrides through environment variables consu
 - `SHADOWGEN_TRITON_SEGMENTER_MODEL_ID`
 - `SHADOWGEN_TRITON_SEGMENTER_RESOLUTION`
 - `SHADOWGEN_TRITON_SEGMENTER_DEVICE`
+- `SHADOWGEN_TRITON_DETECTOR_MODEL_ID`
+- `SHADOWGEN_TRITON_DETECTOR_PROMPT`
+- `SHADOWGEN_TRITON_DETECTOR_BOX_THRESHOLD`
+- `SHADOWGEN_TRITON_DETECTOR_TEXT_THRESHOLD`
+- `SHADOWGEN_TRITON_DETECTOR_DEVICE`
 
 Default `start-service.cmd` behavior:
 
@@ -60,5 +71,13 @@ For CPU-only bring-up, set `TRITON_GPU=0` before running `start-service.cmd`. CP
 Validation command:
 
 ```powershell
+.venv\Scripts\python.exe tools\smoke_triton_detector.py --base-url http://127.0.0.1:8010 --image C:\Users\solofarm\Pictures\Screenshots\1.jpg
 .venv\Scripts\python.exe tools\smoke_triton_segmenter.py --base-url http://127.0.0.1:8010 --image C:\Users\solofarm\Pictures\Screenshots\1.jpg
+```
+
+Readiness checks:
+
+```powershell
+.venv\Scripts\python.exe tools\check_triton_segmenter_ready.py http://127.0.0.1:8010 shadowgen_segmenter
+.venv\Scripts\python.exe tools\check_triton_segmenter_ready.py http://127.0.0.1:8010 shadowgen_detector
 ```
