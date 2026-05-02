@@ -187,7 +187,7 @@ Run `rebuild-triton.cmd` only after Triton model/backend code changes. Run `star
 
 The rebuild script builds [ops/triton/Dockerfile.segmenter-python](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/ops/triton/Dockerfile.segmenter-python), bakes [ops/triton/model_repository](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/ops/triton/model_repository) into `/models`, and the start script exposes Triton HTTP on host `8010`, gRPC on host `8011`, and metrics on host `8012`.
 
-The default launcher mode starts without Docker GPU flags so the Triton wiring can be checked even if NVIDIA container runtime is not configured yet. In that mode the helper uses a CPU-safe 512px segmenter resolution and mounts HuggingFace cache from the host to avoid filling Docker overlay storage. Set `TRITON_GPU=1` before `start-service.cmd` when Docker Desktop GPU support is working.
+The default launcher mode uses Docker GPU (`TRITON_GPU=1`), `TRITON_DEVICE=cuda:0`, and a 512px segmenter resolution. Set `TRITON_GPU=0` only for CPU bring-up checks; CPU Triton is intentionally much slower.
 
 Live smoke check:
 

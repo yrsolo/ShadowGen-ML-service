@@ -275,6 +275,11 @@ The active docs now provide:
 - `cmd /c start-service.cmd /?` passed after consolidating root launch scripts
 - root `*.cmd` listing now contains only `rebuild-triton.cmd` and `start-service.cmd`
 - `git diff --check` passed after consolidating root launch scripts
+- Docker GPU runtime validation passed with `docker run --rm --gpus all nvidia/cuda:12.6.0-base-ubuntu22.04 nvidia-smi`; both RTX 2080 Ti and RTX 4090 were visible inside the container
+- Triton segmenter was restarted with `--gpus all`, `SHADOWGEN_TRITON_SEGMENTER_DEVICE=cuda:0`, `SHADOWGEN_TRITON_SEGMENTER_RESOLUTION=512`, and `SHADOWGEN_TRITON_SEGMENTER_COMPILE_ENABLED=false`
+- `docker exec shadowgen-triton-segmenter python3 -c "import torch; ..."` confirmed CUDA is available and container `cuda:0` is `NVIDIA GeForce RTX 4090`
+- `.venv\Scripts\python.exe tools\check_triton_segmenter_ready.py http://127.0.0.1:8010 --wait-seconds 300` passed after GPU Triton restart
+- `.venv\Scripts\python.exe tools\smoke_triton_segmenter.py --base-url http://127.0.0.1:8010 --image C:\Users\solofarm\Pictures\Screenshots\1.jpg --output-dir artifacts\triton-gpu-smoke-compile-off` passed; full render reported `segmentation_ms=1057` and Triton logs showed the warm 512px infer executing in about `0.31s`
 
 ## Remaining Bootstrap Gaps
 

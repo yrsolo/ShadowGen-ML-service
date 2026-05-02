@@ -13,7 +13,6 @@ if "%TRITON_CONTAINER%"=="" set "TRITON_CONTAINER=shadowgen-triton-segmenter"
 if "%NO_CACHE%"=="" set "NO_CACHE=0"
 
 set "DOCKER_EXE=docker"
-if exist "C:\Program Files\Docker\Docker\resources\bin\docker.exe" set "DOCKER_EXE=C:\Program Files\Docker\Docker\resources\bin\docker.exe"
 
 echo Rebuilding ShadowGen Triton image with baked model repository.
 echo Image:     %TRITON_IMAGE%

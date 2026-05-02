@@ -515,6 +515,8 @@ This script:
 - opens a visible Windows console window
 - starts the prebuilt Triton container if it is not already running
 - waits until `shadowgen_segmenter` is ready
+- defaults to `TRITON_GPU=1`, `TRITON_DEVICE=cuda:0`, `TRITON_RESOLUTION=512`
+- sets `SHADOWGEN_TRITON_SEGMENTER_COMPILE_ENABLED=false` to avoid a long first-request `torch.compile` pause in the playground
 - sets `SHADOWGEN_TRITON_URL=http://127.0.0.1:8010`
 - sets `SHADOWGEN_SEGMENTER_BACKEND_KIND=triton`
 - starts FastAPI on `http://127.0.0.1:8000/playground`
@@ -524,8 +526,8 @@ Useful environment overrides:
 
 ```cmd
 set PORT=8003
-set TRITON_GPU=1
-set TRITON_RESOLUTION=1024
+set TRITON_DEVICE=cuda:0
+set TRITON_RESOLUTION=512
 start-service.cmd
 ```
 
@@ -578,8 +580,9 @@ Expected stage metadata:
 Operational note:
 
 - the current Python backend is a bridge while ONNX export is blocked; the target production path remains ONNX first, then TensorRT
-- if `-Gpu` fails with `Auto-detected mode as 'legacy'`, the service can still run CPU smoke checks, but Docker Desktop/NVIDIA runtime must be fixed before GPU Triton inference
-- CPU Triton smoke is intentionally slow; on this workstation a no-cache 512px segmenter call is roughly tens of seconds
+- if `TRITON_GPU=1` fails with `Auto-detected mode as 'legacy'`, the service can still run CPU smoke checks with `TRITON_GPU=0`, but Docker Desktop/NVIDIA runtime must be fixed before GPU Triton inference
+- CPU Triton smoke is intentionally slow; on this workstation a 512px segmenter call was roughly tens of seconds
+- GPU Triton smoke with the temporary Python backend measured about `1.2s` for segmentation after warm-up; it is much faster than CPU but still slower than the local in-process backend until we move to ONNX/TensorRT
 
 ### `V2-DIFF` is unavailable
 

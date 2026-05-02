@@ -47,11 +47,15 @@ The launcher also provides runtime overrides through environment variables consu
 - `SHADOWGEN_TRITON_SEGMENTER_RESOLUTION`
 - `SHADOWGEN_TRITON_SEGMENTER_DEVICE`
 
-Default behavior:
+Default `start-service.cmd` behavior:
 
-- without `TRITON_GPU=1`: `device=cpu`, `resolution=512`
-- with `TRITON_GPU=1`: `device=cuda`, `resolution=1024`
+- `TRITON_GPU=1`
+- `device=cuda:0`
+- `resolution=512`
+- `compile_enabled=false`
 - HuggingFace cache is mounted from the host into `/root/.cache/huggingface`
+
+For CPU-only bring-up, set `TRITON_GPU=0` before running `start-service.cmd`. CPU mode is intentionally slow and should not be used for performance checks.
 
 Validation command:
 

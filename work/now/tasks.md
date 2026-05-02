@@ -75,6 +75,7 @@
 - [x] Simplify local operations to two root launch scripts:
   - [x] `rebuild-triton.cmd`
   - [x] `start-service.cmd`
+- [x] Switch the local Triton segmenter launch path to GPU-first defaults and verify CUDA serving
 
 ## Notes
 

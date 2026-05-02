@@ -29,30 +29,24 @@ if "%TRITON_CONTAINER%"=="" set "TRITON_CONTAINER=shadowgen-triton-segmenter"
 if "%TRITON_HTTP_PORT%"=="" set "TRITON_HTTP_PORT=8010"
 if "%TRITON_GRPC_PORT%"=="" set "TRITON_GRPC_PORT=8011"
 if "%TRITON_METRICS_PORT%"=="" set "TRITON_METRICS_PORT=8012"
-if "%TRITON_GPU%"=="" set "TRITON_GPU=0"
+if "%TRITON_GPU%"=="" set "TRITON_GPU=1"
 if "%TRITON_MODEL_ID%"=="" set "TRITON_MODEL_ID=ZhengPeng7/BiRefNet-matting"
-if "%TRITON_RESOLUTION%"=="" (
-  if "%TRITON_GPU%"=="1" (
-    set "TRITON_RESOLUTION=1024"
-  ) else (
-    set "TRITON_RESOLUTION=512"
-  )
-)
+if "%TRITON_RESOLUTION%"=="" set "TRITON_RESOLUTION=512"
 if "%TRITON_DEVICE%"=="" (
   if "%TRITON_GPU%"=="1" (
-    set "TRITON_DEVICE=cuda"
+    set "TRITON_DEVICE=cuda:0"
   ) else (
     set "TRITON_DEVICE=cpu"
   )
 )
-if "%HF_CACHE_DIR%"=="" set "HF_CACHE_DIR=%LOCALAPPDATA%\ShadowGen\triton-hf-cache"
+if "%TRITON_COMPILE_ENABLED%"=="" set "TRITON_COMPILE_ENABLED=false"
+if "%HF_CACHE_DIR%"=="" set "HF_CACHE_DIR=%LOCALAPPDATA%\ShadowGen\triton-hf-cache-gpu"
 if "%STOP_TRITON_ON_EXIT%"=="" set "STOP_TRITON_ON_EXIT=0"
 
 set "SHADOWGEN_TRITON_URL=http://127.0.0.1:%TRITON_HTTP_PORT%"
 if "%SHADOWGEN_SEGMENTER_BACKEND_KIND%"=="" set "SHADOWGEN_SEGMENTER_BACKEND_KIND=triton"
 
 set "DOCKER_EXE=docker"
-if exist "C:\Program Files\Docker\Docker\resources\bin\docker.exe" set "DOCKER_EXE=C:\Program Files\Docker\Docker\resources\bin\docker.exe"
 
 echo ShadowGen ML Service launcher
 echo FastAPI: http://%HOST%:%PORT%/playground
@@ -92,10 +86,12 @@ if /I "%RUNNING_CONTAINER%"=="%TRITON_CONTAINER%" (
 
   echo Starting Triton container: %TRITON_CONTAINER%
   echo   image:      %TRITON_IMAGE%
+  echo   gpu:        %TRITON_GPU%
   echo   device:     %TRITON_DEVICE%
   echo   resolution: %TRITON_RESOLUTION%
+  echo   compile:    %TRITON_COMPILE_ENABLED%
   echo   HTTP:       http://127.0.0.1:%TRITON_HTTP_PORT%
-  "%DOCKER_EXE%" run -d --name "%TRITON_CONTAINER%" !GPU_ARGS! --shm-size 2g -p "%TRITON_HTTP_PORT%:8000" -p "%TRITON_GRPC_PORT%:8001" -p "%TRITON_METRICS_PORT%:8002" -e "HF_HOME=/root/.cache/huggingface" -e "HUGGINGFACE_HUB_CACHE=/root/.cache/huggingface/hub" -e "SHADOWGEN_TRITON_SEGMENTER_MODEL_ID=%TRITON_MODEL_ID%" -e "SHADOWGEN_TRITON_SEGMENTER_RESOLUTION=%TRITON_RESOLUTION%" -e "SHADOWGEN_TRITON_SEGMENTER_DEVICE=%TRITON_DEVICE%" -v "%HF_CACHE_DIR%:/root/.cache/huggingface" "%TRITON_IMAGE%" tritonserver --model-repository=/models --log-verbose=1
+  "%DOCKER_EXE%" run -d --name "%TRITON_CONTAINER%" !GPU_ARGS! --shm-size 2g -p "%TRITON_HTTP_PORT%:8000" -p "%TRITON_GRPC_PORT%:8001" -p "%TRITON_METRICS_PORT%:8002" -e "HF_HOME=/root/.cache/huggingface" -e "HUGGINGFACE_HUB_CACHE=/root/.cache/huggingface/hub" -e "SHADOWGEN_TRITON_SEGMENTER_MODEL_ID=%TRITON_MODEL_ID%" -e "SHADOWGEN_TRITON_SEGMENTER_RESOLUTION=%TRITON_RESOLUTION%" -e "SHADOWGEN_TRITON_SEGMENTER_DEVICE=%TRITON_DEVICE%" -e "SHADOWGEN_TRITON_SEGMENTER_COMPILE_ENABLED=%TRITON_COMPILE_ENABLED%" -v "%HF_CACHE_DIR%:/root/.cache/huggingface" "%TRITON_IMAGE%" tritonserver --model-repository=/models --log-verbose=1
   if errorlevel 1 (
     echo [ERROR] Failed to start Triton container.
     exit /b 1
@@ -151,8 +147,9 @@ echo   RELOAD=0
 echo   TRITON_IMAGE=shadowgen-triton-segmenter:py
 echo   TRITON_CONTAINER=shadowgen-triton-segmenter
 echo   TRITON_HTTP_PORT=8010
-echo   TRITON_GPU=0
+echo   TRITON_GPU=1
 echo   TRITON_RESOLUTION=512
-echo   TRITON_DEVICE=cpu
+echo   TRITON_DEVICE=cuda:0
+echo   TRITON_COMPILE_ENABLED=false
 echo   STOP_TRITON_ON_EXIT=0
 exit /b 0
