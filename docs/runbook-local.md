@@ -521,8 +521,8 @@ This script:
 - defaults to `TRITON_GPU=1`, `TRITON_DEVICE=cuda:0`, `TRITON_RESOLUTION=512`
 - sets `SHADOWGEN_TRITON_SEGMENTER_COMPILE_ENABLED=false` to avoid a long first-request `torch.compile` pause in the playground
 - sets `SHADOWGEN_TRITON_URL=http://127.0.0.1:8010`
-- sets `SHADOWGEN_DETECTOR_BACKEND_KIND=triton`
-- sets `SHADOWGEN_SEGMENTER_BACKEND_KIND=triton`
+- sets `SHADOWGEN_TRITON_TRANSPORT=native`, which uses the official Triton HTTP client with binary tensor payloads
+- keeps `SHADOWGEN_DETECTOR_BACKEND_KIND=local` and `SHADOWGEN_SEGMENTER_BACKEND_KIND=local` unless `USE_TRITON_BACKENDS=1`
 - starts FastAPI on `http://127.0.0.1:8000/playground`
 - starts FastAPI with `RELOAD=0` by default so the Playground shutdown button stops the actual process
 
@@ -532,6 +532,7 @@ Useful environment overrides:
 set PORT=8003
 set TRITON_DEVICE=cuda:0
 set TRITON_RESOLUTION=512
+set USE_TRITON_BACKENDS=1
 start-service.cmd
 ```
 
@@ -561,7 +562,26 @@ The temporary Python backend model config uses `KIND_CPU` intentionally. The Pyt
 ```powershell
 .venv\Scripts\python.exe tools\smoke_triton_detector.py --base-url http://127.0.0.1:8010 --image C:\Users\solofarm\Pictures\Screenshots\1.jpg
 .venv\Scripts\python.exe tools\smoke_triton_segmenter.py --base-url http://127.0.0.1:8010 --image C:\Users\solofarm\Pictures\Screenshots\1.jpg
+.venv\Scripts\python.exe tools\benchmark_stage_backends.py --stage all --base-url http://127.0.0.1:8010 --transport local --transport triton-json --transport triton-native
 ```
+
+To prepare the next ONNX segmenter candidate, authenticate to Hugging Face locally and run:
+
+```powershell
+huggingface-cli login
+.venv\Scripts\python.exe tools\prepare_rmbg2_onnx_triton.py --filename onnx/model.onnx
+rebuild-triton.cmd
+```
+
+`RMBG-2.0` is gated, so the tool will fail without local Hugging Face access. The generated `model.onnx` stays ignored by git.
+
+GroundingDINO ONNX export is tracked as an experimental model-only path:
+
+```powershell
+.venv\Scripts\python.exe tools\export_detector_onnx.py
+```
+
+This exports `logits` and `pred_boxes`; bbox/confidence postprocess still needs a dedicated ONNX/Triton adapter before it can replace the current detector runtime.
 
 5. Check ML-core capabilities:
 

@@ -3,6 +3,9 @@ from __future__ import annotations
 import json
 import socket
 from urllib import error, request
+from urllib.parse import urlparse
+
+import numpy as np
 
 from shadowgen_ml_service.infrastructure.backends.triton.config import TritonBackendSettings
 from shadowgen_ml_service.infrastructure.backends.triton.errors import (
@@ -14,12 +17,13 @@ from shadowgen_ml_service.infrastructure.backends.triton.errors import (
     TritonTimeoutError,
 )
 from shadowgen_ml_service.infrastructure.backends.triton.model_registry import TritonModelBinding
-from shadowgen_ml_service.infrastructure.backends.triton.serializers import tensor_map_from_response, validate_tensor_against_binding
+from shadowgen_ml_service.infrastructure.backends.triton.serializers import tensor_from_input, tensor_map_from_response, validate_tensor_against_binding
 
 
 class TritonInferenceClient:
     def __init__(self, settings: TritonBackendSettings) -> None:
         self.settings = settings
+        self._native_http_client = None
 
     @property
     def endpoint(self) -> str | None:
@@ -66,6 +70,12 @@ class TritonInferenceClient:
     def infer(self, binding: TritonModelBinding, *, inputs: list[dict]) -> dict:
         if not self.settings.enabled:
             raise TritonModelUnavailableError("Triton endpoint is not configured")
+        if self._should_use_native_transport():
+            try:
+                return self._infer_native_http(binding, inputs=inputs)
+            except ImportError:
+                # Keep development usable without the optional official Triton client.
+                pass
         output_names = [item.tensor_name for item in binding.outputs.values()]
         body = json.dumps(
             {
@@ -111,6 +121,74 @@ class TritonInferenceClient:
             raise
         except Exception as exc:
             raise TritonBackendError(str(exc)) from exc
+
+    def _should_use_native_transport(self) -> bool:
+        transport = (self.settings.transport or "native").strip().lower()
+        protocol = (self.settings.protocol or "http").strip().lower()
+        return transport in {"native", "binary", "http-binary"} and protocol == "http"
+
+    def _infer_native_http(self, binding: TritonModelBinding, *, inputs: list[dict]) -> dict:
+        try:
+            import tritonclient.http as httpclient
+        except ImportError:
+            raise
+
+        client = self._get_native_http_client(httpclient)
+        infer_inputs = []
+        for item in inputs:
+            array = np.ascontiguousarray(tensor_from_input(item))
+            infer_input = httpclient.InferInput(item["name"], list(array.shape), item["datatype"])
+            infer_input.set_data_from_numpy(array, binary_data=True)
+            infer_inputs.append(infer_input)
+        output_names = [item.tensor_name for item in binding.outputs.values()]
+        requested_outputs = [httpclient.InferRequestedOutput(name, binary_data=True) for name in output_names]
+        try:
+            result = client.infer(
+                binding.model_name,
+                inputs=infer_inputs,
+                outputs=requested_outputs,
+            )
+        except Exception as exc:
+            message = str(exc)
+            lowered = message.lower()
+            if "timeout" in lowered:
+                raise TritonTimeoutError(f"Triton request timed out for model {binding.model_name}: {message}") from exc
+            if "unavailable" in lowered or "failed to establish" in lowered or "connection" in lowered:
+                raise TritonEndpointUnavailableError(f"Triton endpoint is unavailable: {message}") from exc
+            if "not found" in lowered or "unknown model" in lowered:
+                raise TritonModelUnavailableError(f"Triton model {binding.model_name} is unavailable: {message}") from exc
+            raise TritonBackendError(f"Triton native HTTP error for model {binding.model_name}: {message}") from exc
+
+        tensors: dict[str, np.ndarray] = {}
+        for output_binding in binding.outputs.values():
+            tensor = result.as_numpy(output_binding.tensor_name)
+            if tensor is None:
+                raise TritonSchemaMismatchError(
+                    f"Triton model {binding.model_name} did not return expected output: {output_binding.tensor_name}"
+                )
+            tensors[output_binding.tensor_name] = np.asarray(tensor)
+            validate_tensor_against_binding(
+                output_binding.tensor_name,
+                tensors[output_binding.tensor_name],
+                output_binding,
+            )
+        return tensors
+
+    def _get_native_http_client(self, httpclient):
+        if self._native_http_client is not None:
+            return self._native_http_client
+        if not self.settings.url:
+            raise TritonModelUnavailableError("Triton endpoint is not configured")
+        parsed = urlparse(self.settings.url)
+        endpoint = parsed.netloc or parsed.path
+        if not endpoint:
+            raise TritonEndpointUnavailableError(f"Invalid Triton URL: {self.settings.url}")
+        self._native_http_client = httpclient.InferenceServerClient(
+            url=endpoint,
+            network_timeout=self.settings.timeout_ms / 1000,
+            connection_timeout=self.settings.timeout_ms / 1000,
+        )
+        return self._native_http_client
 
     def _request_json(self, path: str, *, method: str, expect_json: bool = True):
         req = request.Request(f"{self.settings.url}{path}", method=method)

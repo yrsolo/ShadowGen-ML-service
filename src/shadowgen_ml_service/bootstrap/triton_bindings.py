@@ -28,6 +28,29 @@ def build_triton_model_registry(settings: Settings) -> TritonModelRegistry:
                 outputs={"mask": TritonTensorBinding("mask", "FP32", expected_ranks=(3, 4), shape_policy="channel-first", channels=1)},
             ),
             TritonModelBinding(
+                "segmenter",
+                "rmbg-2.0",
+                settings.triton_segmenter_rmbg2_model,
+                inputs={
+                    "image": TritonTensorBinding(
+                        settings.triton_segmenter_rmbg2_input,
+                        "FP32",
+                        expected_ranks=(4,),
+                        shape_policy="channel-first",
+                        channels=3,
+                    )
+                },
+                outputs={
+                    "mask": TritonTensorBinding(
+                        settings.triton_segmenter_rmbg2_output,
+                        "FP32",
+                        expected_ranks=(3, 4),
+                        shape_policy="channel-first",
+                        channels=1,
+                    )
+                },
+            ),
+            TritonModelBinding(
                 "depth_estimator",
                 "depth-anything-v2-small",
                 settings.triton_depth_model,

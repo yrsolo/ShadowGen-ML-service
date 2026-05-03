@@ -181,6 +181,21 @@ The active docs now provide:
 - root launch flow is now reduced to two user-facing CMD scripts:
   - `rebuild-triton.cmd` rebuilds the Triton image with the baked model repository and removes the stale Triton container
   - `start-service.cmd` opens a visible FastAPI console, starts the prebuilt Triton container, waits for readiness, and starts ML-core with Triton segmenter defaults
+- `start-service.cmd` now keeps detector and segmenter on local defaults unless `USE_TRITON_BACKENDS=1`, because the current Triton Python backends are debug bridges rather than final performance targets
+- ML-core Triton inference now uses the official Triton HTTP client with binary tensor payloads by default through `SHADOWGEN_TRITON_TRANSPORT=native`; `SHADOWGEN_TRITON_TRANSPORT=json` remains available as a debug fallback
+- direct benchmark on `C:\Users\solofarm\Pictures\Screenshots\1.jpg` showed JSON transport overhead clearly:
+  - detector Triton JSON mean `1510.53 ms`
+  - detector Triton native mean `337.90 ms`
+  - segmenter Triton JSON mean `2324.50 ms`
+  - segmenter Triton native mean `954.46 ms`
+- local-vs-native benchmark on the same image showed:
+  - detector local mean `200.77 ms`
+  - detector Triton native mean `328.95 ms`
+  - segmenter local mean `830.94 ms`
+  - segmenter Triton native mean `956.00 ms`
+- RMBG-2.0 is registered as optional segmenter variant `rmbg-2.0` with Triton model name `shadowgen_segmenter_rmbg2`
+- `tools/prepare_rmbg2_onnx_triton.py` prepares the gated BRIA RMBG-2.0 ONNX model repository entry after local Hugging Face authentication; generated `model.onnx` files stay ignored by git
+- `tools/export_detector_onnx.py` adds an experimental model-only GroundingDINO export path that emits `logits` and `pred_boxes`; runtime replacement still requires a dedicated postprocess adapter or Triton ensemble step
 - Playground includes a dev-only shutdown button backed by `POST /v1/dev/service/shutdown`, so the current ML-service process can be stopped from the UI
 - local helper maps standard Triton container ports to offset host ports:
   - HTTP `8010`
@@ -291,6 +306,8 @@ The active docs now provide:
 - `.venv\Scripts\python.exe tools\smoke_triton_detector.py --base-url http://127.0.0.1:8010 --image C:\Users\solofarm\Pictures\Screenshots\1.jpg --output-dir artifacts\triton-detector-smoke --timeout-ms 300000` passed after adding live Triton detector support
 - `.venv\Scripts\python.exe tools\smoke_triton_segmenter.py --base-url http://127.0.0.1:8010 --image C:\Users\solofarm\Pictures\Screenshots\1.jpg --output-dir artifacts\triton-segmenter-after-detector-smoke --direct-only --timeout-ms 300000` passed after adding live Triton detector support
 - `.venv\Scripts\python.exe -m pytest -q` passed after adding live Triton detector support: `96 passed, 4 warnings`
+- `.venv\Scripts\python.exe -m pytest -q` passed after native Triton transport, benchmark helper, RMBG-2.0 preparation, and GroundingDINO ONNX export tooling: `96 passed, 4 warnings`
+- `.venv\Scripts\python.exe tools\prepare_rmbg2_onnx_triton.py --source var\tmp\rmbg14\onnx\model_fp16.onnx --target var\tmp\rmbg-test\shadowgen_segmenter_rmbg2\1\model.onnx` passed as an ONNX config-generation smoke using the non-gated RMBG-1.4 ONNX file
 
 ## Remaining Bootstrap Gaps
 

@@ -249,8 +249,11 @@ Notes:
 
 - the first long-term production Triton model format remains `ONNX`
 - `TensorRT` is intentionally deferred as phase 2 optimization
+- ML-core uses native Triton HTTP binary tensor transport by default and keeps JSON transport as a debug fallback
 - the Triton `detector` contract currently returns minimal `bbox` and `confidence` tensors
 - the Triton `segmenter` contract currently returns a minimal `mask` tensor
+- the next ONNX segmenter candidate is `RMBG-2.0` as variant `rmbg-2.0`; BiRefNet remains the quality fallback
+- GroundingDINO ONNX export is currently model-only (`logits`, `pred_boxes`) until postprocess is moved into a dedicated adapter or Triton ensemble
 - `cutout`, `crop`, and compatibility `bbox` are reconstructed inside the ML core postprocess path
 - current BiRefNet export blocker in this environment is `torchvision::deform_conv2d`, so the live stage currently runs through a temporary Triton Python backend
 - `torch.compile` and matmul precision tuning are exposed as opt-in Torch-side acceleration knobs while the model stays on the Python runtime path

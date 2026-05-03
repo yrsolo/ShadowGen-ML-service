@@ -30,6 +30,8 @@ var/pytest-cache-files-*/
 weights/
 checkpoints/
 hf_cache/
+ops/triton/model_repository/**/1/*.onnx
+ops/triton/model_repository/**/1/_hf_download/
 
 # Generated images and artifacts
 data/input/

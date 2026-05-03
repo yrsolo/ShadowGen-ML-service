@@ -42,6 +42,7 @@ class Settings:
     batch_shadow_enabled: bool = _as_bool("SHADOWGEN_BATCH_SHADOW_ENABLED", True)
     triton_url: str | None = os.getenv("SHADOWGEN_TRITON_URL") or None
     triton_protocol: str = os.getenv("SHADOWGEN_TRITON_PROTOCOL", "http")
+    triton_transport: str = os.getenv("SHADOWGEN_TRITON_TRANSPORT", "native")
     triton_timeout_ms: int = _as_int("SHADOWGEN_TRITON_TIMEOUT_MS", 30_000)
     triton_model_repository: str | None = os.getenv("SHADOWGEN_TRITON_MODEL_REPOSITORY") or None
     working_size: int = _as_int("SHADOWGEN_WORKING_SIZE", 512)
@@ -70,6 +71,7 @@ class Settings:
     birefnet_compile_backend: str = os.getenv("SHADOWGEN_BIREFNET_COMPILE_BACKEND", "")
     birefnet_matmul_precision: str = os.getenv("SHADOWGEN_BIREFNET_MATMUL_PRECISION", "high")
     segmenter_backend_kind: str = os.getenv("SHADOWGEN_SEGMENTER_BACKEND_KIND", "")
+    segmenter_model_variant: str = os.getenv("SHADOWGEN_SEGMENTER_MODEL_VARIANT", "birefnet")
     foreground_refiner_backend_kind: str = os.getenv("SHADOWGEN_FOREGROUND_REFINER_BACKEND_KIND", "local")
     depth_anything_model_id: str = os.getenv("SHADOWGEN_DEPTH_ANYTHING_MODEL_ID", "depth-anything/Depth-Anything-V2-Small-hf")
     depth_backend_kind: str = os.getenv("SHADOWGEN_DEPTH_BACKEND_KIND", "")
@@ -96,6 +98,9 @@ class Settings:
     shadow_v2_diff_compile_backend: str = os.getenv("SHADOWGEN_SHADOW_V2_DIFF_COMPILE_BACKEND", "")
     triton_detector_model: str = os.getenv("SHADOWGEN_TRITON_DETECTOR_MODEL", "shadowgen_detector")
     triton_segmenter_model: str = os.getenv("SHADOWGEN_TRITON_SEGMENTER_MODEL", "shadowgen_segmenter")
+    triton_segmenter_rmbg2_model: str = os.getenv("SHADOWGEN_TRITON_SEGMENTER_RMBG2_MODEL", "shadowgen_segmenter_rmbg2")
+    triton_segmenter_rmbg2_input: str = os.getenv("SHADOWGEN_TRITON_SEGMENTER_RMBG2_INPUT", "input")
+    triton_segmenter_rmbg2_output: str = os.getenv("SHADOWGEN_TRITON_SEGMENTER_RMBG2_OUTPUT", "output")
     triton_depth_model: str = os.getenv("SHADOWGEN_TRITON_DEPTH_MODEL", "shadowgen_depth")
     triton_normals_model: str = os.getenv("SHADOWGEN_TRITON_NORMALS_MODEL", "shadowgen_normals")
     triton_shadow_v2_model: str = os.getenv("SHADOWGEN_TRITON_SHADOW_V2_MODEL", "shadowgen_shadow_v2")

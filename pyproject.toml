@@ -27,6 +27,7 @@ ml = [
   "huggingface_hub>=0.31,<1.0",
   "safetensors>=0.5,<1.0",
   "onnx>=1.16,<2.0",
+  "tritonclient[http,grpc]>=2.53,<3.0",
   "diffusers>=0.35,<1.0",
   "accelerate>=1.0,<2.0",
   "peft>=0.17,<1.0",

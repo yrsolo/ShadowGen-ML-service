@@ -75,7 +75,7 @@ class TritonTransportTests(unittest.TestCase):
         self.assertAlmostEqual(float(tensors["confidence"][0]), 0.75)
 
     def test_client_posts_standard_triton_infer_payload(self) -> None:
-        settings = TritonBackendSettings(url="http://triton.local", protocol="http", timeout_ms=1000)
+        settings = TritonBackendSettings(url="http://triton.local", protocol="http", timeout_ms=1000, transport="json")
         client = TritonInferenceClient(settings)
         captured: dict[str, object] = {}
         binding = TritonModelBinding(

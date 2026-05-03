@@ -59,6 +59,7 @@ def build_runtime(settings: Settings) -> PipelineRuntime:
         url=settings.triton_url,
         protocol=settings.triton_protocol,
         timeout_ms=settings.triton_timeout_ms,
+        transport=settings.triton_transport,
     )
     triton_client = TritonInferenceClient(triton_settings)
     triton_ready = triton_client.ping()
@@ -393,6 +394,29 @@ def _register_segmenter(
             supports_async=True,
         ),
         TritonSegmenter(triton_client, binding, triton_batcher) if triton_available and binding is not None else None,
+    )
+    rmbg_binding = triton_models.get("segmenter", "rmbg-2.0")
+    rmbg_triton_available, rmbg_triton_detail = _probe_triton_backend(
+        triton_client=triton_client,
+        binding=rmbg_binding,
+        triton_ready=triton_ready,
+        unavailable_detail="RMBG-2.0 Triton ONNX model is unavailable",
+    )
+    registry.register(
+        backend_descriptor(
+            stage_key="segmenter",
+            backend_kind="triton",
+            model_variant="rmbg-2.0",
+            model_name=rmbg_binding.model_name if rmbg_binding is not None else settings.triton_segmenter_rmbg2_model,
+            model_version="triton-onnx",
+            available=rmbg_triton_available,
+            detail=rmbg_triton_detail,
+            device="triton",
+            endpoint=triton_client.endpoint,
+            supports_batching=True,
+            supports_async=True,
+        ),
+        TritonSegmenter(triton_client, rmbg_binding, triton_batcher) if rmbg_triton_available and rmbg_binding is not None else None,
     )
 
 
@@ -811,6 +835,8 @@ def _preferred_variant(stage_key: str, settings: Settings) -> str:
         return settings.shadow_model_variant.lower()
     if stage_key == "normal_estimator":
         return settings.normals_model_variant
+    if stage_key == "segmenter":
+        return settings.segmenter_model_variant
     if stage_key == "detector":
         return "grounding-dino"
     if stage_key == "segmenter":
@@ -889,6 +915,38 @@ def _resolve_active_backend(*, registry: PipelineBackendRegistry, stage_key: str
                     fallback_reason = f"{preferred_backend_kind}:{preferred_variant} unavailable for {stage_key}"
                 return registered, fallback_reason
 
+    if stage_key == "segmenter":
+        candidate_ids = []
+        if preferred_backend_kind == "mock":
+            candidate_ids.append(StageBackendId(stage_key=stage_key, backend_kind="mock", model_variant="mock-v1"))
+        elif preferred_backend_kind == "triton":
+            candidate_ids.extend(
+                [
+                    StageBackendId(stage_key=stage_key, backend_kind="triton", model_variant=preferred_variant),
+                    StageBackendId(stage_key=stage_key, backend_kind="triton", model_variant="birefnet"),
+                    StageBackendId(stage_key=stage_key, backend_kind="local", model_variant="birefnet"),
+                    StageBackendId(stage_key=stage_key, backend_kind="mock", model_variant="mock-v1"),
+                ]
+            )
+        else:
+            candidate_ids.extend(
+                [
+                    StageBackendId(stage_key=stage_key, backend_kind=preferred_backend_kind, model_variant=preferred_variant),
+                    StageBackendId(stage_key=stage_key, backend_kind="local", model_variant="birefnet"),
+                    StageBackendId(stage_key=stage_key, backend_kind="mock", model_variant="mock-v1"),
+                ]
+            )
+        seen = set()
+        for index, backend_id in enumerate(candidate_ids):
+            if backend_id in seen:
+                continue
+            seen.add(backend_id)
+            registered = registry.get(backend_id)
+            if registered is not None and registered.descriptor.available and registered.handler is not None:
+                if index > 0:
+                    fallback_reason = f"{preferred_backend_kind}:{preferred_variant} unavailable for {stage_key}"
+                return registered, fallback_reason
+
     candidate_ids = [
         StageBackendId(
             stage_key=stage_key,
@@ -936,7 +994,7 @@ def _default_variant_for_backend(stage_key: str, backend_kind: str, preferred_va
     if stage_key == "detector":
         return "grounding-dino"
     if stage_key == "segmenter":
-        return "birefnet"
+        return preferred_variant
     if stage_key == "depth_estimator":
         return "depth-anything-v2-small"
     if stage_key == "geometry_estimator":
