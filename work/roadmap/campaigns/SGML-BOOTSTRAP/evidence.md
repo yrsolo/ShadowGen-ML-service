@@ -308,10 +308,17 @@ The active docs now provide:
 - `.venv\Scripts\python.exe -m pytest -q` passed after adding live Triton detector support: `96 passed, 4 warnings`
 - `.venv\Scripts\python.exe -m pytest -q` passed after native Triton transport, benchmark helper, RMBG-2.0 preparation, and GroundingDINO ONNX export tooling: `96 passed, 4 warnings`
 - `.venv\Scripts\python.exe tools\prepare_rmbg2_onnx_triton.py --source var\tmp\rmbg14\onnx\model_fp16.onnx --target var\tmp\rmbg-test\shadowgen_segmenter_rmbg2\1\model.onnx` passed as an ONNX config-generation smoke using the non-gated RMBG-1.4 ONNX file
+- `.venv\Scripts\python.exe tools\prepare_rmbg2_onnx_triton.py --filename onnx/model.onnx` currently fails cleanly with a gated-model access message because `HF_TOKEN` is not visible in this shell
+- `.venv\Scripts\python.exe tools\export_detector_onnx.py --height 512 --width 512` passed and generated ignored `shadowgen_detector_onnx` model/config files
+- Local ONNX Runtime smoke for `shadowgen_detector_onnx` passed with `CUDAExecutionProvider`, output shapes `logits=[1,900,256]`, `pred_boxes=[1,900,4]`, bbox `[235,172,391,365]`, confidence `0.3508`, and warm pure ORT inference about `164 ms`
+- `cmd /c start-triton.cmd help`, `cmd /c rebuild-triton.cmd help`, and `cmd /c start-service.cmd help` passed after splitting Triton rebuild, Triton start, and FastAPI start
+- `.venv\Scripts\python.exe -m compileall src tools tests` passed after ONNX detector wiring and launch-script split
+- `.venv\Scripts\python.exe -m pytest tests/test_triton_transport.py tests/test_api.py tests/test_runtime.py -q` passed: `62 passed, 3 warnings`
+- `.venv\Scripts\python.exe -m pytest -q` passed: `96 passed, 4 warnings`
 
 ## Remaining Bootstrap Gaps
 
 - current BiRefNet ONNX export is blocked in this environment by `torchvision::deform_conv2d`, so the live `segmenter` bridge currently depends on the temporary Triton Python backend
 - `V2-DIFF` Triton backend is scaffolded but not implemented
 - compatibility shims still remain in the repository
-- Docker Desktop GPU mode still fails on this workstation with NVIDIA runtime `legacy` mode, so current Triton validation is CPU-only until Docker Desktop / NVIDIA runtime is fixed
+- current Docker daemon did not answer `docker version` from this shell, so live container rebuild/start needs Docker Desktop restart before validation

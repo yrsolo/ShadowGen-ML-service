@@ -18,6 +18,12 @@ from shadowgen_ml_service.config import Settings  # noqa: E402
 from shadowgen_ml_service.infrastructure.stages.detection.grounding_dino import load_grounding_dino_classes  # noqa: E402
 
 
+ONNX_TO_TRITON_DTYPE = {
+    1: "TYPE_FP32",
+    7: "TYPE_INT64",
+}
+
+
 def parse_args() -> argparse.Namespace:
     settings = Settings()
     parser = argparse.ArgumentParser(description="Experimental model-only GroundingDINO ONNX export.")
@@ -51,14 +57,12 @@ def export_detector_onnx(args: argparse.Namespace) -> Path:
     model = model_cls.from_pretrained(args.model_id, local_files_only=args.local_files_only)
     model.eval()
 
-    dummy_image = torch.rand(1, 3, args.height, args.width, dtype=torch.float32)
     encoded = processor(images=[_dummy_pil(args.width, args.height)], text=args.prompt, return_tensors="pt")
     tensor_inputs = {
         key: value
         for key, value in encoded.items()
-        if hasattr(value, "shape") and key != "pixel_values"
+        if hasattr(value, "shape")
     }
-    tensor_inputs["pixel_values"] = dummy_image
     ordered_keys = ["pixel_values", *[key for key in tensor_inputs if key != "pixel_values"]]
 
     class GroundingDinoExportWrapper(torch.nn.Module):
@@ -73,6 +77,7 @@ def export_detector_onnx(args: argparse.Namespace) -> Path:
             return outputs.logits, outputs.pred_boxes
 
     wrapper = GroundingDinoExportWrapper(model, ordered_keys)
+    wrapper.eval()
     output_path = args.output
     output_path.parent.mkdir(parents=True, exist_ok=True)
     failure = _export_with_fallback(
@@ -88,6 +93,7 @@ def export_detector_onnx(args: argparse.Namespace) -> Path:
         raise RuntimeError(failure)
     exported = onnx.load(output_path)
     onnx.checker.check_model(exported)
+    _write_triton_config(exported, output_path.parents[1])
     return output_path
 
 
@@ -97,11 +103,73 @@ def _dummy_pil(width: int, height: int):
     return Image.new("RGB", (width, height), "white")
 
 
+def _shape_without_batch(value) -> list[int]:
+    dims = []
+    for dim in value.type.tensor_type.shape.dim[1:]:
+        if dim.dim_value:
+            dims.append(int(dim.dim_value))
+        else:
+            dims.append(-1)
+    return dims
+
+
+def _triton_dtype(value) -> str:
+    dtype = ONNX_TO_TRITON_DTYPE.get(value.type.tensor_type.elem_type)
+    if dtype is None:
+        raise RuntimeError(f"Unsupported ONNX dtype {value.type.tensor_type.elem_type} for tensor {value.name}")
+    return dtype
+
+
+def _write_triton_config(model, model_dir: Path) -> None:
+    inputs = list(model.graph.input)
+    outputs = list(model.graph.output)
+
+    def _tensor_block(kind: str, values) -> str:
+        blocks = []
+        for value in values:
+            dims = ", ".join(str(item) for item in _shape_without_batch(value))
+            blocks.append(
+                "\n".join(
+                    [
+                        "  {",
+                        f'    name: "{value.name}"',
+                        f"    data_type: {_triton_dtype(value)}",
+                        f"    dims: [ {dims} ]",
+                        "  }",
+                    ]
+                )
+            )
+        return f"{kind} [\n" + ",\n".join(blocks) + "\n]"
+
+    config = "\n".join(
+        [
+            'name: "shadowgen_detector_onnx"',
+            'platform: "onnxruntime_onnx"',
+            "max_batch_size: 4",
+            _tensor_block("input", inputs),
+            _tensor_block("output", outputs),
+            "dynamic_batching {",
+            "  preferred_batch_size: [ 2, 4 ]",
+            "  max_queue_delay_microseconds: 15000",
+            "}",
+            "instance_group [",
+            "  {",
+            "    kind: KIND_GPU",
+            "    count: 1",
+            "  }",
+            "]",
+            "",
+        ]
+    )
+    (model_dir / "config.pbtxt").write_text(config, encoding="utf-8")
+
+
 def _export_with_fallback(*, torch_module, wrapper, inputs, input_names: list[str], output_path: Path, opset: int, exporter: str) -> str | None:
     exporters = [exporter] if exporter != "auto" else ["dynamo", "legacy"]
     failures = []
     dynamic_axes = {name: {0: "batch"} for name in input_names}
     dynamic_axes["pixel_values"] = {0: "batch", 2: "height", 3: "width"}
+    dynamic_axes["pixel_mask"] = {0: "batch", 1: "mask_height", 2: "mask_width"}
     dynamic_axes["logits"] = {0: "batch"}
     dynamic_axes["pred_boxes"] = {0: "batch"}
     for candidate in exporters:
@@ -138,6 +206,8 @@ def _normalize_export_failure(exporter: str, exc: Exception) -> str:
 def main() -> int:
     output = export_detector_onnx(parse_args())
     print(f"Exported detector ONNX to {output}")
+    print(f"Generated Triton config at {output.parents[1] / 'config.pbtxt'}")
+    print("Next step: start-triton.cmd")
     return 0
 
 

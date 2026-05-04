@@ -29,6 +29,7 @@ from shadowgen_ml_service.infrastructure.stages.depth.triton import TritonDepthE
 from shadowgen_ml_service.infrastructure.stages.detection.grounding_dino import RealDetector
 from shadowgen_ml_service.infrastructure.stages.detection.mock import MockDetector
 from shadowgen_ml_service.infrastructure.stages.detection.triton import TritonDetector
+from shadowgen_ml_service.infrastructure.stages.detection.triton_onnx import TritonOnnxGroundingDinoDetector
 from shadowgen_ml_service.infrastructure.stages.foreground_refinement.fast_foreground_estimation import FastForegroundColorEstimator
 from shadowgen_ml_service.infrastructure.stages.foreground_refinement.mock import PassthroughForegroundColorEstimator
 from shadowgen_ml_service.infrastructure.stages.geometry.geocalib import RealGeometryEstimator
@@ -231,6 +232,38 @@ def _register_detector(settings: Settings, registry: PipelineBackendRegistry, tr
             supports_async=True,
         ),
         TritonDetector(triton_client, binding) if triton_available and binding is not None else None,
+    )
+    onnx_binding = triton_models.get("detector", "grounding-dino-onnx")
+    onnx_available, onnx_detail = _probe_triton_backend(
+        triton_client=triton_client,
+        binding=onnx_binding,
+        triton_ready=triton_ready,
+        unavailable_detail="GroundingDINO ONNX Triton model is unavailable",
+    )
+    registry.register(
+        backend_descriptor(
+            stage_key="detector",
+            backend_kind="triton",
+            model_variant="grounding-dino-onnx",
+            model_name=onnx_binding.model_name if onnx_binding is not None else settings.triton_detector_onnx_model,
+            model_version="triton-onnx",
+            available=onnx_available,
+            detail=onnx_detail,
+            device="triton",
+            endpoint=triton_client.endpoint,
+            supports_batching=True,
+            supports_async=True,
+        ),
+        TritonOnnxGroundingDinoDetector(
+            triton_client,
+            onnx_binding,
+            model_id=settings.grounding_dino_model_id,
+            prompt=settings.grounding_dino_prompt,
+            box_threshold=settings.grounding_dino_box_threshold,
+            text_threshold=settings.grounding_dino_text_threshold,
+        )
+        if onnx_available and onnx_binding is not None
+        else None,
     )
 
 
@@ -838,7 +871,7 @@ def _preferred_variant(stage_key: str, settings: Settings) -> str:
     if stage_key == "segmenter":
         return settings.segmenter_model_variant
     if stage_key == "detector":
-        return "grounding-dino"
+        return settings.detector_model_variant
     if stage_key == "segmenter":
         return "birefnet"
     if stage_key == "depth_estimator":
@@ -947,6 +980,38 @@ def _resolve_active_backend(*, registry: PipelineBackendRegistry, stage_key: str
                     fallback_reason = f"{preferred_backend_kind}:{preferred_variant} unavailable for {stage_key}"
                 return registered, fallback_reason
 
+    if stage_key == "detector":
+        candidate_ids = []
+        if preferred_backend_kind == "mock":
+            candidate_ids.append(StageBackendId(stage_key=stage_key, backend_kind="mock", model_variant="mock-v1"))
+        elif preferred_backend_kind == "triton":
+            candidate_ids.extend(
+                [
+                    StageBackendId(stage_key=stage_key, backend_kind="triton", model_variant=preferred_variant),
+                    StageBackendId(stage_key=stage_key, backend_kind="triton", model_variant="grounding-dino"),
+                    StageBackendId(stage_key=stage_key, backend_kind="local", model_variant="grounding-dino"),
+                    StageBackendId(stage_key=stage_key, backend_kind="mock", model_variant="mock-v1"),
+                ]
+            )
+        else:
+            candidate_ids.extend(
+                [
+                    StageBackendId(stage_key=stage_key, backend_kind=preferred_backend_kind, model_variant=preferred_variant),
+                    StageBackendId(stage_key=stage_key, backend_kind="local", model_variant="grounding-dino"),
+                    StageBackendId(stage_key=stage_key, backend_kind="mock", model_variant="mock-v1"),
+                ]
+            )
+        seen = set()
+        for index, backend_id in enumerate(candidate_ids):
+            if backend_id in seen:
+                continue
+            seen.add(backend_id)
+            registered = registry.get(backend_id)
+            if registered is not None and registered.descriptor.available and registered.handler is not None:
+                if index > 0:
+                    fallback_reason = f"{preferred_backend_kind}:{preferred_variant} unavailable for {stage_key}"
+                return registered, fallback_reason
+
     candidate_ids = [
         StageBackendId(
             stage_key=stage_key,
@@ -992,7 +1057,7 @@ def _default_variant_for_backend(stage_key: str, backend_kind: str, preferred_va
     if stage_key == "shadow_generator":
         return preferred_variant
     if stage_key == "detector":
-        return "grounding-dino"
+        return preferred_variant
     if stage_key == "segmenter":
         return preferred_variant
     if stage_key == "depth_estimator":

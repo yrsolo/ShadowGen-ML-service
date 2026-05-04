@@ -23,6 +23,7 @@ from shadowgen_ml_service.core.stage_io import DetectionInput  # noqa: E402
 from shadowgen_ml_service.infrastructure.backends.triton.client import TritonInferenceClient  # noqa: E402
 from shadowgen_ml_service.infrastructure.backends.triton.config import TritonBackendSettings  # noqa: E402
 from shadowgen_ml_service.infrastructure.stages.detection.triton import TritonDetector  # noqa: E402
+from shadowgen_ml_service.infrastructure.stages.detection.triton_onnx import TritonOnnxGroundingDinoDetector  # noqa: E402
 from shadowgen_ml_service.utils.images import pil_to_asset  # noqa: E402
 
 
@@ -39,7 +40,23 @@ def _draw_bbox(image: Image.Image, bbox: tuple[int, int, int, int], confidence: 
     return overlay
 
 
-def run_direct_smoke(*, base_url: str, image_path: Path, output_dir: Path, max_size: int, timeout_ms: int) -> dict:
+def _build_detector(settings: Settings, client: TritonInferenceClient, variant: str):
+    binding = build_triton_model_registry(settings).get("detector", variant)
+    if binding is None:
+        raise RuntimeError(f"detector/{variant} Triton binding is not configured")
+    if variant == "grounding-dino-onnx":
+        return binding, TritonOnnxGroundingDinoDetector(
+            client,
+            binding,
+            model_id=settings.grounding_dino_model_id,
+            prompt=settings.grounding_dino_prompt,
+            box_threshold=settings.grounding_dino_box_threshold,
+            text_threshold=settings.grounding_dino_text_threshold,
+        )
+    return binding, TritonDetector(client, binding)
+
+
+def run_direct_smoke(*, base_url: str, image_path: Path, output_dir: Path, max_size: int, timeout_ms: int, variant: str) -> dict:
     settings = Settings(triton_url=base_url, triton_timeout_ms=timeout_ms)
     client = TritonInferenceClient(
         TritonBackendSettings(
@@ -48,16 +65,13 @@ def run_direct_smoke(*, base_url: str, image_path: Path, output_dir: Path, max_s
             timeout_ms=settings.triton_timeout_ms,
         )
     )
-    binding = build_triton_model_registry(settings).get("detector", "grounding-dino")
-    if binding is None:
-        raise RuntimeError("detector/grounding-dino Triton binding is not configured")
+    binding, detector = _build_detector(settings, client, variant)
 
     available, detail = client.probe_binding(binding)
     if not available:
         raise RuntimeError(detail)
 
     image = ImageOps.contain(Image.open(image_path).convert("RGB"), (max_size, max_size))
-    detector = TritonDetector(client, binding)
     result = detector.detect(DetectionInput(image=pil_to_asset(image), padding_px=100))
 
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -66,6 +80,7 @@ def run_direct_smoke(*, base_url: str, image_path: Path, output_dir: Path, max_s
 
     return {
         "probe": detail,
+        "variant": variant,
         "input_size": image.size,
         "bbox": result.bbox,
         "confidence": result.confidence,
@@ -76,7 +91,7 @@ def run_direct_smoke(*, base_url: str, image_path: Path, output_dir: Path, max_s
     }
 
 
-def run_render_smoke(*, base_url: str, image_path: Path, output_dir: Path, timeout_ms: int) -> dict:
+def run_render_smoke(*, base_url: str, image_path: Path, output_dir: Path, timeout_ms: int, variant: str) -> dict:
     cache_dir = ROOT / "var" / "cache" / "triton-detector-smoke" / uuid4().hex
     settings = Settings(
         triton_url=base_url,
@@ -84,6 +99,7 @@ def run_render_smoke(*, base_url: str, image_path: Path, output_dir: Path, timeo
         request_timeout_ms=timeout_ms,
         preprocess_cache_dir=cache_dir,
         detector_backend_kind="triton",
+        detector_model_variant=variant,
         segmenter_backend_kind="mock",
         depth_backend_kind="mock",
         normals_backend_kind="mock",
@@ -140,6 +156,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--output-dir", type=Path, default=ROOT / "artifacts" / "triton-detector-smoke")
     parser.add_argument("--direct-max-size", type=int, default=768)
     parser.add_argument("--timeout-ms", type=int, default=180_000)
+    parser.add_argument("--variant", choices=["grounding-dino", "grounding-dino-onnx"], default="grounding-dino")
     parser.add_argument("--direct-only", action="store_true")
     args = parser.parse_args(argv)
 
@@ -152,6 +169,7 @@ def main(argv: list[str] | None = None) -> int:
         output_dir=args.output_dir / "direct",
         max_size=args.direct_max_size,
         timeout_ms=args.timeout_ms,
+        variant=args.variant,
     )
     result = {"direct": direct}
     if not args.direct_only:
@@ -160,6 +178,7 @@ def main(argv: list[str] | None = None) -> int:
             image_path=args.image,
             output_dir=args.output_dir / "render",
             timeout_ms=args.timeout_ms,
+            variant=args.variant,
         )
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0

@@ -43,7 +43,7 @@ class TritonSegmenter(Segmenter):
         images = [ensure_pil(stage_input.image).convert("RGBA") for stage_input in stage_inputs]
         batched_inputs = batch_input_tensors(
             [
-                [image_to_nchw_float32_input(self.binding.inputs["image"].tensor_name, image.convert("RGB"))]
+                [image_to_nchw_float32_input(self.binding.inputs["image"].tensor_name, self._prepare_infer_image(image))]
                 for image in images
             ]
         )
@@ -87,6 +87,13 @@ class TritonSegmenter(Segmenter):
                 )
             )
         return results
+
+    def _prepare_infer_image(self, image: Image.Image) -> Image.Image:
+        image = image.convert("RGB")
+        if self.model_variant == "rmbg-2.0":
+            # BRIA RMBG-2.0 ONNX is exported as a fixed 1024x1024 tensor contract.
+            return image.resize((1024, 1024), Image.Resampling.BILINEAR)
+        return image
 
     def _optional_batched_output(self, alias: str, response: dict, batch_size: int):
         output_binding = self.binding.outputs.get(alias)

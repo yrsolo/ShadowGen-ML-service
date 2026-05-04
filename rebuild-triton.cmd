@@ -14,7 +14,7 @@ if "%NO_CACHE%"=="" set "NO_CACHE=0"
 
 set "DOCKER_EXE=docker"
 
-echo Rebuilding ShadowGen Triton image with baked model repository.
+echo Rebuilding ShadowGen Triton image.
 echo Image:     %TRITON_IMAGE%
 echo Container: %TRITON_CONTAINER%
 echo.
@@ -45,14 +45,15 @@ if errorlevel 1 (
 echo.
 echo Triton image rebuilt successfully.
 echo Next step:
-echo   start-service.cmd
+echo   start-triton.cmd
 exit /b 0
 
 :help
 echo Usage:
 echo   rebuild-triton.cmd
 echo.
-echo Rebuilds the Triton Docker image with the current ops\triton\model_repository code baked into /models.
+echo Rebuilds the Triton Docker image with Python backend code.
+echo Large generated ONNX files are excluded from Docker build context and mounted by start-triton.cmd.
 echo It also removes the old Triton container so the next service start uses the new image.
 echo.
 echo Optional environment variables:

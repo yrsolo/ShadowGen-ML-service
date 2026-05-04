@@ -21,6 +21,7 @@ from shadowgen_ml_service.infrastructure.backends.triton.client import TritonInf
 from shadowgen_ml_service.infrastructure.backends.triton.config import TritonBackendSettings  # noqa: E402
 from shadowgen_ml_service.infrastructure.stages.detection.grounding_dino import RealDetector  # noqa: E402
 from shadowgen_ml_service.infrastructure.stages.detection.triton import TritonDetector  # noqa: E402
+from shadowgen_ml_service.infrastructure.stages.detection.triton_onnx import TritonOnnxGroundingDinoDetector  # noqa: E402
 from shadowgen_ml_service.infrastructure.stages.segmentation.birefnet import RealSegmenter  # noqa: E402
 from shadowgen_ml_service.infrastructure.stages.segmentation.triton import TritonSegmenter  # noqa: E402
 from shadowgen_ml_service.utils.images import pil_to_asset  # noqa: E402
@@ -56,7 +57,7 @@ def _triton_client(settings: Settings, *, transport: str) -> TritonInferenceClie
     )
 
 
-def _benchmark_detector(settings: Settings, image: Image.Image, repeats: int, warmup: int, transports: list[str]) -> list[dict]:
+def _benchmark_detector(settings: Settings, image: Image.Image, repeats: int, warmup: int, transports: list[str], variant: str) -> list[dict]:
     stage_input = DetectionInput(image=pil_to_asset(image), padding_px=100)
     results = []
     if "local" in transports:
@@ -76,17 +77,27 @@ def _benchmark_detector(settings: Settings, image: Image.Image, repeats: int, wa
             )
         )
     registry = build_triton_model_registry(settings)
-    binding = registry.get("detector", "grounding-dino")
+    binding = registry.get("detector", variant)
     if binding is not None:
         for transport in transports:
             if not transport.startswith("triton-"):
                 continue
             triton_transport = transport.removeprefix("triton-")
             client = _triton_client(settings, transport=triton_transport)
-            detector = TritonDetector(client, binding)
+            if variant == "grounding-dino-onnx":
+                detector = TritonOnnxGroundingDinoDetector(
+                    client,
+                    binding,
+                    model_id=settings.grounding_dino_model_id,
+                    prompt=settings.grounding_dino_prompt,
+                    box_threshold=settings.grounding_dino_box_threshold,
+                    text_threshold=settings.grounding_dino_text_threshold,
+                )
+            else:
+                detector = TritonDetector(client, binding)
             results.append(
                 _measure(
-                    f"detector/triton/{triton_transport}",
+                    f"detector/triton/{triton_transport}/{variant}",
                     repeats,
                     warmup,
                     lambda detector=detector: _detection_summary(detector.detect(stage_input)),
@@ -95,7 +106,7 @@ def _benchmark_detector(settings: Settings, image: Image.Image, repeats: int, wa
     return results
 
 
-def _benchmark_segmenter(settings: Settings, image: Image.Image, repeats: int, warmup: int, transports: list[str]) -> list[dict]:
+def _benchmark_segmenter(settings: Settings, image: Image.Image, repeats: int, warmup: int, transports: list[str], variant: str) -> list[dict]:
     stage_input = SegmentationInput(image=pil_to_asset(image))
     results = []
     if "local" in transports:
@@ -118,7 +129,7 @@ def _benchmark_segmenter(settings: Settings, image: Image.Image, repeats: int, w
             )
         )
     registry = build_triton_model_registry(settings)
-    binding = registry.get("segmenter", "birefnet")
+    binding = registry.get("segmenter", variant)
     if binding is not None:
         for transport in transports:
             if not transport.startswith("triton-"):
@@ -128,7 +139,7 @@ def _benchmark_segmenter(settings: Settings, image: Image.Image, repeats: int, w
             segmenter = TritonSegmenter(client, binding, batcher=None)
             results.append(
                 _measure(
-                    f"segmenter/triton/{triton_transport}",
+                    f"segmenter/triton/{triton_transport}/{variant}",
                     repeats,
                     warmup,
                     lambda segmenter=segmenter: _segmentation_summary(segmenter.segment(stage_input)),
@@ -150,6 +161,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--stage", choices=["detector", "segmenter", "all"], default="all")
     parser.add_argument("--image", type=Path, default=Path(r"C:\Users\solofarm\Pictures\Screenshots\1.jpg"))
     parser.add_argument("--base-url", default="http://127.0.0.1:8010")
+    parser.add_argument("--detector-variant", choices=["grounding-dino", "grounding-dino-onnx"], default="grounding-dino")
+    parser.add_argument("--segmenter-variant", choices=["birefnet", "rmbg-2.0"], default="birefnet")
     parser.add_argument("--max-size", type=int, default=768)
     parser.add_argument("--repeats", type=int, default=5)
     parser.add_argument("--warmup", type=int, default=1)
@@ -175,9 +188,9 @@ def main(argv: list[str] | None = None) -> int:
         "results": [],
     }
     if args.stage in {"detector", "all"}:
-        results["results"].extend(_benchmark_detector(settings, image, args.repeats, args.warmup, transports))
+        results["results"].extend(_benchmark_detector(settings, image, args.repeats, args.warmup, transports, args.detector_variant))
     if args.stage in {"segmenter", "all"}:
-        results["results"].extend(_benchmark_segmenter(settings, image, args.repeats, args.warmup, transports))
+        results["results"].extend(_benchmark_segmenter(settings, image, args.repeats, args.warmup, transports, args.segmenter_variant))
     print(json.dumps(results, ensure_ascii=False, indent=2))
     return 0
 

@@ -21,6 +21,22 @@ def build_triton_model_registry(settings: Settings) -> TritonModelRegistry:
                 },
             ),
             TritonModelBinding(
+                "detector",
+                "grounding-dino-onnx",
+                settings.triton_detector_onnx_model,
+                inputs={
+                    "pixel_values": TritonTensorBinding("pixel_values", "FP32", expected_ranks=(4,), shape_policy="channel-first", channels=3),
+                    "pixel_mask": TritonTensorBinding("pixel_mask", "INT64", expected_ranks=(3,), shape_policy=None),
+                    "input_ids": TritonTensorBinding("input_ids", "INT64", expected_ranks=(2,), shape_policy=None),
+                    "token_type_ids": TritonTensorBinding("token_type_ids", "INT64", expected_ranks=(2,), shape_policy=None),
+                    "attention_mask": TritonTensorBinding("attention_mask", "INT64", expected_ranks=(2,), shape_policy=None),
+                },
+                outputs={
+                    "logits": TritonTensorBinding("logits", "FP32", expected_ranks=(3,), shape_policy=None),
+                    "pred_boxes": TritonTensorBinding("pred_boxes", "FP32", expected_ranks=(3,), shape_policy=None),
+                },
+            ),
+            TritonModelBinding(
                 "segmenter",
                 "birefnet",
                 settings.triton_segmenter_model,

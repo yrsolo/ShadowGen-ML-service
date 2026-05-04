@@ -64,13 +64,19 @@ Rebuild Triton after changing files under `ops/triton/model_repository`:
 rebuild-triton.cmd
 ```
 
-Start the full service:
+Start Triton when testing Triton-backed stages:
+
+```cmd
+start-triton.cmd
+```
+
+Start the FastAPI service:
 
 ```cmd
 start-service.cmd
 ```
 
-`start-service.cmd` opens a visible Windows console, starts the prebuilt Triton container when needed, waits until `shadowgen_detector` and `shadowgen_segmenter` are ready, sets the ML-core Triton environment, and starts FastAPI with `RELOAD=0` by default. That makes the `/playground` shutdown button stop the visible FastAPI process instead of having `uvicorn --reload` immediately spawn it again.
+`start-triton.cmd` owns only the Triton Docker container. `start-service.cmd` owns only FastAPI and keeps it in the current visible console with `RELOAD=0` by default. That makes the `/playground` shutdown button stop the actual FastAPI process instead of having `uvicorn --reload` immediately spawn it again.
 
 Open:
 
@@ -505,9 +511,27 @@ This script:
 - checks that Docker is reachable
 - removes the old `shadowgen-triton-segmenter` container if it exists
 - builds `shadowgen-triton-segmenter:py`
-- bakes `ops/triton/model_repository` into `/models`
+- excludes generated ONNX model binaries from Docker build context
 
-2. Start the service:
+2. Start Triton:
+
+```cmd
+start-triton.cmd
+```
+
+This script:
+
+- starts the prebuilt Triton container if it is not already running
+- bind-mounts `ops/triton/model_repository` into `/models` by default
+- waits until required Python backend models `shadowgen_detector` and `shadowgen_segmenter` are ready
+- additionally waits for generated optional ONNX models if their files exist:
+- `shadowgen_detector_onnx`
+- `shadowgen_segmenter_rmbg2`
+- defaults to `TRITON_GPU=1`, `TRITON_DEVICE=cuda:0`, `TRITON_RESOLUTION=512`
+- sets `SHADOWGEN_TRITON_SEGMENTER_COMPILE_ENABLED=false` to avoid a long first-request `torch.compile` pause in the playground
+- exposes Triton at `http://127.0.0.1:8010`
+
+3. Start FastAPI:
 
 ```cmd
 start-service.cmd
@@ -515,11 +539,6 @@ start-service.cmd
 
 This script:
 
-- opens a visible Windows console window
-- starts the prebuilt Triton container if it is not already running
-- waits until `shadowgen_detector` and `shadowgen_segmenter` are ready
-- defaults to `TRITON_GPU=1`, `TRITON_DEVICE=cuda:0`, `TRITON_RESOLUTION=512`
-- sets `SHADOWGEN_TRITON_SEGMENTER_COMPILE_ENABLED=false` to avoid a long first-request `torch.compile` pause in the playground
 - sets `SHADOWGEN_TRITON_URL=http://127.0.0.1:8010`
 - sets `SHADOWGEN_TRITON_TRANSPORT=native`, which uses the official Triton HTTP client with binary tensor payloads
 - keeps `SHADOWGEN_DETECTOR_BACKEND_KIND=local` and `SHADOWGEN_SEGMENTER_BACKEND_KIND=local` unless `USE_TRITON_BACKENDS=1`
@@ -532,6 +551,7 @@ Useful environment overrides:
 set PORT=8003
 set TRITON_DEVICE=cuda:0
 set TRITON_RESOLUTION=512
+start-triton.cmd
 set USE_TRITON_BACKENDS=1
 start-service.cmd
 ```
@@ -545,14 +565,16 @@ If `TRITON_GPU=1` fails with an NVIDIA runtime error, Docker Desktop is running 
 
 The temporary Python backend model config uses `KIND_CPU` intentionally. The Python model still moves tensors to CUDA when the container has GPU access, but Triton can also load the model for local bring-up without GPU container runtime.
 
-3. Check the Triton model readiness manually if needed:
+4. Check the Triton model readiness manually if needed:
 
 ```powershell
 .venv\Scripts\python.exe tools\check_triton_segmenter_ready.py http://127.0.0.1:8010 --wait-seconds 240
 .venv\Scripts\python.exe tools\check_triton_segmenter_ready.py http://127.0.0.1:8010 shadowgen_detector --wait-seconds 240
+.venv\Scripts\python.exe tools\check_triton_segmenter_ready.py http://127.0.0.1:8010 shadowgen_detector_onnx --wait-seconds 240
+.venv\Scripts\python.exe tools\check_triton_segmenter_ready.py http://127.0.0.1:8010 shadowgen_segmenter_rmbg2 --wait-seconds 240
 ```
 
-4. Run a live smoke check. This performs:
+5. Run a live smoke check. This performs:
 
 - direct `TritonDetector` inference
 - direct `TritonSegmenter` inference
@@ -561,7 +583,9 @@ The temporary Python backend model config uses `KIND_CPU` intentionally. The Pyt
 
 ```powershell
 .venv\Scripts\python.exe tools\smoke_triton_detector.py --base-url http://127.0.0.1:8010 --image C:\Users\solofarm\Pictures\Screenshots\1.jpg
+.venv\Scripts\python.exe tools\smoke_triton_detector.py --variant grounding-dino-onnx --base-url http://127.0.0.1:8010 --image C:\Users\solofarm\Pictures\Screenshots\1.jpg
 .venv\Scripts\python.exe tools\smoke_triton_segmenter.py --base-url http://127.0.0.1:8010 --image C:\Users\solofarm\Pictures\Screenshots\1.jpg
+.venv\Scripts\python.exe tools\smoke_triton_segmenter.py --variant rmbg-2.0 --base-url http://127.0.0.1:8010 --image C:\Users\solofarm\Pictures\Screenshots\1.jpg
 .venv\Scripts\python.exe tools\benchmark_stage_backends.py --stage all --base-url http://127.0.0.1:8010 --transport local --transport triton-json --transport triton-native
 ```
 
@@ -570,10 +594,10 @@ To prepare the next ONNX segmenter candidate, authenticate to Hugging Face local
 ```powershell
 huggingface-cli login
 .venv\Scripts\python.exe tools\prepare_rmbg2_onnx_triton.py --filename onnx/model.onnx
-rebuild-triton.cmd
+start-triton.cmd
 ```
 
-`RMBG-2.0` is gated, so the tool will fail without local Hugging Face access. The generated `model.onnx` stays ignored by git.
+`RMBG-2.0` is gated, so the tool will fail unless Hugging Face credentials are visible in the same shell. Either run `huggingface-cli login` in that shell or export `HF_TOKEN` before running the tool. The generated `model.onnx` stays ignored by git.
 
 GroundingDINO ONNX export is tracked as an experimental model-only path:
 
@@ -581,7 +605,7 @@ GroundingDINO ONNX export is tracked as an experimental model-only path:
 .venv\Scripts\python.exe tools\export_detector_onnx.py
 ```
 
-This exports `logits` and `pred_boxes`; bbox/confidence postprocess still needs a dedicated ONNX/Triton adapter before it can replace the current detector runtime.
+This exports `logits` and `pred_boxes`, writes `shadowgen_detector_onnx/config.pbtxt`, and uses the `grounding-dino-onnx` Triton adapter for bbox/confidence postprocess in ML-core.
 
 5. Check ML-core capabilities:
 

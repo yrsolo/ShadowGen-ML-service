@@ -121,7 +121,7 @@ def main(argv: list[str] | None = None) -> int:
                 f"config={target.parents[1] / 'config.pbtxt'}",
                 f"input={input_name}:{input_dtype}",
                 f"output={output_name}:{output_dtype}",
-                "next=rebuild-triton.cmd",
+                "next=start-triton.cmd",
             ]
         )
     )

@@ -44,7 +44,7 @@ def _save_artifacts(payload: dict, output_dir: Path) -> list[str]:
     return saved
 
 
-def run_direct_smoke(*, base_url: str, image_path: Path, output_dir: Path, max_size: int, timeout_ms: int) -> dict:
+def run_direct_smoke(*, base_url: str, image_path: Path, output_dir: Path, max_size: int, timeout_ms: int, variant: str) -> dict:
     settings = Settings(triton_url=base_url, triton_timeout_ms=timeout_ms)
     client = TritonInferenceClient(
         TritonBackendSettings(
@@ -53,9 +53,9 @@ def run_direct_smoke(*, base_url: str, image_path: Path, output_dir: Path, max_s
             timeout_ms=settings.triton_timeout_ms,
         )
     )
-    binding = build_triton_model_registry(settings).get("segmenter", "birefnet")
+    binding = build_triton_model_registry(settings).get("segmenter", variant)
     if binding is None:
-        raise RuntimeError("segmenter/birefnet Triton binding is not configured")
+        raise RuntimeError(f"segmenter/{variant} Triton binding is not configured")
 
     available, detail = client.probe_binding(binding)
     if not available:
@@ -73,6 +73,7 @@ def run_direct_smoke(*, base_url: str, image_path: Path, output_dir: Path, max_s
 
     return {
         "probe": detail,
+        "variant": variant,
         "input_size": image.size,
         "bbox": result.bbox,
         "mask_extrema": mask.getextrema(),
@@ -84,7 +85,7 @@ def run_direct_smoke(*, base_url: str, image_path: Path, output_dir: Path, max_s
     }
 
 
-def run_render_smoke(*, base_url: str, image_path: Path, output_dir: Path, timeout_ms: int) -> dict:
+def run_render_smoke(*, base_url: str, image_path: Path, output_dir: Path, timeout_ms: int, variant: str) -> dict:
     cache_dir = ROOT / "var" / "cache" / "triton-full-smoke" / uuid4().hex
     settings = Settings(
         triton_url=base_url,
@@ -93,6 +94,7 @@ def run_render_smoke(*, base_url: str, image_path: Path, output_dir: Path, timeo
         preprocess_cache_dir=cache_dir,
         detector_backend_kind="mock",
         segmenter_backend_kind="triton",
+        segmenter_model_variant=variant,
         depth_backend_kind="mock",
         normals_backend_kind="mock",
         shadow_backend_kind="mock",
@@ -149,6 +151,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--output-dir", type=Path, default=ROOT / "artifacts" / "triton-smoke")
     parser.add_argument("--direct-max-size", type=int, default=512)
     parser.add_argument("--timeout-ms", type=int, default=180_000)
+    parser.add_argument("--variant", choices=["birefnet", "rmbg-2.0"], default="birefnet")
     parser.add_argument("--direct-only", action="store_true")
     args = parser.parse_args(argv)
 
@@ -161,6 +164,7 @@ def main(argv: list[str] | None = None) -> int:
         output_dir=args.output_dir / "direct",
         max_size=args.direct_max_size,
         timeout_ms=args.timeout_ms,
+        variant=args.variant,
     )
     result = {"direct": direct}
     if not args.direct_only:
@@ -169,6 +173,7 @@ def main(argv: list[str] | None = None) -> int:
             image_path=args.image,
             output_dir=args.output_dir / "render",
             timeout_ms=args.timeout_ms,
+            variant=args.variant,
         )
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0

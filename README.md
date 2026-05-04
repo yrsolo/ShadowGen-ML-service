@@ -136,13 +136,19 @@ Rebuild the Triton image after changing code under `ops/triton/model_repository`
 rebuild-triton.cmd
 ```
 
-Start the full local service:
+Start Triton when you need Triton-backed stages:
+
+```cmd
+start-triton.cmd
+```
+
+Start the FastAPI service:
 
 ```cmd
 start-service.cmd
 ```
 
-`start-service.cmd` opens a visible Windows console, starts the prebuilt Triton container when needed, waits for `shadowgen_detector` and `shadowgen_segmenter`, and then starts FastAPI without reload.
+`start-triton.cmd` starts only the Triton Docker container and waits for model readiness. `start-service.cmd` starts only FastAPI in the current visible console. This keeps the Triton container lifecycle explicit.
 
 Open:
 
@@ -173,10 +179,12 @@ This means web UI, sync render, async jobs, cache, and previews remain in this s
 Current live Triton bridge:
 
 - `detector` uses a temporary Triton `python` backend around GroundingDINO
+- `detector` also has an experimental `grounding-dino-onnx` variant served as `shadowgen_detector_onnx` when exported locally
 - `segmenter` uses a temporary Triton `python` backend around BiRefNet
+- `segmenter` also has a prepared `rmbg-2.0` ONNX slot served as `shadowgen_segmenter_rmbg2` when gated weights are available locally
 - ML-core now uses official Triton HTTP binary tensor transport by default; set `SHADOWGEN_TRITON_TRANSPORT=json` only for debugging
-- `RMBG-2.0` is prepared as the next ONNX segmenter variant, but the gated weights must be prepared locally before it can be served
-- `GroundingDINO` has an experimental model-only ONNX export tool; runtime stays on local/Python fallback until parity is proven
+- `RMBG-2.0` is gated on Hugging Face, so `HF_TOKEN` must be visible in the shell that prepares the ONNX model
+- `GroundingDINO` ONNX export returns model tensors (`logits`, `pred_boxes`); ML-core keeps bbox postprocess in the Triton adapter
 - `torch.compile` remains an opt-in acceleration lever while ONNX export is blocked by `torchvision::deform_conv2d`
 - `ONNX` stays the planned first long-term production model format
 
@@ -184,12 +192,13 @@ Normal local lifecycle:
 
 ```cmd
 rebuild-triton.cmd
+start-triton.cmd
 start-service.cmd
 ```
 
-Run `rebuild-triton.cmd` only after Triton model/backend code changes. Run `start-service.cmd` for day-to-day work.
+Run `rebuild-triton.cmd` only after Triton Python backend code changes. Run `start-triton.cmd` to start or restart the Triton container. Run `start-service.cmd` for the FastAPI service.
 
-The rebuild script builds [ops/triton/Dockerfile.segmenter-python](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/ops/triton/Dockerfile.segmenter-python), bakes [ops/triton/model_repository](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/ops/triton/model_repository) into `/models`, and the start script exposes Triton HTTP on host `8010`, gRPC on host `8011`, and metrics on host `8012`.
+The rebuild script builds [ops/triton/Dockerfile.segmenter-python](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/ops/triton/Dockerfile.segmenter-python). Large generated ONNX files are intentionally excluded from Docker build context and mounted by [start-triton.cmd](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/start-triton.cmd). The Triton start script exposes HTTP on host `8010`, gRPC on host `8011`, and metrics on host `8012`.
 
 The default launcher mode uses Docker GPU (`TRITON_GPU=1`), `TRITON_DEVICE=cuda:0`, and a 512px segmenter resolution. Detector and segmenter default to local execution because the current Triton Python backends are still slower than local in-process models. Set `USE_TRITON_BACKENDS=1` or choose `triton` in `/playground` to test Triton execution.
 
@@ -197,7 +206,9 @@ Live smoke check:
 
 ```cmd
 .venv\Scripts\python.exe tools\smoke_triton_detector.py --base-url http://127.0.0.1:8010 --image C:\Users\solofarm\Pictures\Screenshots\1.jpg
+.venv\Scripts\python.exe tools\smoke_triton_detector.py --variant grounding-dino-onnx --base-url http://127.0.0.1:8010 --image C:\Users\solofarm\Pictures\Screenshots\1.jpg
 .venv\Scripts\python.exe tools\smoke_triton_segmenter.py --base-url http://127.0.0.1:8010 --image C:\Users\solofarm\Pictures\Screenshots\1.jpg
+.venv\Scripts\python.exe tools\smoke_triton_segmenter.py --variant rmbg-2.0 --base-url http://127.0.0.1:8010 --image C:\Users\solofarm\Pictures\Screenshots\1.jpg
 .venv\Scripts\python.exe tools\benchmark_stage_backends.py --stage all --base-url http://127.0.0.1:8010 --transport local --transport triton-native
 ```
 
