@@ -597,7 +597,9 @@ huggingface-cli login
 start-triton.cmd
 ```
 
-`RMBG-2.0` is gated, so the tool will fail unless Hugging Face credentials are visible in the same shell. Either run `huggingface-cli login` in that shell or export `HF_TOKEN` before running the tool. The generated `model.onnx` stays ignored by git.
+`RMBG-2.0` is gated, so the tool needs Hugging Face credentials. It reads `HF_TOKEN` from the current environment or from the repository `.env` file. The generated `model.onnx` stays ignored by git.
+
+`start-triton.cmd` does not forward `HF_TOKEN` into Docker by default because Docker stores container environment metadata. If a future Triton Python backend needs gated Hugging Face access inside the container, set `TRITON_FORWARD_HF_TOKEN=1` explicitly before `start-triton.cmd`.
 
 GroundingDINO ONNX export is tracked as an experimental model-only path:
 

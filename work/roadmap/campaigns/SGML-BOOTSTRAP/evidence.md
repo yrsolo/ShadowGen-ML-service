@@ -308,7 +308,9 @@ The active docs now provide:
 - `.venv\Scripts\python.exe -m pytest -q` passed after adding live Triton detector support: `96 passed, 4 warnings`
 - `.venv\Scripts\python.exe -m pytest -q` passed after native Triton transport, benchmark helper, RMBG-2.0 preparation, and GroundingDINO ONNX export tooling: `96 passed, 4 warnings`
 - `.venv\Scripts\python.exe tools\prepare_rmbg2_onnx_triton.py --source var\tmp\rmbg14\onnx\model_fp16.onnx --target var\tmp\rmbg-test\shadowgen_segmenter_rmbg2\1\model.onnx` passed as an ONNX config-generation smoke using the non-gated RMBG-1.4 ONNX file
-- `.venv\Scripts\python.exe tools\prepare_rmbg2_onnx_triton.py --filename onnx/model.onnx` currently fails cleanly with a gated-model access message because `HF_TOKEN` is not visible in this shell
+- `.venv\Scripts\python.exe tools\prepare_rmbg2_onnx_triton.py --filename onnx/model.onnx` initially failed cleanly with a gated-model access message because `HF_TOKEN` was not loaded from `.env`
+- `.venv\Scripts\python.exe tools\prepare_rmbg2_onnx_triton.py --filename onnx/model.onnx` passed after teaching the tool to read `HF_TOKEN` from `.env`; generated ignored `shadowgen_segmenter_rmbg2` model/config files with input `pixel_values` and output `alphas`
+- Local ONNX Runtime smoke for `shadowgen_segmenter_rmbg2` passed on CPU fallback with output shape `[1,1,1024,1024]` and alpha range `0..0.9999997`; Windows ORT CUDA provider was unavailable due a missing `cublasLt64_12.dll`
 - `.venv\Scripts\python.exe tools\export_detector_onnx.py --height 512 --width 512` passed and generated ignored `shadowgen_detector_onnx` model/config files
 - Local ONNX Runtime smoke for `shadowgen_detector_onnx` passed with `CUDAExecutionProvider`, output shapes `logits=[1,900,256]`, `pred_boxes=[1,900,4]`, bbox `[235,172,391,365]`, confidence `0.3508`, and warm pure ORT inference about `164 ms`
 - `cmd /c start-triton.cmd help`, `cmd /c rebuild-triton.cmd help`, and `cmd /c start-service.cmd help` passed after splitting Triton rebuild, Triton start, and FastAPI start
