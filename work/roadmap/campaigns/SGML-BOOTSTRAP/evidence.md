@@ -317,10 +317,17 @@ The active docs now provide:
 - `.venv\Scripts\python.exe -m compileall src tools tests` passed after ONNX detector wiring and launch-script split
 - `.venv\Scripts\python.exe -m pytest tests/test_triton_transport.py tests/test_api.py tests/test_runtime.py -q` passed: `62 passed, 3 warnings`
 - `.venv\Scripts\python.exe -m pytest -q` passed: `96 passed, 4 warnings`
+- `cmd /c rebuild-triton.cmd` passed after Docker Desktop was repaired
+- `cmd /c start-triton.cmd` passed and loaded all live Triton models as READY: `shadowgen_detector`, `shadowgen_segmenter`, `shadowgen_detector_onnx`, `shadowgen_segmenter_rmbg2`
+- `.venv\Scripts\python.exe tools\smoke_triton_segmenter.py --variant rmbg-2.0 --base-url http://127.0.0.1:8010 --image C:\Users\solofarm\Pictures\Screenshots\1.jpg --direct-only --timeout-ms 300000 --output-dir artifacts\triton-rmbg2-smoke` passed with `mask_extrema=[0,254]`
+- `.venv\Scripts\python.exe tools\smoke_triton_detector.py --variant grounding-dino-onnx --base-url http://127.0.0.1:8010 --image C:\Users\solofarm\Pictures\Screenshots\1.jpg --direct-only --timeout-ms 300000 --output-dir artifacts\triton-detector-onnx-smoke` passed with bbox `[353,257,586,545]` and confidence about `0.366`
+- full FastAPI render smoke with `detector=triton/grounding-dino-onnx` passed and reported capability `backend_kind=triton`, `endpoint=http://127.0.0.1:8010`
+- full FastAPI render smoke with `segmenter=triton/rmbg-2.0` passed and reported capability `backend_kind=triton`, `endpoint=http://127.0.0.1:8010`
+- combined FastAPI render smoke with `detector=triton/grounding-dino-onnx` and `segmenter=triton/rmbg-2.0` passed; measured latency is functional but still unstable and remains a performance follow-up
 
 ## Remaining Bootstrap Gaps
 
 - current BiRefNet ONNX export is blocked in this environment by `torchvision::deform_conv2d`, so the live `segmenter` bridge currently depends on the temporary Triton Python backend
 - `V2-DIFF` Triton backend is scaffolded but not implemented
 - compatibility shims still remain in the repository
-- current Docker daemon did not answer `docker version` from this shell, so live container rebuild/start needs Docker Desktop restart before validation
+- ONNX Triton latency is not yet consistently faster than local inference; next work should profile ONNXRuntime execution provider placement, warmup, input resolution, and transport overhead

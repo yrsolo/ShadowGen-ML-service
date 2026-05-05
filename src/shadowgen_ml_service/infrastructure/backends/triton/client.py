@@ -261,11 +261,21 @@ class TritonInferenceClient:
                         f"Triton tensor {tensor_name} has rank {observed_rank}, expected one of {sorted(valid_ranks)}"
                     )
             if binding.shape_policy == "channel-first" and binding.channels is not None and shape:
-                channel_dim = self._coerce_dim(shape[0])
+                channel_dim = self._channel_first_dim(shape, binding.channels)
                 if channel_dim not in {None, -1, binding.channels}:
                     raise TritonSchemaMismatchError(
                         f"Triton tensor {tensor_name} advertises {channel_dim} channels, expected {binding.channels}"
                     )
+
+    def _channel_first_dim(self, shape: list, expected_channels: int) -> int | None:
+        first_dim = self._coerce_dim(shape[0])
+        if first_dim in {None, -1, expected_channels}:
+            return first_dim
+        if len(shape) >= 4:
+            second_dim = self._coerce_dim(shape[1])
+            if second_dim in {None, -1, expected_channels}:
+                return second_dim
+        return first_dim
 
     @staticmethod
     def _coerce_dim(value) -> int | None:

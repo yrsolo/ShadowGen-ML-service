@@ -208,12 +208,16 @@ Tracked repository scaffold:
 - [ops/triton/model_repository/shadowgen_detector/1/model.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/ops/triton/model_repository/shadowgen_detector/1/model.py)
 - [ops/triton/Dockerfile.segmenter-python](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/ops/triton/Dockerfile.segmenter-python)
 - [rebuild-triton.cmd](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/rebuild-triton.cmd)
+- [start-triton.cmd](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/start-triton.cmd)
 - [start-service.cmd](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/start-service.cmd)
 
 Current live contract:
 
-- input `image`: `FP32`, batched `NCHW`, normalized `0..1`
-- output `mask`: `FP32`, batched `NCHW`
+- Python `shadowgen_segmenter` input `image`: `FP32`, batched `NCHW`, normalized `0..1`
+- Python `shadowgen_segmenter` output `mask`: `FP32`, batched `NCHW`
+- ONNX `shadowgen_segmenter_rmbg2` input `pixel_values`: `FP32`, fixed-batch `NCHW`, normalized `0..1`
+- ONNX `shadowgen_segmenter_rmbg2` output `alphas`: `FP32`, fixed-batch `NCHW`
+- ONNX `shadowgen_detector_onnx` inputs are processor tensors; outputs are `logits` and `pred_boxes`
 
 Postprocess kept inside ML-core:
 
@@ -226,7 +230,9 @@ Current blocker note:
 - in the current environment BiRefNet ONNX export is blocked by `torchvision::deform_conv2d`
 - the export tool now tries both the modern and legacy ONNX exporters and reports this blocker explicitly
 - `shadowgen_detector` now uses a temporary Triton Python backend around GroundingDINO
+- `shadowgen_detector_onnx` is a live experimental ONNX variant with ML-core bbox/confidence postprocess
 - `shadowgen_segmenter` now uses a temporary Triton Python backend so we can run a live Triton stage without replacing the model
+- `shadowgen_segmenter_rmbg2` is a live experimental ONNX variant; the current BRIA export has fixed batch `1`, so dynamic batching is disabled for this variant
 - `torch.compile` is exposed as an opt-in acceleration path for both the local backend and the Triton Python backend
 
 ### Foreground Refinement

@@ -103,7 +103,14 @@ def _dummy_pil(width: int, height: int):
     return Image.new("RGB", (width, height), "white")
 
 
+DETECTOR_OUTPUT_DIMS = {
+    "pred_boxes": [900, 4],
+}
+
+
 def _shape_without_batch(value) -> list[int]:
+    if value.name in DETECTOR_OUTPUT_DIMS:
+        return DETECTOR_OUTPUT_DIMS[value.name]
     dims = []
     for dim in value.type.tensor_type.shape.dim[1:]:
         if dim.dim_value:

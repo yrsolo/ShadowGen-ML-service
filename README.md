@@ -181,9 +181,10 @@ Current live Triton bridge:
 - `detector` uses a temporary Triton `python` backend around GroundingDINO
 - `detector` also has an experimental `grounding-dino-onnx` variant served as `shadowgen_detector_onnx` when exported locally
 - `segmenter` uses a temporary Triton `python` backend around BiRefNet
-- `segmenter` also has a prepared `rmbg-2.0` ONNX slot served as `shadowgen_segmenter_rmbg2` when gated weights are available locally
+- `segmenter` also has a live `rmbg-2.0` ONNX slot served as `shadowgen_segmenter_rmbg2` when gated weights are prepared locally
 - ML-core now uses official Triton HTTP binary tensor transport by default; set `SHADOWGEN_TRITON_TRANSPORT=json` only for debugging
 - `RMBG-2.0` is gated on Hugging Face; the preparation tool reads `HF_TOKEN` from process env or the repository `.env`
+- the current BRIA RMBG-2.0 ONNX export has fixed batch `1`, so this variant is served without Triton dynamic batching
 - `GroundingDINO` ONNX export returns model tensors (`logits`, `pred_boxes`); ML-core keeps bbox postprocess in the Triton adapter
 - `torch.compile` remains an opt-in acceleration lever while ONNX export is blocked by `torchvision::deform_conv2d`
 - `ONNX` stays the planned first long-term production model format

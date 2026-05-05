@@ -60,7 +60,7 @@ def _tensor_shape(value) -> list[int | str]:
     return shape
 
 
-def _load_contract(model_path: Path) -> tuple[str, str, str, str]:
+def _load_contract(model_path: Path) -> tuple[str, str, str, str, int]:
     try:
         import onnx
     except ImportError as exc:
@@ -85,32 +85,41 @@ def _load_contract(model_path: Path) -> tuple[str, str, str, str]:
         raise RuntimeError(f"Expected NCHW RGB input, observed {input_tensor.name}: {input_shape}")
     if len(output_shape) != 4:
         raise RuntimeError(f"Expected NCHW alpha output, observed {output_tensor.name}: {output_shape}")
-    return input_tensor.name, input_dtype, output_tensor.name, output_dtype
+    max_batch_size = 4 if input_shape[0] in {-1, "batch", "N"} else 0
+    return input_tensor.name, input_dtype, output_tensor.name, output_dtype, max_batch_size
 
 
-def _write_config(model_dir: Path, *, input_name: str, input_dtype: str, output_name: str, output_dtype: str) -> None:
+def _write_config(model_dir: Path, *, input_name: str, input_dtype: str, output_name: str, output_dtype: str, max_batch_size: int) -> None:
+    if max_batch_size > 0:
+        input_dims = "[ 3, 1024, 1024 ]"
+        output_dims = "[ 1, 1024, 1024 ]"
+        batching = """dynamic_batching {
+  preferred_batch_size: [ 2, 4 ]
+  max_queue_delay_microseconds: 15000
+}
+"""
+    else:
+        input_dims = "[ 1, 3, -1, -1 ]"
+        output_dims = "[ 1, 1, -1, -1 ]"
+        batching = ""
     config = f'''name: "shadowgen_segmenter_rmbg2"
 platform: "onnxruntime_onnx"
-max_batch_size: 4
+max_batch_size: {max_batch_size}
 input [
   {{
     name: "{input_name}"
     data_type: {input_dtype}
-    dims: [ 3, 1024, 1024 ]
+    dims: {input_dims}
   }}
 ]
 output [
   {{
     name: "{output_name}"
     data_type: {output_dtype}
-    dims: [ 1, 1024, 1024 ]
+    dims: {output_dims}
   }}
 ]
-dynamic_batching {{
-  preferred_batch_size: [ 2, 4 ]
-  max_queue_delay_microseconds: 15000
-}}
-instance_group [
+{batching}instance_group [
   {{
     kind: KIND_GPU
     count: 1
@@ -132,8 +141,15 @@ def main(argv: list[str] | None = None) -> int:
     target.parent.mkdir(parents=True, exist_ok=True)
     source = args.source.resolve() if args.source else _download(args.repo_id, args.filename, target).resolve()
     shutil.copy2(source, target)
-    input_name, input_dtype, output_name, output_dtype = _load_contract(target)
-    _write_config(target.parents[1], input_name=input_name, input_dtype=input_dtype, output_name=output_name, output_dtype=output_dtype)
+    input_name, input_dtype, output_name, output_dtype, max_batch_size = _load_contract(target)
+    _write_config(
+        target.parents[1],
+        input_name=input_name,
+        input_dtype=input_dtype,
+        output_name=output_name,
+        output_dtype=output_dtype,
+        max_batch_size=max_batch_size,
+    )
     print(
         "\n".join(
             [
@@ -141,6 +157,7 @@ def main(argv: list[str] | None = None) -> int:
                 f"config={target.parents[1] / 'config.pbtxt'}",
                 f"input={input_name}:{input_dtype}",
                 f"output={output_name}:{output_dtype}",
+                f"max_batch_size={max_batch_size}",
                 "next=start-triton.cmd",
             ]
         )

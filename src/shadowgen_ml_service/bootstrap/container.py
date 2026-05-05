@@ -446,10 +446,10 @@ def _register_segmenter(
             detail=rmbg_triton_detail,
             device="triton",
             endpoint=triton_client.endpoint,
-            supports_batching=True,
+            supports_batching=False,
             supports_async=True,
         ),
-        TritonSegmenter(triton_client, rmbg_binding, triton_batcher) if rmbg_triton_available and rmbg_binding is not None else None,
+        TritonSegmenter(triton_client, rmbg_binding, None) if rmbg_triton_available and rmbg_binding is not None else None,
     )
 
 
