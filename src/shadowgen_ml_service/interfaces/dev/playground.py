@@ -311,8 +311,8 @@ def render_playground_html() -> str:
   <script>
     const stageDefinitions = [
       { key: "decode", title: "Decode", description: "Декодирование входного изображения.", backendKinds: ["internal"], variants: ["internal"] },
-      { key: "detector", title: "Detection", description: "Поиск основного объекта на полном изображении.", backendKinds: ["mock", "local", "triton"], variants: ["grounding-dino"] },
-      { key: "segmenter", title: "Segmentation", description: "Сегментация после crop/pad/resize.", backendKinds: ["mock", "local", "triton"], variants: ["birefnet"] },
+      { key: "detector", title: "Detection", description: "Поиск основного объекта на полном изображении.", backendKinds: ["mock", "local", "triton"], variants: ["grounding-dino", "grounding-dino-onnx"] },
+      { key: "segmenter", title: "Segmentation", description: "Сегментация после crop/pad/resize.", backendKinds: ["mock", "local", "triton"], variants: ["birefnet", "rmbg-2.0"] },
       { key: "foreground_refiner", title: "Foreground", description: "Коррекция цвета полупрозрачных пикселей.", backendKinds: ["mock", "local"], variants: ["fast-foreground-estimation"] },
       { key: "depth_estimator", title: "Depth", description: "Карта глубины на working crop.", backendKinds: ["mock", "local", "triton"], variants: ["depth-anything-v2-small"] },
       { key: "normal_estimator", title: "Normals", description: "Normals через быстрый depth fallback или neural backend.", backendKinds: ["mock", "local", "triton"], variants: ["from-depth-v2", "stable-normal"] },
@@ -445,6 +445,7 @@ def render_playground_html() -> str:
           if (button.dataset.stage === "shadow_generator") {
             syncShadowModelSelection("backend");
           }
+          syncInferenceVariantSelection(button.dataset.stage, "backend");
           renderCards();
           updateShadowControlNote();
         });
@@ -455,6 +456,7 @@ def render_playground_html() -> str:
           if (button.dataset.stage === "shadow_generator") {
             syncShadowModelSelection("variant");
           }
+          syncInferenceVariantSelection(button.dataset.stage, "variant");
           renderCards();
           updateShadowControlNote();
         });
@@ -609,6 +611,25 @@ def render_playground_html() -> str:
       if (variant === "mock") state.stageBackendKinds.shadow_generator = "mock";
       if (variant === "v1-gan") state.stageBackendKinds.shadow_generator = "local";
       if (variant === "v2-diff") state.stageBackendKinds.shadow_generator = "local";
+    }
+
+    function syncInferenceVariantSelection(stageKey, source) {
+      if (!["detector", "segmenter"].includes(stageKey)) return;
+      const variant = state.stageVariants[stageKey];
+      const backendKind = state.stageBackendKinds[stageKey];
+      const onnxVariant = stageKey === "detector" ? "grounding-dino-onnx" : "rmbg-2.0";
+      const localVariant = stageKey === "detector" ? "grounding-dino" : "birefnet";
+
+      if (source === "variant" && variant === onnxVariant) {
+        state.stageBackendKinds[stageKey] = "triton";
+        return;
+      }
+      if (source === "backend" && backendKind === "local" && variant === onnxVariant) {
+        state.stageVariants[stageKey] = localVariant;
+      }
+      if (source === "backend" && backendKind === "mock") {
+        state.stageVariants[stageKey] = localVariant;
+      }
     }
 
     function buildRequestBody() {

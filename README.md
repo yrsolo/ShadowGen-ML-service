@@ -77,6 +77,13 @@ The runtime resolves:
 
 This metadata is exposed through both capabilities and dev-stage responses.
 
+In `/playground`, detector and segmenter can be switched by `model_variant` as well as backend:
+
+- Detection: `grounding-dino` or `grounding-dino-onnx`
+- Segmentation: `birefnet` or `rmbg-2.0`
+
+Choosing an ONNX variant automatically selects the `triton` backend for that stage. Switching back to `local` resets the stage to its local variant.
+
 Heavy stages now enter execution through canonical `stage_io` input objects, so orchestration no longer depends on backend-specific argument lists.
 
 The Triton subsystem now targets the standard Triton tensor infer schema with explicit `inputs` and `outputs` instead of stage-specific JSON bodies.

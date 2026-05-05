@@ -103,6 +103,8 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("ShadowGen Pipeline Playground", response.text)
         self.assertIn("shutdownServiceBtn", response.text)
+        self.assertIn("grounding-dino-onnx", response.text)
+        self.assertIn("rmbg-2.0", response.text)
 
     def test_dev_shutdown_endpoint_uses_injected_handler(self) -> None:
         calls: list[bool] = []

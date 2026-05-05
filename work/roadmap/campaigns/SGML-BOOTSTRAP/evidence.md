@@ -324,6 +324,7 @@ The active docs now provide:
 - full FastAPI render smoke with `detector=triton/grounding-dino-onnx` passed and reported capability `backend_kind=triton`, `endpoint=http://127.0.0.1:8010`
 - full FastAPI render smoke with `segmenter=triton/rmbg-2.0` passed and reported capability `backend_kind=triton`, `endpoint=http://127.0.0.1:8010`
 - combined FastAPI render smoke with `detector=triton/grounding-dino-onnx` and `segmenter=triton/rmbg-2.0` passed; measured latency is functional but still unstable and remains a performance follow-up
+- Playground now exposes detector variants `grounding-dino` / `grounding-dino-onnx` and segmenter variants `birefnet` / `rmbg-2.0`; choosing an ONNX variant automatically switches the stage to `triton`
 
 ## Remaining Bootstrap Gaps
 

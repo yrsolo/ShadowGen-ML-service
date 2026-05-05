@@ -130,10 +130,23 @@ The playground supports:
 - per-stage rerun
 - preview scaling
 - explicit backend switching
+- explicit detector and segmenter model variant switching
 - explicit shadow model variant switching
 - horizontal stage navigation with the mouse wheel
 - vertical scrolling inside a stage card with `Shift` + mouse wheel
 - dev-only shutdown button for the current ML-service process
+
+Current detector stage variants in the UI:
+
+- `grounding-dino`
+- `grounding-dino-onnx`
+
+Current segmenter stage variants in the UI:
+
+- `birefnet`
+- `rmbg-2.0`
+
+Selecting an ONNX variant automatically switches that stage to `triton`. Selecting `local` or `mock` resets it to the local variant.
 
 Current shadow stage variants in the UI:
 
