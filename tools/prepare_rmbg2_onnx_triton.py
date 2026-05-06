@@ -123,6 +123,7 @@ output [
   {{
     kind: KIND_GPU
     count: 1
+    gpus: [ 0 ]
   }}
 ]
 '''

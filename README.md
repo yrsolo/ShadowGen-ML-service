@@ -208,7 +208,7 @@ Run `rebuild-triton.cmd` only after Triton Python backend code changes. Run `sta
 
 The rebuild script builds [ops/triton/Dockerfile.segmenter-python](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/ops/triton/Dockerfile.segmenter-python). Large generated ONNX files are intentionally excluded from Docker build context and mounted by [start-triton.cmd](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/start-triton.cmd). The Triton start script exposes HTTP on host `8010`, gRPC on host `8011`, and metrics on host `8012`.
 
-The default launcher mode uses Docker GPU (`TRITON_GPU=1`), `TRITON_DEVICE=cuda:0`, and a 512px segmenter resolution. Detector and segmenter default to local execution because the current Triton Python backends are still slower than local in-process models. Set `USE_TRITON_BACKENDS=1` or choose `triton` in `/playground` to test Triton execution.
+The default launcher mode uses Docker GPU (`TRITON_GPU=1`), exposes host GPU `1` through `TRITON_GPU_DEVICE=1`, maps it to `cuda:0` inside the container, and uses a 512px segmenter resolution. On the current workstation host GPU `1` is the RTX 4090. Detector and segmenter default to local execution because the current Triton Python/ONNX paths are not consistently faster than local in-process models. Set `USE_TRITON_BACKENDS=1` or choose `triton` in `/playground` to test Triton execution.
 
 Live smoke check:
 

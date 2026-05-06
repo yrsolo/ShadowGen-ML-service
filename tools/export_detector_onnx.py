@@ -163,6 +163,7 @@ def _write_triton_config(model, model_dir: Path) -> None:
             "  {",
             "    kind: KIND_GPU",
             "    count: 1",
+            "    gpus: [ 0 ]",
             "  }",
             "]",
             "",

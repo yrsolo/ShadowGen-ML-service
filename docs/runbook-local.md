@@ -248,6 +248,8 @@ Current blocker note:
 - `shadowgen_segmenter_rmbg2` is a live experimental ONNX variant; the current BRIA export has fixed batch `1`, so dynamic batching is disabled for this variant
 - `torch.compile` is exposed as an opt-in acceleration path for both the local backend and the Triton Python backend
 
+ONNXRuntime may log `Shape mismatch attempting to re-use buffer` for the experimental `shadowgen_detector_onnx` model. In this setup it comes from dynamic symbolic shapes in the traced GroundingDINO graph. Treat it as a performance/shape-export warning while outputs remain valid; it is not the signal that Triton selected the wrong GPU.
+
 ### Foreground Refinement
 
 - Backends: `mock`, `local`
@@ -546,7 +548,8 @@ This script:
 - additionally waits for generated optional ONNX models if their files exist:
 - `shadowgen_detector_onnx`
 - `shadowgen_segmenter_rmbg2`
-- defaults to `TRITON_GPU=1`, `TRITON_DEVICE=cuda:0`, `TRITON_RESOLUTION=512`
+- defaults to `TRITON_GPU=1`, `TRITON_GPU_DEVICE=1`, `TRITON_DEVICE=cuda:0`, `TRITON_RESOLUTION=512`
+- exposes only host GPU `1` to Docker by default; on the current workstation this is the RTX 4090, and inside the container it appears as `cuda:0`
 - sets `SHADOWGEN_TRITON_SEGMENTER_COMPILE_ENABLED=false` to avoid a long first-request `torch.compile` pause in the playground
 - exposes Triton at `http://127.0.0.1:8010`
 
@@ -568,6 +571,7 @@ Useful environment overrides:
 
 ```cmd
 set PORT=8003
+set TRITON_GPU_DEVICE=1
 set TRITON_DEVICE=cuda:0
 set TRITON_RESOLUTION=512
 start-triton.cmd
@@ -581,6 +585,8 @@ If `TRITON_GPU=1` fails with an NVIDIA runtime error, Docker Desktop is running 
 - NVIDIA driver supports WSL CUDA
 - `nvidia-smi` works on the Windows host
 - `docker run --rm --gpus all nvidia/cuda:12.6.0-base-ubuntu22.04 nvidia-smi` works
+
+If GPU numbering changes, run the Docker `nvidia-smi` check and set `TRITON_GPU_DEVICE` to the host GPU index you want. Use `TRITON_GPU_DEVICE=all` only when you explicitly want Triton/ONNXRuntime to see every GPU.
 
 The temporary Python backend model config uses `KIND_CPU` intentionally. The Python model still moves tensors to CUDA when the container has GPU access, but Triton can also load the model for local bring-up without GPU container runtime.
 

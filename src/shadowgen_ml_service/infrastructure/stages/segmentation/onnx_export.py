@@ -62,6 +62,7 @@ def render_segmenter_config_pbtxt(*, contract: SegmenterOnnxContract | None = No
             "  {",
             "    kind: KIND_GPU",
             "    count: 1",
+            "    gpus: [ 0 ]",
             "  }",
             "]",
             "",

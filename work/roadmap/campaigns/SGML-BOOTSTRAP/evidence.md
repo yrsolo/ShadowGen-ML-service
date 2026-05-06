@@ -325,6 +325,10 @@ The active docs now provide:
 - full FastAPI render smoke with `segmenter=triton/rmbg-2.0` passed and reported capability `backend_kind=triton`, `endpoint=http://127.0.0.1:8010`
 - combined FastAPI render smoke with `detector=triton/grounding-dino-onnx` and `segmenter=triton/rmbg-2.0` passed; measured latency is functional but still unstable and remains a performance follow-up
 - Playground now exposes detector variants `grounding-dino` / `grounding-dino-onnx` and segmenter variants `birefnet` / `rmbg-2.0`; choosing an ONNX variant automatically switches the stage to `triton`
+- `start-triton.cmd` now defaults to `TRITON_GPU_DEVICE=1`, so Docker exposes only the host RTX 4090 to Triton; inside the container that GPU is addressed as `cuda:0`
+- ONNX model configs now pin `instance_group.gpus: [0]`; after Docker GPU remapping this points detector/segmenter ONNX execution at the RTX 4090 path instead of letting Triton instantiate on both visible GPUs
+- `.venv\Scripts\python.exe tools\smoke_triton_detector.py --variant grounding-dino-onnx --base-url http://127.0.0.1:8010 --image C:\Users\solofarm\Pictures\Screenshots\1.jpg --direct-only --timeout-ms 300000 --output-dir artifacts\triton-detector-onnx-gpu1-smoke` passed after GPU pinning
+- `.venv\Scripts\python.exe tools\smoke_triton_segmenter.py --variant rmbg-2.0 --base-url http://127.0.0.1:8010 --image C:\Users\solofarm\Pictures\Screenshots\1.jpg --direct-only --timeout-ms 300000 --output-dir artifacts\triton-rmbg2-gpu1-smoke` passed after GPU pinning
 
 ## Remaining Bootstrap Gaps
 
