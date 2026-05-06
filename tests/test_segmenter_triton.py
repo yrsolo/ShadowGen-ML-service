@@ -102,6 +102,23 @@ class TritonSegmenterTests(unittest.TestCase):
         self.assertEqual(asset_to_pil(result.cutout_rgba).getpixel((0, 0)), (255, 255, 255, 255))
         self.assertEqual(asset_to_pil(result.crop_rgba).getpixel((0, 0)), (0, 0, 0, 0))
 
+    def test_rmbg2_segmenter_uses_1024_input_by_default(self) -> None:
+        binding = TritonModelBinding(
+            stage_key="segmenter",
+            model_variant="rmbg-2.0",
+            model_name="shadowgen_segmenter_rmbg2",
+            inputs={"image": TritonTensorBinding("pixel_values", "FP32", expected_ranks=(4,), shape_policy="channel-first", channels=3)},
+            outputs={"mask": TritonTensorBinding("alphas", "FP32", expected_ranks=(4,), shape_policy="channel-first", channels=1)},
+        )
+        client = _FakeClient({"alphas": np.ones((1, 1, 1024, 1024), dtype=np.float32)})
+        segmenter = TritonSegmenter(client, binding)
+
+        image = Image.new("RGBA", (320, 240), (255, 100, 0, 255))
+        result = segmenter.segment(SegmentationInput(image=pil_to_asset(image)))
+
+        self.assertEqual(client.calls[0][0]["shape"], [1, 3, 1024, 1024])
+        self.assertEqual(result.mask.size, image.size)
+
 
 if __name__ == "__main__":
     unittest.main()

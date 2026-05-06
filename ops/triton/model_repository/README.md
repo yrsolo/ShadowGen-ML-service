@@ -20,7 +20,7 @@ Current operational path:
 
 - temporary Triton `python` backend for BiRefNet
 - temporary Triton `python` backend for GroundingDINO
-- default model id: `ZhengPeng7/BiRefNet-matting`
+- default model id: `ZhengPeng7/BiRefNet`
 - default detector model id: `IDEA-Research/grounding-dino-base`
 - model returns a mask-first tensor contract
 - `cutout`, `crop`, and compatibility `bbox` remain ML-core postprocess responsibilities

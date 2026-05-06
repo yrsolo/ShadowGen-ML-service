@@ -191,7 +191,7 @@ Current live Triton bridge:
 - `segmenter` also has a live `rmbg-2.0` ONNX slot served as `shadowgen_segmenter_rmbg2` when gated weights are prepared locally
 - ML-core now uses official Triton HTTP binary tensor transport by default; set `SHADOWGEN_TRITON_TRANSPORT=json` only for debugging
 - `RMBG-2.0` is gated on Hugging Face; the preparation tool reads `HF_TOKEN` from process env or the repository `.env`
-- the current BRIA RMBG-2.0 ONNX export has fixed batch `1`, so this variant is served without Triton dynamic batching
+- `RMBG-2.0` is fed at `1024x1024` by default through `SHADOWGEN_TRITON_SEGMENTER_RMBG2_RESOLUTION`; the current ONNX graph fails at `512x512` despite dynamic-shape metadata
 - `GroundingDINO` ONNX export returns model tensors (`logits`, `pred_boxes`); ML-core keeps bbox postprocess in the Triton adapter
 - `torch.compile` remains an opt-in acceleration lever while ONNX export is blocked by `torchvision::deform_conv2d`
 - `ONNX` stays the planned first long-term production model format

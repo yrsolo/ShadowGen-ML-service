@@ -163,7 +163,7 @@ class SegmenterTests(unittest.TestCase):
             transformers_module=FakeTransformersSegmentationModule,
             torch_module=FakeTorch(),
             transforms_module=FakeTransformsModule,
-            model_id="ZhengPeng7/BiRefNet-matting",
+            model_id="ZhengPeng7/BiRefNet",
             resolution=64,
             mask_threshold=0.5,
             target_device="cuda:0",
@@ -174,7 +174,7 @@ class SegmenterTests(unittest.TestCase):
         self.assertEqual(result.cutout_rgba.size, image.size)
         self.assertEqual(result.crop_rgba.size, image.size)
         self.assertEqual(result.bbox, (0, 0, image.width, image.height))
-        self.assertEqual(FakeSegmentationModel.last_from_pretrained[0], "ZhengPeng7/BiRefNet-matting")
+        self.assertEqual(FakeSegmentationModel.last_from_pretrained[0], "ZhengPeng7/BiRefNet")
         self.assertEqual(segmenter.device_label, "cuda:0")
         self.assertEqual(segmenter._model.device, "cuda:0")
 

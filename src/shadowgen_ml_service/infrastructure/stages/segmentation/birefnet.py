@@ -76,7 +76,7 @@ class RealSegmenter(Segmenter):
         torch_module: Any | None = None,
         transforms_module: Any | None = None,
         *,
-        model_id: str = "ZhengPeng7/BiRefNet-matting",
+        model_id: str = "ZhengPeng7/BiRefNet",
         resolution: int = 1024,
         mask_threshold: float = 0.5,
         target_device: str = "cuda",
@@ -183,7 +183,7 @@ class RealSegmenter(Segmenter):
         return "cpu"
 
 
-def probe_birefnet(*, model_id: str = "ZhengPeng7/BiRefNet-matting", allow_cpu: bool = False) -> RealAdapterProbe:
+def probe_birefnet(*, model_id: str = "ZhengPeng7/BiRefNet", allow_cpu: bool = False) -> RealAdapterProbe:
     dependencies_ready = module_available("torch") and module_available("transformers") and module_available("torchvision")
     if not dependencies_ready:
         return RealAdapterProbe(

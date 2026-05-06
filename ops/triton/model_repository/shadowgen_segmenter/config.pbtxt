@@ -27,11 +27,11 @@ instance_group [
 ]
 parameters {
   key: "model_id"
-  value { string_value: "ZhengPeng7/BiRefNet-matting" }
+  value { string_value: "ZhengPeng7/BiRefNet" }
 }
 parameters {
   key: "resolution"
-  value { string_value: "1024" }
+  value { string_value: "512" }
 }
 parameters {
   key: "mask_threshold"

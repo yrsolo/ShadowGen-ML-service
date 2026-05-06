@@ -449,7 +449,14 @@ def _register_segmenter(
             supports_batching=False,
             supports_async=True,
         ),
-        TritonSegmenter(triton_client, rmbg_binding, None) if rmbg_triton_available and rmbg_binding is not None else None,
+        TritonSegmenter(
+            triton_client,
+            rmbg_binding,
+            None,
+            rmbg2_resolution=settings.triton_segmenter_rmbg2_resolution,
+        )
+        if rmbg_triton_available and rmbg_binding is not None
+        else None,
     )
 
 

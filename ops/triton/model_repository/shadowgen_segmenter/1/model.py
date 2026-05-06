@@ -144,8 +144,8 @@ class TritonPythonModel:
             return str(value)
 
         return _BackendConfig(
-            model_id=_string("model_id", "ZhengPeng7/BiRefNet-matting"),
-            resolution=int(_string("resolution", "1024")),
+            model_id=_string("model_id", "ZhengPeng7/BiRefNet"),
+            resolution=int(_string("resolution", "512")),
             mask_threshold=float(_string("mask_threshold", "0.5")),
             device=_string("device", "cuda"),
             compile_enabled=_as_bool(_string("compile_enabled", "false"), False),

@@ -192,9 +192,8 @@ When `SHADOWGEN_GEOMETRY_ENABLED=false`, the public pipeline does not run GeoCal
 
 - Backends: `mock`, `local`, `triton`
 - Local backend: BiRefNet
-- Default local model: `ZhengPeng7/BiRefNet-matting`
-- Previous fast default was `ZhengPeng7/BiRefNet_lite-matting`; use it only when speed matters more than edge quality
-- Higher-quality experimental override: `ZhengPeng7/BiRefNet_HR-matting`
+- Default local model: `ZhengPeng7/BiRefNet`
+- Alternative matting checkpoints remain available through `SHADOWGEN_BIREFNET_MODEL_ID`, for example `ZhengPeng7/BiRefNet-matting`, `ZhengPeng7/BiRefNet_lite-matting`, or `ZhengPeng7/BiRefNet_HR-matting`
 - First live Triton targets: `shadowgen_detector`, `shadowgen_segmenter`
 - Current live Triton packaging: temporary `python` backend
 - Long-term production Triton format: `ONNX`
@@ -245,7 +244,8 @@ Current blocker note:
 - `shadowgen_detector` now uses a temporary Triton Python backend around GroundingDINO
 - `shadowgen_detector_onnx` is a live experimental ONNX variant with ML-core bbox/confidence postprocess
 - `shadowgen_segmenter` now uses a temporary Triton Python backend so we can run a live Triton stage without replacing the model
-- `shadowgen_segmenter_rmbg2` is a live experimental ONNX variant; the current BRIA export has fixed batch `1`, so dynamic batching is disabled for this variant
+- `shadowgen_segmenter_rmbg2` is a live experimental ONNX variant; ML-core feeds it at `1024x1024` by default through `SHADOWGEN_TRITON_SEGMENTER_RMBG2_RESOLUTION`
+- the current BRIA RMBG-2.0 ONNX graph fails at `512x512` on an internal `Reshape`, despite advertising dynamic height/width metadata
 - `torch.compile` is exposed as an opt-in acceleration path for both the local backend and the Triton Python backend
 
 ONNXRuntime may log `Shape mismatch attempting to re-use buffer` for the experimental `shadowgen_detector_onnx` model. In this setup it comes from dynamic symbolic shapes in the traced GroundingDINO graph. Treat it as a performance/shape-export warning while outputs remain valid; it is not the signal that Triton selected the wrong GPU.

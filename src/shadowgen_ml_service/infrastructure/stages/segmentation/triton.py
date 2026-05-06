@@ -22,12 +22,20 @@ from shadowgen_ml_service.utils.images import bbox_from_mask, create_cutout, ens
 class TritonSegmenter(Segmenter):
     backend_name = "triton-segmenter"
 
-    def __init__(self, client: TritonInferenceClient, binding: TritonModelBinding, batcher: TritonStageBatchCoordinator | None = None) -> None:
+    def __init__(
+        self,
+        client: TritonInferenceClient,
+        binding: TritonModelBinding,
+        batcher: TritonStageBatchCoordinator | None = None,
+        *,
+        rmbg2_resolution: int = 1024,
+    ) -> None:
         self.client = client
         self.binding = binding
         self.batcher = batcher
         self.device_label = "triton"
         self.model_variant = binding.model_variant
+        self.rmbg2_resolution = int(rmbg2_resolution)
 
     def segment(self, stage_input: SegmentationInput) -> SegmentationResult:
         if self.batcher is None:
@@ -91,8 +99,7 @@ class TritonSegmenter(Segmenter):
     def _prepare_infer_image(self, image: Image.Image) -> Image.Image:
         image = image.convert("RGB")
         if self.model_variant == "rmbg-2.0":
-            # BRIA RMBG-2.0 ONNX is exported as a fixed 1024x1024 tensor contract.
-            return image.resize((1024, 1024), Image.Resampling.BILINEAR)
+            return image.resize((self.rmbg2_resolution, self.rmbg2_resolution), Image.Resampling.BILINEAR)
         return image
 
     def _optional_batched_output(self, alias: str, response: dict, batch_size: int):
