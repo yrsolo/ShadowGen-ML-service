@@ -9,15 +9,15 @@
 ```text
 Use case: infographic-diagram
 Asset type: wide technical illustration for an academic ML project page, 16:9 landscape
-Primary request: illustrate the complete ShadowGen product runtime from user request to finished result
+Primary request: illustrate the complete ShadowGen product runtime from a smartphone photo to the finished result
 Scene/backdrop: warm off-white editorial background with a faint technical grid and generous margins
-Subject: a user uploads a product photo through a refined browser interface; the request passes into an API gateway, then a cloud message queue and shared object storage, then reaches a worker on a local GPU workstation; the worker calls an ML inference service; final and diagnostic artifacts travel back through storage and API to the browser, which displays the product with a realistic soft contact shadow
+Subject: far left, a real user photographs an everyday object with a smartphone in a visually varied environment containing books, a plant, cables, textured surfaces and other background objects; upper center, a clearly separated cloud boundary contains only the API entry point, task queue, shared state and object storage; lower center, a clearly separated local boundary contains a desktop computer running the worker and a separate local GPU inference server; the worker pulls a task from the cloud queue and sends it to the GPU server; far right, the result returns to the user's smartphone with the isolated object and a realistic soft contact shadow on a clean target background
 Style/medium: premium technical editorial infographic, precise isometric 3D modules mixed with clean diagrammatic flows, sophisticated research project figure, not corporate clipart
-Composition/framing: clear horizontal and slightly circular end-to-end flow, browser on left and final browser result on right, cloud services centered above, worker and GPU inference centered below
+Composition/framing: clear end-to-end flow, user and source photo on the left, cloud infrastructure above, local worker and separate GPU server below, final smartphone result on the right
 Lighting/mood: soft studio lighting, calm, serious, technically credible
 Color palette: warm white, charcoal, muted steel blue, restrained terracotta accents
 Materials/textures: matte paper, frosted glass interfaces, brushed dark metal compute modules
-Constraints: no words, no labels, no letters, no numbers, no logos, no watermark; all modules must be visually distinct; no decorative blobs; readable at website hero size
+Constraints: no words, no labels, no letters, no numbers, no logos, no watermark; do not depict the worker inside the cloud; do not merge the local computer and GPU server; keep GPU server internals visually simple; all modules must be visually distinct; no decorative blobs; readable at website hero size
 ```
 
 ## ML service
@@ -29,13 +29,13 @@ Use case: infographic-diagram
 Asset type: wide technical illustration for an academic ML project page, 16:9 landscape
 Primary request: illustrate the internal ShadowGen ML inference service as a multi-stage image-processing pipeline
 Scene/backdrop: warm off-white editorial background with a faint precise grid and generous margins
-Subject: one product photograph passes through visually distinct stages: object detection bounding region, clean segmentation cutout, refined alpha edges, depth map, surface normal map, generated contact shadow, and final composition; include a compact GPU inference server and stage diagnostics as supporting elements
+Subject: one realistic smartphone product photograph with a visually varied natural background containing a textured desk, books, plant, cables and other objects passes through visually distinct stages: object detection on the busy photo, clean segmentation cutout with transparent background, refined alpha edges, depth map, surface normal map, generated contact shadow, and final composition on a clean neutral target background; include a compact local GPU inference server and stage diagnostics as supporting elements
 Style/medium: premium scientific editorial infographic, precise isometric 3D panels and image-processing visualizations, clean and technically credible, suitable for a machine learning project release
 Composition/framing: left-to-right pipeline with seven visually recognizable image panels connected by thin directional paths, final result emphasized on the right
 Lighting/mood: neutral studio lighting, calm, rigorous
 Color palette: warm white, charcoal, muted steel blue, restrained terracotta, depth-map blue-gray, normal-map RGB accents only where technically appropriate
 Materials/textures: matte paper panels, subtle glass, dark metal compute module
-Constraints: no words, no labels, no letters, no numbers, no logos, no watermark; no decorative blobs; each processing stage must visually differ; readable at website hero size
+Constraints: no words, no labels, no letters, no numbers, no logos, no watermark; source image must not be a studio image or use a plain monochrome background; preserve the same object consistently through every stage; keep GPU server internals visually simple; no decorative blobs; each processing stage must visually differ; readable at website hero size
 ```
 
 ## Dataset pipeline
