@@ -10,6 +10,7 @@
 
 - Русское описание проекта.
 - Блок демонстрационного ролика со статусом "в разработке".
+- Переключаемые схемы продуктового runtime, ML-сервиса, датасета и обучения.
 - Краткое описание четырех публичных репозиториев:
   - <https://github.com/yrsolo/ShadowGen-v2>
   - <https://github.com/yrsolo/ShadowGen-ML-service>
@@ -17,6 +18,8 @@
   - <https://github.com/yrsolo/ShadowGen-ML-training>
 - Method/process section.
 - Results section и BibTeX.
+
+Промпты генерации схем сохранены в `IMAGE_PROMPTS.md`.
 
 ## Локальный просмотр
 

@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="ShadowGen: генерация теней для предметных изображений." />
+  <link rel="icon" href="data:," />
   <title>ShadowGen: генерация теней для предметных изображений</title>
   <style>
     :root {
@@ -144,9 +145,10 @@
       font-weight: 650;
       text-decoration: none;
       box-shadow: 0 6px 18px rgba(32, 39, 45, 0.06);
+      cursor: pointer;
     }
 
-    .button.primary {
+    .button[aria-selected="true"] {
       background: var(--ink);
       border-color: var(--ink);
       color: #fff;
@@ -158,6 +160,23 @@
       border-radius: 8px;
       background: #111820;
       box-shadow: var(--shadow);
+    }
+
+    .media-panel {
+      display: none;
+      aspect-ratio: 16 / 9;
+      background: var(--panel);
+    }
+
+    .media-panel.active {
+      display: block;
+    }
+
+    .media-panel img {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: cover;
     }
 
     .video-panel {
@@ -456,23 +475,37 @@
     <p class="authors">
       Yuri Soloviev &nbsp;|&nbsp; ShadowGen
     </p>
-    <div class="cta" aria-label="Основные ссылки">
-      <a class="button primary" href="#video">Видео</a>
-      <a class="button" href="https://github.com/yrsolo/ShadowGen-v2" rel="noreferrer">Продукт</a>
-      <a class="button" href="https://github.com/yrsolo/ShadowGen-ML-service" rel="noreferrer">ML-сервис</a>
-      <a class="button" href="https://github.com/yrsolo/ShadowGen-ML-dataset" rel="noreferrer">Датасет</a>
-      <a class="button" href="https://github.com/yrsolo/ShadowGen-ML-training" rel="noreferrer">Training</a>
+    <div class="cta" role="tablist" aria-label="Схемы проекта">
+      <button class="button" type="button" role="tab" aria-selected="true" aria-controls="panel-video" data-panel="video">Видео</button>
+      <button class="button" type="button" role="tab" aria-selected="false" aria-controls="panel-product" data-panel="product">Продукт</button>
+      <button class="button" type="button" role="tab" aria-selected="false" aria-controls="panel-service" data-panel="service">ML-сервис</button>
+      <button class="button" type="button" role="tab" aria-selected="false" aria-controls="panel-dataset" data-panel="dataset">Датасет</button>
+      <button class="button" type="button" role="tab" aria-selected="false" aria-controls="panel-training" data-panel="training">Training</button>
     </div>
-    <div id="video" class="media" aria-label="Блок для видео">
-      <div class="video-panel">
-        <div>
-          <div class="play-mark" aria-hidden="true"></div>
-          <strong>Демонстрация в разработке</strong>
-          <div>Короткий ролик с прохождением изображения через систему и примерами результата.</div>
+    <div id="video" class="media">
+      <div id="panel-video" class="media-panel active" role="tabpanel" data-media-panel="video">
+        <div class="video-panel">
+          <div>
+            <div class="play-mark" aria-hidden="true"></div>
+            <strong>Демонстрация в разработке</strong>
+            <div>Короткий ролик с прохождением изображения через систему и примерами результата.</div>
+          </div>
         </div>
       </div>
+      <div id="panel-product" class="media-panel" role="tabpanel" data-media-panel="product" hidden>
+        <img src="assets/product-runtime.png" alt="Схема продуктового runtime: web, API, очередь, worker, ML-сервис и возврат результата" />
+      </div>
+      <div id="panel-service" class="media-panel" role="tabpanel" data-media-panel="service" hidden>
+        <img src="assets/ml-service.png" alt="Схема стадий ML-сервиса от входного изображения до итоговой композиции" />
+      </div>
+      <div id="panel-dataset" class="media-panel" role="tabpanel" data-media-panel="dataset" hidden>
+        <img src="assets/dataset-pipeline.png" alt="Схема подготовки синтетического датасета из 3D-объектов и нескольких render passes" />
+      </div>
+      <div id="panel-training" class="media-panel" role="tabpanel" data-media-panel="training" hidden>
+        <img src="assets/training-workflow.png" alt="Схема обучения, оценки и экспорта shadow-модели" />
+      </div>
     </div>
-    <p class="caption">
+    <p class="caption" id="media-caption">
       Входное изображение проходит через выделение объекта, оценку сцены, генерацию тени и финальную композицию.
     </p>
   </div>
@@ -618,5 +651,40 @@
   <footer>
     ShadowGen: object shadow generation for product images.
   </footer>
+  <script>
+    const mediaCaptions = {
+      video: "Входное изображение проходит через выделение объекта, оценку сцены, генерацию тени и финальную композицию.",
+      product: "Пользовательский запрос проходит через web и API, очередь задач, локальный worker и ML-сервис; результаты и диагностические артефакты возвращаются через общее хранилище.",
+      service: "ML-сервис последовательно выполняет detection, segmentation, foreground refinement, depth, normals, shadow generation и composition.",
+      dataset: "Датасет собирается из отфильтрованных 3D-объектов: Blender-рендеринг формирует RGB, depth, normals, mask и metadata для каждой сцены.",
+      training: "Training workspace связывает версии датасета, конфигурации экспериментов, GPU-обучение, оценку результатов и экспорт модели для inference."
+    };
+
+    const mediaTabs = Array.from(document.querySelectorAll("[data-panel]"));
+    const mediaPanels = Array.from(document.querySelectorAll("[data-media-panel]"));
+    const mediaCaption = document.getElementById("media-caption");
+
+    function selectMedia(name) {
+      mediaTabs.forEach((tab) => tab.setAttribute("aria-selected", String(tab.dataset.panel === name)));
+      mediaPanels.forEach((panel) => {
+        const selected = panel.dataset.mediaPanel === name;
+        panel.classList.toggle("active", selected);
+        panel.hidden = !selected;
+      });
+      mediaCaption.textContent = mediaCaptions[name];
+    }
+
+    mediaTabs.forEach((tab, index) => {
+      tab.addEventListener("click", () => selectMedia(tab.dataset.panel));
+      tab.addEventListener("keydown", (event) => {
+        if (!["ArrowLeft", "ArrowRight"].includes(event.key)) return;
+        event.preventDefault();
+        const offset = event.key === "ArrowRight" ? 1 : -1;
+        const next = mediaTabs[(index + offset + mediaTabs.length) % mediaTabs.length];
+        next.focus();
+        selectMedia(next.dataset.panel);
+      });
+    });
+  </script>
 </body>
 </html>
