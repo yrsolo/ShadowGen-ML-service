@@ -1,5 +1,7 @@
 # API Summary
 
+Основной handoff-контракт для frontend/backend/worker: [service-contract.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/service-contract.md). Этот файл содержит более подробную справку по API и debug surface.
+
 ## Public Endpoints
 
 - `GET /health`

@@ -1,5 +1,7 @@
 # Frontend Shadow Model Contract
 
+> Specialized UI supplement. The authoritative service request/response and integration contract is [service-contract.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/service-contract.md).
+
 This document describes how the product frontend should expose shadow model selection and call the ML core.
 
 ## Current User-Facing Capability
@@ -42,7 +44,8 @@ Current limitation:
 - it is temporarily control-free
 - it receives object image + mask
 - it draws a plausible shadow automatically
-- it ignores `angle_deg`, `elevation_deg`, `softness`, and `reflection`
+- it ignores `angle_deg`, `softness`, `opacity`, and `reflection`
+- `elevation_deg` may select a prompt/view bucket, but is not precise geometric control
 
 Recommended UI copy:
 
@@ -50,7 +53,8 @@ Recommended UI copy:
 V2-DIFF
 Automatic diffusion shadow model.
 It draws a shadow without manual controls.
-Angle, Elevation, Softness, and Reflection are not used yet.
+Angle, Softness, Opacity, and Reflection are not used yet.
+Elevation may affect a coarse learned view bucket, not exact shadow geometry.
 ```
 
 ### Short UI Hint
@@ -63,7 +67,7 @@ V2-DIFF: automatic diffusion shadow, currently without controls.
 ### Disabled Controls Hint For `V2-DIFF`
 
 ```text
-These controls do not affect V2-DIFF yet.
+Most controls do not affect V2-DIFF yet.
 V2-DIFF currently generates the shadow automatically from the object and mask.
 Switch to V1-GAN if you need manual direction control.
 ```
@@ -89,15 +93,15 @@ const shadowModelControls = {
   },
   "v2-diff": {
     angle: false,
-    opacity: true,
-    elevation: false,
+    opacity: false,
+    elevation: true,
     softness: false,
     reflection: false,
   },
 } satisfies Record<ShadowModel, Record<string, boolean>>;
 ```
 
-`opacity` remains useful for legacy/mock shadow generation and final presentation policy. Current diffusion output is treated as a full shadow image, not as a separate shadow layer.
+`opacity` remains useful for `V1-GAN` and mock generation. Current diffusion output is treated as a full shadow image, not as a separate shadow layer.
 
 ## Public API
 
@@ -205,7 +209,8 @@ Notes:
 
 Notes:
 
-- `V2-DIFF` currently ignores `angle_deg`, `elevation_deg`, `softness`, and `reflection`
+- `V2-DIFF` currently ignores `angle_deg`, `softness`, `opacity`, and `reflection`
+- `elevation_deg` may select a coarse prompt/view bucket, but does not provide exact geometric control
 - these fields are still required by the current request schema
 - keep sending safe defaults until the public schema is simplified further
 
@@ -370,7 +375,8 @@ Frontend recommendation:
 `shadow.elevation_deg`:
 
 - range: `0..90`
-- ignored by current `V1-GAN` and `V2-DIFF`
+- ignored by current `V1-GAN`
+- may select a coarse prompt/view bucket for current `V2-DIFF`
 
 `shadow.softness`:
 
@@ -381,7 +387,8 @@ Frontend recommendation:
 `shadow.opacity`:
 
 - range: `0..1`
-- accepted for API stability and legacy/mock paths
+- active for `V1-GAN` and mock paths
+- ignored by current full-image `V2-DIFF` output
 
 `shadow.reflection`:
 
@@ -399,6 +406,6 @@ When model is `v1-gan`:
 
 When model is `v2-diff`:
 
-- disable `Angle`, `Elevation`, `Softness`, `Reflection`
-- keep `Opacity` if the product wants density control
+- disable `Angle`, `Softness`, `Opacity`, `Reflection`
+- hide `Elevation` or expose it only as an experimental coarse-view control
 - show a hint that the model works automatically

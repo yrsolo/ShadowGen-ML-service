@@ -82,6 +82,12 @@
   - [x] load `SERVICE_GPU_DEVICE` from `.env` without exposing other values
   - [x] add tracked `.env.example` with safe GPU defaults
   - [x] default service image to production-safe dev API settings
+- [x] Publish an authoritative service integration contract:
+  - [x] document public sync/async endpoints and handshake
+  - [x] document exact request/response/error types
+  - [x] document current `V1-GAN` and `V2-DIFF` control behavior
+  - [x] add frontend/backend migration checklist and TypeScript examples
+  - [x] correct stale `V2-DIFF` statements in the frontend shadow supplement
 
 ## Next Likely
 

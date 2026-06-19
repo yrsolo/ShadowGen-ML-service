@@ -349,6 +349,8 @@ The active docs now provide:
 - `start-service-container.cmd` now reads only `SERVICE_GPU_DEVICE` from `.env` before applying the default and does not print other environment values
 - `.env.example` documents `SERVICE_GPU_DEVICE=1` and `SHADOWGEN_TARGET_DEVICE=cuda:0` without containing secrets
 - the ignored local `.env` was configured with host GPU `1`, mapped to `cuda:0` inside the service container
+- `docs/service-contract.md` now captures the public topology, health/capabilities handshake, render schema, sync/async responses, idempotency, errors, model controls, and frontend migration checklist
+- the frontend shadow supplement was corrected: current `V2-DIFF` may use `elevation_deg` for a coarse prompt/view bucket and does not apply `opacity`
 
 ## Remaining Bootstrap Gaps
 

@@ -24,6 +24,7 @@
   - `rmbg-2.0` is wired as a live experimental Triton ONNX segmenter variant after gated Hugging Face weights preparation
   - recommended production replacement launch is a service-only Docker container through `rebuild-service-container.cmd`, `start-service-container.cmd`, and `stop-service-container.cmd`
   - production container GPU selection is configured through `.env` with `SERVICE_GPU_DEVICE`; the selected host GPU is exposed as `cuda:0` inside the container
+  - `docs/service-contract.md` is the authoritative frontend/backend/worker integration handoff
   - optional Triton/debug launch is a two-container Docker stack through `rebuild-triton.cmd`, `rebuild-service-container.cmd`, `start-docker-stack.cmd`, and `stop-docker-stack.cmd`
   - advanced split debug launch remains available through `start-triton.cmd` and `start-service.cmd`
   - playground uses horizontal stage navigation with per-card vertical scroll
