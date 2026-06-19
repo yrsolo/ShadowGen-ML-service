@@ -1,0 +1,35 @@
+FROM python:3.11-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    HF_HOME=/app/.cache/huggingface \
+    HUGGINGFACE_HUB_CACHE=/app/.cache/huggingface/hub \
+    SHADOWGEN_DEV_API_ENABLED=0 \
+    SHADOWGEN_DEV_SHUTDOWN_ENABLED=0 \
+    SHADOWGEN_TRITON_TRANSPORT=native \
+    SHADOWGEN_TARGET_DEVICE=cuda:0
+
+WORKDIR /app
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        build-essential \
+        curl \
+        git \
+        libgl1 \
+        libglib2.0-0 \
+        libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY pyproject.toml README.md requirements.ml.txt ./
+COPY src ./src
+
+RUN python -m pip install --upgrade pip setuptools wheel \
+    && python -m pip install -r requirements.ml.txt
+
+RUN mkdir -p /app/.cache /app/.models /app/artifacts /app/var/cache
+
+EXPOSE 8000
+
+CMD ["python", "-m", "uvicorn", "shadowgen_ml_service.main:app", "--host", "0.0.0.0", "--port", "8000"]

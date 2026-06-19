@@ -1,6 +1,14 @@
 from __future__ import annotations
 
 from shadowgen_ml_service.application.dependencies import PipelineBackendRegistry, PipelineRuntime
+from shadowgen_ml_service.application.services.backend_policy import (
+    STAGE_ORDER,
+    default_stage_backends,
+    effective_default_backend,
+    preferred_variant,
+    resolve_active_backend,
+    stage_backend_preference,
+)
 from shadowgen_ml_service.bootstrap.probes import (
     probe_birefnet,
     probe_depth_anything,
@@ -14,7 +22,7 @@ from shadowgen_ml_service.bootstrap.probes import (
 from shadowgen_ml_service.bootstrap.runtime_descriptor import backend_descriptor, build_runtime_descriptor, component_status
 from shadowgen_ml_service.bootstrap.triton_bindings import build_triton_model_registry
 from shadowgen_ml_service.config import Settings
-from shadowgen_ml_service.core.models import ComponentStatus, StageBackendId
+from shadowgen_ml_service.core.models import ComponentStatus
 from shadowgen_ml_service.infrastructure.backends.triton.batching import TritonStageBatchCoordinator
 from shadowgen_ml_service.infrastructure.backends.triton.client import TritonInferenceClient
 from shadowgen_ml_service.infrastructure.backends.triton.config import TritonBackendSettings
@@ -52,10 +60,11 @@ HEAVY_STAGES = {"detector", "segmenter", "depth_estimator", "normal_estimator", 
 
 
 def build_runtime(settings: Settings) -> PipelineRuntime:
+    settings.ensure_local_dirs()
     registry = PipelineBackendRegistry()
     components: list[ComponentStatus] = []
 
-    execution_default_backend = _effective_default_backend(settings)
+    execution_default_backend = effective_default_backend(settings)
     triton_settings = TritonBackendSettings(
         url=settings.triton_url,
         protocol=settings.triton_protocol,
@@ -87,36 +96,16 @@ def build_runtime(settings: Settings) -> PipelineRuntime:
     _register_composer(registry)
     _register_encoder(registry)
 
-    default_stage_backend = {
-        "detector": "mock" if execution_default_backend == "mock" else _stage_backend_preference(settings.detector_backend_kind, execution_default_backend),
-        "geometry_estimator": "mock" if execution_default_backend == "mock" else ("internal" if not settings.geometry_enabled else settings.geometry_backend_kind),
-        "segmenter": "mock" if execution_default_backend == "mock" else _stage_backend_preference(settings.segmenter_backend_kind, execution_default_backend),
-        "foreground_refiner": "mock" if execution_default_backend == "mock" else settings.foreground_refiner_backend_kind,
-        "depth_estimator": "mock" if execution_default_backend == "mock" else _stage_backend_preference(settings.depth_backend_kind, execution_default_backend),
-        "normal_estimator": "mock" if execution_default_backend == "mock" else _stage_backend_preference(settings.normals_backend_kind, execution_default_backend),
-        "shadow_generator": "mock" if execution_default_backend == "mock" else _stage_backend_preference(settings.shadow_backend_kind, execution_default_backend),
-        "composer": "local",
-        "artifact_encoder": "internal",
-    }
+    default_stage_backend = default_stage_backends(settings)
 
-    for stage_key in (
-        "detector",
-        "geometry_estimator",
-        "segmenter",
-        "foreground_refiner",
-        "depth_estimator",
-        "normal_estimator",
-        "shadow_generator",
-        "composer",
-        "artifact_encoder",
-    ):
+    for stage_key in STAGE_ORDER:
         preferred_backend_kind = default_stage_backend[stage_key]
-        preferred_variant = _preferred_variant(stage_key, settings)
-        active_backend, fallback_reason = _resolve_active_backend(
+        stage_preferred_variant = preferred_variant(stage_key, settings)
+        active_backend, fallback_reason = resolve_active_backend(
             registry=registry,
             stage_key=stage_key,
             preferred_backend_kind=preferred_backend_kind,
-            preferred_variant=preferred_variant,
+            preferred_variant=stage_preferred_variant,
         )
         if active_backend is None:
             raise RuntimeError(f"no backend registered for stage {stage_key}")
@@ -125,7 +114,7 @@ def build_runtime(settings: Settings) -> PipelineRuntime:
             _component_from_active_backend(
                 stage_key=stage_key,
                 preferred_backend_kind=preferred_backend_kind,
-                preferred_variant=preferred_variant,
+                preferred_variant=stage_preferred_variant,
                 active_backend=active_backend,
                 fallback_reason=fallback_reason,
                 stage_backends=registry.list_stage(stage_key),
@@ -175,9 +164,9 @@ def _register_detector(settings: Settings, registry: PipelineBackendRegistry, tr
                 target_device=settings.target_device,
             )
 
-        preferred_detector_backend = _stage_backend_preference(
+        preferred_detector_backend = stage_backend_preference(
             settings.detector_backend_kind,
-            _effective_default_backend(settings),
+            effective_default_backend(settings),
         )
         if preferred_detector_backend == "local":
             try:
@@ -370,9 +359,9 @@ def _register_segmenter(
                 matmul_precision=settings.birefnet_matmul_precision,
             )
 
-        preferred_segmenter_backend = _stage_backend_preference(
+        preferred_segmenter_backend = stage_backend_preference(
             settings.segmenter_backend_kind,
-            _effective_default_backend(settings),
+            effective_default_backend(settings),
         )
         if preferred_segmenter_backend == "triton":
             handler = LazyStageAdapter(make_local_segmenter, backend_name="lazy-birefnet", device_label=settings.target_device)
@@ -529,9 +518,9 @@ def _register_depth(
         def make_local_depth() -> RealDepthEstimator:
             return RealDepthEstimator(model_id=settings.depth_anything_model_id, target_device=settings.target_device)
 
-        preferred_depth_backend = _stage_backend_preference(
+        preferred_depth_backend = stage_backend_preference(
             settings.depth_backend_kind,
-            _effective_default_backend(settings),
+            effective_default_backend(settings),
         )
         if preferred_depth_backend == "local":
             try:
@@ -718,9 +707,9 @@ def _register_shadow(
                 target_device=settings.target_device,
             )
 
-        preferred_shadow_backend = _stage_backend_preference(
+        preferred_shadow_backend = stage_backend_preference(
             settings.shadow_backend_kind,
-            _effective_default_backend(settings),
+            effective_default_backend(settings),
         )
         preferred_shadow_variant = settings.shadow_model_variant.lower()
         if preferred_shadow_backend == "local" and preferred_shadow_variant == "v1-gan":
@@ -771,9 +760,9 @@ def _register_shadow(
                 compile_backend=settings.shadow_v2_diff_compile_backend or None,
             )
 
-        preferred_shadow_backend = _stage_backend_preference(
+        preferred_shadow_backend = stage_backend_preference(
             settings.shadow_backend_kind,
-            _effective_default_backend(settings),
+            effective_default_backend(settings),
         )
         preferred_shadow_variant = settings.shadow_model_variant.lower()
         if preferred_shadow_backend == "local" and preferred_shadow_variant == "v2-diff":
@@ -858,226 +847,6 @@ def _register_encoder(registry: PipelineBackendRegistry) -> None:
         ),
         None,
     )
-
-
-def _effective_default_backend(settings: Settings) -> str:
-    if settings.execution_default_backend:
-        return settings.execution_default_backend
-    return "mock" if settings.runtime_mode.lower() == "mock" else "local"
-
-
-def _stage_backend_preference(stage_override: str, global_default: str) -> str:
-    return stage_override or global_default
-
-
-def _preferred_variant(stage_key: str, settings: Settings) -> str:
-    if stage_key == "shadow_generator":
-        return settings.shadow_model_variant.lower()
-    if stage_key == "normal_estimator":
-        return settings.normals_model_variant
-    if stage_key == "segmenter":
-        return settings.segmenter_model_variant
-    if stage_key == "detector":
-        return settings.detector_model_variant
-    if stage_key == "segmenter":
-        return "birefnet"
-    if stage_key == "depth_estimator":
-        return "depth-anything-v2-small"
-    if stage_key == "geometry_estimator":
-        return "geocalib" if settings.geometry_enabled else "disabled"
-    if stage_key == "foreground_refiner":
-        return "fast-foreground-estimation"
-    if stage_key == "composer":
-        return "python-composer"
-    return "default"
-
-
-def _fallback_order(stage_key: str, preferred_backend_kind: str) -> list[str]:
-    if preferred_backend_kind == "mock":
-        return ["mock"]
-    if preferred_backend_kind == "internal":
-        return ["internal"]
-    if stage_key == "normal_estimator":
-        if preferred_backend_kind == "triton":
-            return ["triton", "local", "local", "mock"]
-        return ["local", "local", "mock"]
-    if stage_key in {"geometry_estimator", "foreground_refiner", "composer"}:
-        return [preferred_backend_kind, "local", "mock"]
-    if preferred_backend_kind == "triton":
-        return ["triton", "local", "mock"]
-    return [preferred_backend_kind, "mock"] if preferred_backend_kind == "local" else ["local", "mock"]
-
-
-def _resolve_active_backend(*, registry: PipelineBackendRegistry, stage_key: str, preferred_backend_kind: str, preferred_variant: str):
-    fallback_reason = None
-    if stage_key == "normal_estimator":
-        candidate_ids = []
-        if preferred_backend_kind == "mock":
-            candidate_ids.append(StageBackendId(stage_key=stage_key, backend_kind="mock", model_variant="mock-v1"))
-        elif preferred_variant == "from-depth-v2":
-            candidate_ids.append(StageBackendId(stage_key=stage_key, backend_kind="local", model_variant="from-depth-v2"))
-            candidate_ids.append(StageBackendId(stage_key=stage_key, backend_kind="mock", model_variant="mock-v1"))
-        else:
-            candidate_ids.append(StageBackendId(stage_key=stage_key, backend_kind=preferred_backend_kind, model_variant="stable-normal"))
-            if preferred_backend_kind == "triton":
-                candidate_ids.append(StageBackendId(stage_key=stage_key, backend_kind="local", model_variant="stable-normal"))
-            candidate_ids.append(StageBackendId(stage_key=stage_key, backend_kind="local", model_variant="from-depth-v2"))
-            candidate_ids.append(StageBackendId(stage_key=stage_key, backend_kind="mock", model_variant="mock-v1"))
-        for index, backend_id in enumerate(candidate_ids):
-            registered = registry.get(backend_id)
-            if registered is not None and registered.descriptor.available and registered.handler is not None:
-                if index > 0:
-                    fallback_reason = f"{preferred_backend_kind}:{preferred_variant} unavailable for {stage_key}"
-                return registered, fallback_reason
-
-    if stage_key == "shadow_generator":
-        candidate_ids = []
-        if preferred_backend_kind == "mock":
-            candidate_ids.append(StageBackendId(stage_key=stage_key, backend_kind="mock", model_variant="mock"))
-        elif preferred_backend_kind == "triton":
-            candidate_ids.extend(
-                [
-                    StageBackendId(stage_key=stage_key, backend_kind="triton", model_variant=preferred_variant),
-                    StageBackendId(stage_key=stage_key, backend_kind="local", model_variant=preferred_variant),
-                    StageBackendId(stage_key=stage_key, backend_kind="local", model_variant="v1-gan"),
-                    StageBackendId(stage_key=stage_key, backend_kind="mock", model_variant="mock"),
-                ]
-            )
-        else:
-            candidate_ids.append(StageBackendId(stage_key=stage_key, backend_kind=preferred_backend_kind, model_variant=preferred_variant))
-            if preferred_variant == "v2-diff":
-                candidate_ids.append(StageBackendId(stage_key=stage_key, backend_kind="local", model_variant="v1-gan"))
-            candidate_ids.append(StageBackendId(stage_key=stage_key, backend_kind="mock", model_variant="mock"))
-        for index, backend_id in enumerate(candidate_ids):
-            registered = registry.get(backend_id)
-            if registered is not None and registered.descriptor.available and registered.handler is not None:
-                if index > 0:
-                    fallback_reason = f"{preferred_backend_kind}:{preferred_variant} unavailable for {stage_key}"
-                return registered, fallback_reason
-
-    if stage_key == "segmenter":
-        candidate_ids = []
-        if preferred_backend_kind == "mock":
-            candidate_ids.append(StageBackendId(stage_key=stage_key, backend_kind="mock", model_variant="mock-v1"))
-        elif preferred_backend_kind == "triton":
-            candidate_ids.extend(
-                [
-                    StageBackendId(stage_key=stage_key, backend_kind="triton", model_variant=preferred_variant),
-                    StageBackendId(stage_key=stage_key, backend_kind="triton", model_variant="birefnet"),
-                    StageBackendId(stage_key=stage_key, backend_kind="local", model_variant="birefnet"),
-                    StageBackendId(stage_key=stage_key, backend_kind="mock", model_variant="mock-v1"),
-                ]
-            )
-        else:
-            candidate_ids.extend(
-                [
-                    StageBackendId(stage_key=stage_key, backend_kind=preferred_backend_kind, model_variant=preferred_variant),
-                    StageBackendId(stage_key=stage_key, backend_kind="local", model_variant="birefnet"),
-                    StageBackendId(stage_key=stage_key, backend_kind="mock", model_variant="mock-v1"),
-                ]
-            )
-        seen = set()
-        for index, backend_id in enumerate(candidate_ids):
-            if backend_id in seen:
-                continue
-            seen.add(backend_id)
-            registered = registry.get(backend_id)
-            if registered is not None and registered.descriptor.available and registered.handler is not None:
-                if index > 0:
-                    fallback_reason = f"{preferred_backend_kind}:{preferred_variant} unavailable for {stage_key}"
-                return registered, fallback_reason
-
-    if stage_key == "detector":
-        candidate_ids = []
-        if preferred_backend_kind == "mock":
-            candidate_ids.append(StageBackendId(stage_key=stage_key, backend_kind="mock", model_variant="mock-v1"))
-        elif preferred_backend_kind == "triton":
-            candidate_ids.extend(
-                [
-                    StageBackendId(stage_key=stage_key, backend_kind="triton", model_variant=preferred_variant),
-                    StageBackendId(stage_key=stage_key, backend_kind="triton", model_variant="grounding-dino"),
-                    StageBackendId(stage_key=stage_key, backend_kind="local", model_variant="grounding-dino"),
-                    StageBackendId(stage_key=stage_key, backend_kind="mock", model_variant="mock-v1"),
-                ]
-            )
-        else:
-            candidate_ids.extend(
-                [
-                    StageBackendId(stage_key=stage_key, backend_kind=preferred_backend_kind, model_variant=preferred_variant),
-                    StageBackendId(stage_key=stage_key, backend_kind="local", model_variant="grounding-dino"),
-                    StageBackendId(stage_key=stage_key, backend_kind="mock", model_variant="mock-v1"),
-                ]
-            )
-        seen = set()
-        for index, backend_id in enumerate(candidate_ids):
-            if backend_id in seen:
-                continue
-            seen.add(backend_id)
-            registered = registry.get(backend_id)
-            if registered is not None and registered.descriptor.available and registered.handler is not None:
-                if index > 0:
-                    fallback_reason = f"{preferred_backend_kind}:{preferred_variant} unavailable for {stage_key}"
-                return registered, fallback_reason
-
-    candidate_ids = [
-        StageBackendId(
-            stage_key=stage_key,
-            backend_kind=backend_kind,
-            model_variant=_default_variant_for_backend(stage_key, backend_kind, preferred_variant),
-        )
-        for backend_kind in _fallback_order(stage_key, preferred_backend_kind)
-    ]
-    for index, backend_id in enumerate(candidate_ids):
-        registered = registry.get(backend_id)
-        if registered is not None and registered.descriptor.available and registered.handler is not None or (
-            registered is not None and registered.descriptor.available and stage_key in {"artifact_encoder", "geometry_estimator"} and registered.descriptor.backend_kind == "internal"
-        ):
-            if index > 0:
-                fallback_reason = f"{preferred_backend_kind}:{preferred_variant} unavailable for {stage_key}"
-            return registered, fallback_reason
-
-    if stage_key == "normal_estimator":
-        for variant in ("stable-normal", "from-depth-v2"):
-            registered = registry.get(StageBackendId(stage_key=stage_key, backend_kind="local", model_variant=variant))
-            if registered is not None and registered.descriptor.available:
-                fallback_reason = f"{preferred_backend_kind}:{preferred_variant} unavailable for {stage_key}"
-                return registered, fallback_reason
-
-    for registered in registry.list_stage(stage_key):
-        if registered.descriptor.available:
-            fallback_reason = f"{preferred_backend_kind}:{preferred_variant} unavailable for {stage_key}"
-            return registered, fallback_reason
-    return None, fallback_reason
-
-
-def _default_variant_for_backend(stage_key: str, backend_kind: str, preferred_variant: str) -> str:
-    if backend_kind == "internal" and stage_key == "geometry_estimator":
-        return preferred_variant
-    if backend_kind == "mock":
-        if stage_key == "shadow_generator":
-            return "mock"
-        if stage_key == "foreground_refiner":
-            return "passthrough-v1"
-        return "mock-v1"
-    if stage_key == "normal_estimator" and backend_kind == "local":
-        return preferred_variant if preferred_variant in {"stable-normal", "from-depth-v2"} else "stable-normal"
-    if stage_key == "shadow_generator":
-        return preferred_variant
-    if stage_key == "detector":
-        return preferred_variant
-    if stage_key == "segmenter":
-        return preferred_variant
-    if stage_key == "depth_estimator":
-        return "depth-anything-v2-small"
-    if stage_key == "geometry_estimator":
-        return "geocalib"
-    if stage_key == "foreground_refiner":
-        return "fast-foreground-estimation"
-    if stage_key == "composer":
-        return "python-composer"
-    if stage_key == "artifact_encoder":
-        return "default-encoder"
-    return preferred_variant
 
 
 def _component_from_active_backend(

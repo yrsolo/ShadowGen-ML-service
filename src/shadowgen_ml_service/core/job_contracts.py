@@ -2,9 +2,8 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
-from shadowgen_ml_service.application.models import AsyncRenderJobRecord, RenderOutcome
 from shadowgen_ml_service.core.commands import RenderCommand
-from shadowgen_ml_service.core.models import JobExecutionInfo
+from shadowgen_ml_service.core.models import AsyncRenderJobRecord, JobExecutionInfo, RenderOutcome
 
 
 class JobRepository(ABC):

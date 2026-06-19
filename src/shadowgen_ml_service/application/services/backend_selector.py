@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from shadowgen_ml_service.application.dependencies import PipelineRuntime
 from shadowgen_ml_service.application.models import ExecutionSelection
-from shadowgen_ml_service.core.models import StageBackendId
+from shadowgen_ml_service.application.services.backend_policy import fallback_candidate_ids
 
 
 UNAVAILABLE_MESSAGES = {
@@ -102,50 +102,7 @@ class BackendSelector:
         )
 
     def _fallback_order(self, stage_key: str, requested_backend_kind: str, requested_variant: str) -> list[tuple[str, str]]:
-        if requested_backend_kind == "mock":
-            return [("mock", self._mock_variant(stage_key))]
-
-        fallback: list[tuple[str, str]] = [(requested_backend_kind, requested_variant)]
-        if stage_key == "normal_estimator":
-            if requested_backend_kind == "triton":
-                fallback.extend([("local", "stable-normal"), ("local", "from-depth-v2"), ("mock", "mock-v1")])
-            else:
-                fallback.extend([("local", "from-depth-v2"), ("mock", "mock-v1")])
-            return fallback
-
-        if stage_key == "shadow_generator":
-            if requested_backend_kind == "triton":
-                fallback.extend([("local", "v2-diff"), ("local", "v1-gan"), ("mock", "mock")])
-            elif requested_backend_kind == "local":
-                if requested_variant == "v2-diff":
-                    fallback.append(("local", "v1-gan"))
-                fallback.append(("mock", "mock"))
-            return fallback
-
-        if requested_backend_kind == "triton":
-            fallback.extend([("local", self._default_variant(stage_key)), ("mock", "mock-v1")])
-        elif requested_backend_kind == "local":
-            fallback.append(("mock", "mock-v1"))
-        return fallback
-
-    def _default_variant(self, stage_key: str) -> str:
-        mapping = {
-            "detector": "grounding-dino",
-            "segmenter": "birefnet",
-            "depth_estimator": "depth-anything-v2-small",
-            "normal_estimator": "stable-normal",
-            "geometry_estimator": "geocalib",
-            "foreground_refiner": "fast-foreground-estimation",
-            "composer": "python-composer",
-        }
-        return mapping.get(stage_key, "default")
-
-    def _mock_variant(self, stage_key: str) -> str:
-        mapping = {
-            "shadow_generator": "mock",
-            "foreground_refiner": "passthrough-v1",
-        }
-        return mapping.get(stage_key, "mock-v1")
+        return [(item.backend_kind, item.model_variant) for item in fallback_candidate_ids(stage_key, requested_backend_kind, requested_variant)]
 
     def _unavailable_reason(
         self,

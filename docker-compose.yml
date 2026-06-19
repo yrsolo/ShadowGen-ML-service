@@ -1,0 +1,71 @@
+services:
+  triton:
+    image: ${TRITON_IMAGE:-shadowgen-triton-segmenter:py}
+    container_name: ${TRITON_CONTAINER:-shadowgen-triton-segmenter}
+    command: ["tritonserver", "--model-repository=/models", "--log-verbose=1"]
+    env_file:
+      - path: .env
+        required: false
+    ports:
+      - "${TRITON_HTTP_PORT:-8010}:8000"
+      - "${TRITON_GRPC_PORT:-8011}:8001"
+      - "${TRITON_METRICS_PORT:-8012}:8002"
+    environment:
+      HF_HOME: /root/.cache/huggingface
+      HUGGINGFACE_HUB_CACHE: /root/.cache/huggingface/hub
+      NVIDIA_VISIBLE_DEVICES: ${TRITON_GPU_DEVICE:-1}
+      SHADOWGEN_TRITON_SEGMENTER_DEVICE: ${TRITON_MODEL_DEVICE:-cuda:0}
+      SHADOWGEN_TRITON_DETECTOR_DEVICE: ${TRITON_MODEL_DEVICE:-cuda:0}
+      SHADOWGEN_TRITON_SEGMENTER_RESOLUTION: ${TRITON_SEGMENTER_RESOLUTION:-512}
+      SHADOWGEN_TRITON_SEGMENTER_MODEL_ID: ${TRITON_SEGMENTER_MODEL_ID:-ZhengPeng7/BiRefNet}
+      SHADOWGEN_TRITON_SEGMENTER_COMPILE_ENABLED: ${TRITON_SEGMENTER_COMPILE_ENABLED:-false}
+    volumes:
+      - ./ops/triton/model_repository:/models
+      - ./.cache/huggingface:/root/.cache/huggingface
+    gpus: all
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "python3 -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/v2/health/ready', timeout=5)\"",
+        ]
+      interval: 5s
+      timeout: 10s
+      retries: 60
+      start_period: 20s
+
+  service:
+    build:
+      context: .
+      dockerfile: Dockerfile.service
+    image: ${SERVICE_IMAGE:-shadowgen-ml-service:local}
+    container_name: ${SERVICE_CONTAINER:-shadowgen-ml-service}
+    depends_on:
+      triton:
+        condition: service_healthy
+    env_file:
+      - path: .env
+        required: false
+    ports:
+      - "${SERVICE_HTTP_PORT:-8000}:8000"
+    environment:
+      HF_HOME: /app/.cache/huggingface
+      HUGGINGFACE_HUB_CACHE: /app/.cache/huggingface/hub
+      NVIDIA_VISIBLE_DEVICES: ${SERVICE_GPU_DEVICE:-1}
+      SHADOWGEN_TARGET_DEVICE: ${SHADOWGEN_TARGET_DEVICE:-cuda:0}
+      SHADOWGEN_TRITON_URL: http://triton:8000
+      SHADOWGEN_TRITON_TRANSPORT: native
+      SHADOWGEN_DEV_API_ENABLED: "1"
+      SHADOWGEN_DEV_SHUTDOWN_ENABLED: "0"
+      SHADOWGEN_DETECTOR_BACKEND_KIND: ${SHADOWGEN_DETECTOR_BACKEND_KIND:-local}
+      SHADOWGEN_SEGMENTER_BACKEND_KIND: ${SHADOWGEN_SEGMENTER_BACKEND_KIND:-local}
+      SHADOWGEN_DEPTH_BACKEND_KIND: ${SHADOWGEN_DEPTH_BACKEND_KIND:-local}
+      SHADOWGEN_NORMALS_BACKEND_KIND: ${SHADOWGEN_NORMALS_BACKEND_KIND:-local}
+      SHADOWGEN_SHADOW_BACKEND_KIND: ${SHADOWGEN_SHADOW_BACKEND_KIND:-local}
+      SHADOWGEN_SHADOW_MODEL_VARIANT: ${SHADOWGEN_SHADOW_MODEL_VARIANT:-v2-diff}
+    volumes:
+      - ./.models:/app/.models
+      - ./.cache:/app/.cache
+      - ./artifacts:/app/artifacts
+      - ./var:/app/var
+    gpus: all

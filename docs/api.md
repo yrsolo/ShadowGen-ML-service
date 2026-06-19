@@ -11,6 +11,8 @@
 
 ## Dev Endpoints
 
+Dev endpoints are disabled by default. Enable `SHADOWGEN_DEV_API_ENABLED=1` to register the playground and debug pipeline routes. Enable `SHADOWGEN_DEV_SHUTDOWN_ENABLED=1` separately to register the process shutdown route.
+
 - `GET /playground`
 - `POST /v1/dev/pipeline/run-all`
 - `POST /v1/dev/pipeline/run-stage/{stage_key}`
@@ -292,7 +294,9 @@ Compatibility notes:
 
 `POST /v1/dev/service/shutdown` asks the currently running ML-service process to terminate.
 
-This endpoint exists only as a local playground convenience. It is useful when the service was started through `start-service.cmd`, which opens a visible Windows console and runs FastAPI without reload by default.
+This endpoint exists only as a local playground convenience and is registered only when both `SHADOWGEN_DEV_API_ENABLED=1` and `SHADOWGEN_DEV_SHUTDOWN_ENABLED=1` are set. It is useful when the service was started through `start-service.cmd`, which opens a visible Windows console and runs FastAPI without reload by default.
+
+The Docker stack intentionally starts the service container with `SHADOWGEN_DEV_SHUTDOWN_ENABLED=0`. Stop containerized service processes with `stop-docker-stack.cmd`, Docker Desktop, or `docker compose down`.
 
 Response shape:
 

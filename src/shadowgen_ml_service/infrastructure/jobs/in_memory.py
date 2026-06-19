@@ -7,11 +7,10 @@ from threading import Condition, Lock, Thread
 from typing import Callable
 from uuid import uuid4
 
-from shadowgen_ml_service.application.models import AsyncRenderJobRecord, RenderOutcome
 from shadowgen_ml_service.config import Settings
 from shadowgen_ml_service.core.commands import RenderCommand
 from shadowgen_ml_service.core.job_contracts import JobCapacityProvider, JobQueue, JobRepository, JobResultStore
-from shadowgen_ml_service.core.models import JobExecutionInfo
+from shadowgen_ml_service.core.models import AsyncRenderJobRecord, JobExecutionInfo, RenderOutcome
 
 
 def _utc_now() -> str:

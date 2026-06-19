@@ -20,7 +20,8 @@ It is intentionally split into:
   - `GET /playground`
   - `POST /v1/dev/pipeline/run-all`
   - `POST /v1/dev/pipeline/run-stage/{stage_key}`
-- Main runtime target: local NVIDIA GPU workstation with optional Triton execution for heavy stages
+- Dev API is disabled by default in application settings. Local launchers enable it for the playground; the process shutdown endpoint is enabled only for the visible-console `start-service.cmd` flow, not for the Docker service container.
+- Main runtime target: local NVIDIA GPU workstation with either a two-container Docker stack or split local/Triton debugging.
 
 ## Pipeline
 
@@ -111,6 +112,7 @@ src/shadowgen_ml_service/
 docs/
   README.md
   architecture.md
+  docker-local.md
   modules.md
   worker-core-contract.md
   shadow-v2-model-contract.md
@@ -137,30 +139,64 @@ GPU-oriented ML setup:
 .venv\Scripts\python.exe -m pip install -e .[dev,ml]
 ```
 
-Rebuild the Triton image after changing code under `ops/triton/model_repository`:
+Recommended production replacement Docker workflow:
 
 ```cmd
-rebuild-triton.cmd
+rebuild-service-container.cmd
+start-service-container.cmd
 ```
 
-Start Triton when you need Triton-backed stages:
+Select the host GPU in `.env`:
 
-```cmd
-start-triton.cmd
+```dotenv
+SERVICE_GPU_DEVICE=1
+SHADOWGEN_TARGET_DEVICE=cuda:0
 ```
-
-Start the FastAPI service:
-
-```cmd
-start-service.cmd
-```
-
-`start-triton.cmd` starts only the Triton Docker container and waits for model readiness. `start-service.cmd` starts only FastAPI in the current visible console. This keeps the Triton container lifecycle explicit.
 
 Open:
 
 - `http://127.0.0.1:8000/`
-- `http://127.0.0.1:8000/playground`
+
+Stop the service container:
+
+```cmd
+stop-service-container.cmd
+```
+
+This starts one container:
+
+- `shadowgen-ml-service`: FastAPI control plane and local ML backends on host port `8000`
+
+The selected host GPU is controlled by `SERVICE_GPU_DEVICE`. Inside the container the selected card is addressed as `cuda:0`, so `SHADOWGEN_TARGET_DEVICE=cuda:0` is the normal setting.
+
+Runtime models, caches, outputs, and `.env` remain mounts and are not baked into the service image.
+
+Triton/debug Docker workflow:
+
+```cmd
+rebuild-triton.cmd
+rebuild-service-container.cmd
+start-docker-stack.cmd
+```
+
+This starts two containers:
+
+- `shadowgen-triton-segmenter`: Triton execution plane on host ports `8010`/`8011`/`8012`
+- `shadowgen-ml-service`: FastAPI control plane and playground on host port `8000`
+
+The service container talks to Triton through the Docker network at `http://triton:8000`. Models, caches, outputs, and `.env` remain runtime mounts and are not baked into the service image.
+
+Advanced split debugging workflow:
+
+```cmd
+rebuild-triton.cmd
+start-triton.cmd
+start-service.cmd
+```
+
+Use this when you want FastAPI in a visible Windows console or need the playground shutdown button to stop the local process. `start-triton.cmd` starts only the Triton container. `start-service.cmd` starts only FastAPI on the host Python environment.
+
+For non-local deployments, leave `SHADOWGEN_DEV_API_ENABLED=0` and `SHADOWGEN_DEV_SHUTDOWN_ENABLED=0` unless the playground and shutdown endpoint are intentionally exposed.
 
 ## Triton Readiness
 
@@ -196,19 +232,20 @@ Current live Triton bridge:
 - `torch.compile` remains an opt-in acceleration lever while ONNX export is blocked by `torchvision::deform_conv2d`
 - `ONNX` stays the planned first long-term production model format
 
-Normal local lifecycle:
+Recommended production container lifecycle:
 
 ```cmd
-rebuild-triton.cmd
-start-triton.cmd
-start-service.cmd
+rebuild-service-container.cmd
+start-service-container.cmd
 ```
 
-Run `rebuild-triton.cmd` only after Triton Python backend code changes. Run `start-triton.cmd` to start or restart the Triton container. Run `start-service.cmd` for the FastAPI service.
+Run `rebuild-service-container.cmd` after service code or Python dependency changes. Run `start-service-container.cmd` to start the service-only production replacement container without Triton. Run `stop-service-container.cmd` to stop it.
 
-The rebuild script builds [ops/triton/Dockerfile.segmenter-python](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/ops/triton/Dockerfile.segmenter-python). Large generated ONNX files are intentionally excluded from Docker build context and mounted by [start-triton.cmd](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/start-triton.cmd). The Triton start script exposes HTTP on host `8010`, gRPC on host `8011`, and metrics on host `8012`.
+The service rebuild script builds [Dockerfile.service](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/Dockerfile.service). Large generated model files, `.env`, `.models`, `.cache`, `artifacts`, and `var` are excluded from the service Docker build context and mounted at runtime.
 
-The default launcher mode uses Docker GPU (`TRITON_GPU=1`), exposes host GPU `1` through `TRITON_GPU_DEVICE=1`, maps it to `cuda:0` inside the container, and uses a 512px segmenter resolution. On the current workstation host GPU `1` is the RTX 4090. Detector and segmenter default to local execution because the current Triton Python/ONNX paths are not consistently faster than local in-process models. Set `USE_TRITON_BACKENDS=1` or choose `triton` in `/playground` to test Triton execution.
+The production service container reads `SERVICE_GPU_DEVICE` from `.env`, reserves that host GPU through Docker Compose, and sets `NVIDIA_VISIBLE_DEVICES` consistently. Inside the container the selected GPU is addressed as `cuda:0`. On the current workstation host GPU `1` is the RTX 4090. Use [.env.example](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/.env.example) as a safe configuration reference.
+
+For Triton bring-up, use `rebuild-triton.cmd`, `start-docker-stack.cmd`, or the split debug flow `start-triton.cmd` + `start-service.cmd`.
 
 Live smoke check:
 
@@ -227,6 +264,7 @@ Live smoke check:
 - [Module Map](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/modules.md)
 - [Worker/Core Contract](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/worker-core-contract.md)
 - [Shadow V2 Model Contract](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/shadow-v2-model-contract.md)
+- [Docker Local Runbook](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/docker-local.md)
 - [Local Runbook](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/runbook-local.md)
 - [API Summary](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/api.md)
 - [Workflow](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/workflow.md)

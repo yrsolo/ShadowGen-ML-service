@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from shadowgen_ml_service.application.models import AsyncRenderJobRecord
 from shadowgen_ml_service.application.services.job_admission import JobAdmissionController
 from shadowgen_ml_service.application.use_cases.render_pipeline import RenderPipelineUseCase
 from shadowgen_ml_service.core.commands import RenderCommand
 from shadowgen_ml_service.core.job_contracts import JobQueue, JobRepository
+from shadowgen_ml_service.core.models import AsyncRenderJobRecord
 
 
 class SubmitRenderJobUseCase:

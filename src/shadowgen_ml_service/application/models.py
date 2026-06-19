@@ -2,20 +2,18 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from time import perf_counter
-from typing import Any, Literal
+from typing import Literal
 
 from PIL import Image
 
 from shadowgen_ml_service.core.assets import RasterAsset
 from shadowgen_ml_service.core.commands import RenderCommand
 from shadowgen_ml_service.core.models import (
-    JobExecutionInfo,
     BackendKind,
     CapabilitiesInfo,
     CompositionResult,
     DepthResult,
     DetectionResult,
-    EncodedArtifact,
     ForegroundRefinementResult,
     GeometryResult,
     HealthStatus,
@@ -117,16 +115,6 @@ class StageExecution:
 
 
 @dataclass
-class RenderOutcome:
-    request_id: str | None
-    artifacts: list[EncodedArtifact]
-    metrics: dict[str, int]
-    warnings: list[str]
-    service_version: str
-    model_version: str
-
-
-@dataclass
 class DebugPipelineOutcome:
     request_id: str | None
     stages: list[StageExecution]
@@ -141,16 +129,3 @@ class HealthOutcome:
 @dataclass(frozen=True)
 class CapabilitiesOutcome:
     payload: CapabilitiesInfo
-
-
-@dataclass(frozen=True)
-class AsyncRenderJobRecord:
-    job_id: str
-    request_id: str | None
-    status: str
-    created_at: str
-    updated_at: str
-    submit_mode: str = "async"
-    error: str | None = None
-    capacity_snapshot: JobExecutionInfo | None = None
-    render_outcome: RenderOutcome | None = None

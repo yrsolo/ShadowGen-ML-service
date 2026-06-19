@@ -66,6 +66,16 @@ class EncodedArtifact:
     image_base64: str
 
 
+@dataclass
+class RenderOutcome:
+    request_id: str | None
+    artifacts: list[EncodedArtifact]
+    metrics: dict[str, int]
+    warnings: list[str]
+    service_version: str
+    model_version: str
+
+
 @dataclass(frozen=True)
 class StageBackendId:
     stage_key: str
@@ -138,6 +148,19 @@ class JobExecutionInfo:
     pending_jobs: int
     cancel_mode: str = "pending_only"
     idempotency_supported: bool = True
+
+
+@dataclass(frozen=True)
+class AsyncRenderJobRecord:
+    job_id: str
+    request_id: str | None
+    status: str
+    created_at: str
+    updated_at: str
+    submit_mode: str = "async"
+    error: str | None = None
+    capacity_snapshot: JobExecutionInfo | None = None
+    render_outcome: RenderOutcome | None = None
 
 
 @dataclass

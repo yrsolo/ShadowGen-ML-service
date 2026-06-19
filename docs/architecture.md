@@ -40,6 +40,25 @@ Application code does not depend on a specific transport or executor type. It on
 
 For Triton-backed stages, transport normalization happens below the application layer. The control plane builds canonical stage inputs, while Triton adapters translate them into the standard Triton tensor infer schema with explicit input and output tensors.
 
+### Local Docker Topology
+
+The recommended local deployment shape is now two containers:
+
+- `shadowgen-ml-service`
+  - FastAPI control plane
+  - playground
+  - local backends
+  - async job dispatcher
+  - cache and artifact coordination
+- `shadowgen-triton-segmenter`
+  - Triton execution plane
+  - Python backend models
+  - experimental ONNX backend models
+
+The service container exposes `8000` on the host and calls Triton through Docker DNS at `http://triton:8000`. Triton exposes host ports `8010` HTTP, `8011` gRPC, and `8012` metrics for direct smoke tests and observability.
+
+This keeps the same architectural split in local development that we want later in production: FastAPI orchestrates, Triton serves heavy inference.
+
 ## Pipeline Flow
 
 Current stage order:
@@ -244,6 +263,8 @@ Current live-first Triton targets:
 
 - `detector` via temporary Triton `python` backend
 - `segmenter` via temporary Triton `python` backend
+- `detector` via experimental `grounding-dino-onnx` ONNX variant with ML-core postprocess
+- `segmenter` via experimental `rmbg-2.0` ONNX variant
 
 Notes:
 

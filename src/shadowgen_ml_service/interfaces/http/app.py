@@ -16,10 +16,10 @@ from shadowgen_ml_service.bootstrap.container import build_runtime
 from shadowgen_ml_service.config import Settings, get_settings
 from shadowgen_ml_service.core.errors import ServiceError
 from shadowgen_ml_service.infrastructure.jobs.in_memory import InMemoryRenderJobManager
-from shadowgen_ml_service.pipeline.service import RenderService
 from shadowgen_ml_service.interfaces.http.dev_routes import build_dev_router
 from shadowgen_ml_service.interfaces.http.mappers import service_error_to_response
 from shadowgen_ml_service.interfaces.http.public_routes import build_public_router
+from shadowgen_ml_service.interfaces.http.service import RenderService
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -78,6 +78,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             },
         )
 
-    app.include_router(build_public_router(health_use_case, capabilities_use_case, render_use_case))
-    app.include_router(build_dev_router(debug_use_case))
+    app.include_router(build_public_router(app.state.render_service))
+    if runtime_settings.dev_api_enabled:
+        app.include_router(build_dev_router(app.state.render_service, shutdown_enabled=runtime_settings.dev_shutdown_enabled))
     return app

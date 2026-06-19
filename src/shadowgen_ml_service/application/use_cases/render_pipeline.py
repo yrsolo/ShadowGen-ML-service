@@ -3,15 +3,15 @@ from __future__ import annotations
 from time import perf_counter
 
 from shadowgen_ml_service.application.dependencies import PipelineRuntime
-from shadowgen_ml_service.application.models import PipelineContext, RenderOutcome
+from shadowgen_ml_service.application.models import PipelineContext
 from shadowgen_ml_service.application.services.backend_selector import BackendSelector
+from shadowgen_ml_service.application.services.pipeline_stage_executor import PipelineStageExecutor
 from shadowgen_ml_service.application.services.stage_runner import StageRunner
 from shadowgen_ml_service.config import Settings
 from shadowgen_ml_service.core.commands import RenderCommand
 from shadowgen_ml_service.core.errors import TimeoutServiceError, UnsupportedInputServiceError, ValidationServiceError
-from shadowgen_ml_service.core.models import GeometryResult, PreprocessSnapshot, SegmentationResult
-from shadowgen_ml_service.core.stage_io import DepthInput, DetectionInput, NormalsInput, SegmentationInput, ShadowInput
-from shadowgen_ml_service.utils.images import decode_image, ensure_asset, prepare_working_crop, alpha_asset
+from shadowgen_ml_service.core.models import GeometryResult, PreprocessSnapshot, RenderOutcome
+from shadowgen_ml_service.utils.images import decode_image, prepare_working_crop
 
 
 class RenderPipelineUseCase:
@@ -20,6 +20,7 @@ class RenderPipelineUseCase:
         self.runtime = runtime
         self.selector = BackendSelector(runtime)
         self.stage_runner = StageRunner()
+        self.stage_executor = PipelineStageExecutor(settings)
 
     def execute(self, command: RenderCommand) -> RenderOutcome:
         context = PipelineContext(command=command)
@@ -57,7 +58,7 @@ class RenderPipelineUseCase:
             context.segmentation = self._execute_public_stage("segmenter", context)
             context.pre_refinement_cutout = context.segmentation.cutout_rgba
             context.foreground_refinement = self._execute_public_stage("foreground_refiner", context)
-            context.segmentation = self._merge_refined_cutout(context.segmentation, context.foreground_refinement.cutout_rgba)
+            context.segmentation = self.stage_executor.merge_refined_cutout(context.segmentation, context.foreground_refinement.cutout_rgba)
             context.depth = self._execute_public_stage("depth_estimator", context)
             context.normals = self._execute_public_stage("normal_estimator", context)
 
@@ -128,7 +129,7 @@ class RenderPipelineUseCase:
             selection=selection,
             context=context,
             backend=None if registered is None else registered.handler,
-            invocation=lambda backend: self._invoke_stage(stage_key, backend, context),
+            invocation=lambda backend: self.stage_executor.invoke(stage_key, backend, context),
             capture_errors=False,
         )
         metric_key = {
@@ -155,30 +156,6 @@ class RenderPipelineUseCase:
             return "local", "v2-diff"
         return "local", "v1-gan"
 
-    def _invoke_stage(self, stage_key: str, backend, context: PipelineContext):
-        if stage_key == "detector":
-            return backend.detect(self._build_detection_input(context))
-        if stage_key == "geometry_estimator":
-            return backend.estimate(ensure_asset(context.source_rgba))
-        if stage_key == "segmenter":
-            return backend.segment(self._build_segmentation_input(context))
-        if stage_key == "foreground_refiner":
-            return backend.refine(context.segmentation.crop_rgba, self._segmentation_alpha(context.segmentation))
-        if stage_key == "depth_estimator":
-            return backend.estimate(self._build_depth_input(context))
-        if stage_key == "normal_estimator":
-            return backend.estimate(self._build_normals_input(context))
-        if stage_key == "shadow_generator":
-            return backend.generate(self._build_shadow_input(context))
-        if stage_key == "composer":
-            return backend.compose(
-                cutout_rgba=context.segmentation.cutout_rgba,
-                shadow_image=context.shadow.shadow_image,
-                background=context.command.background,
-                output=context.command.output,
-            )
-        raise ValueError(f"unsupported stage key {stage_key}")
-
     def _decode_command(self, command: RenderCommand):
         if command.pipeline_version != self.settings.default_pipeline_version:
             raise ValidationServiceError(
@@ -201,42 +178,6 @@ class RenderPipelineUseCase:
                 context.warnings.append(f"{component.name}_fallback_active")
             if component.name == "normal_estimator" and component.model_name == "normal-map-from-depth":
                 context.warnings.append("normals_neural_backend_unavailable")
-
-    def _segmentation_alpha(self, segmentation: SegmentationResult):
-        return alpha_asset(segmentation.cutout_rgba)
-
-    def _build_detection_input(self, context: PipelineContext) -> DetectionInput:
-        return DetectionInput(image=ensure_asset(context.source_rgba), padding_px=context.command.padding_px)
-
-    def _build_segmentation_input(self, context: PipelineContext) -> SegmentationInput:
-        return SegmentationInput(image=ensure_asset(context.working_crop))
-
-    def _build_depth_input(self, context: PipelineContext) -> DepthInput:
-        return DepthInput(image=context.segmentation.cutout_rgba, mask=context.segmentation.mask)
-
-    def _build_normals_input(self, context: PipelineContext) -> NormalsInput:
-        return NormalsInput(image=context.segmentation.cutout_rgba, depth_map=context.depth.depth_map)
-
-    def _build_shadow_input(self, context: PipelineContext) -> ShadowInput:
-        return ShadowInput(
-            img=context.segmentation.cutout_rgba,
-            mask=context.segmentation.mask,
-            depth=context.depth.depth_map,
-            normal=context.normals.normal_map,
-            angle=context.command.shadow.angle_deg,
-            elevation=context.command.shadow.elevation_deg,
-            softness=context.command.shadow.softness,
-            reflection=context.command.shadow.reflection,
-            opacity=context.command.shadow.opacity,
-        )
-
-    def _merge_refined_cutout(self, segmentation: SegmentationResult, refined_cutout_rgba):
-        return SegmentationResult(
-            bbox=segmentation.bbox,
-            mask=segmentation.mask,
-            cutout_rgba=refined_cutout_rgba,
-            crop_rgba=segmentation.crop_rgba,
-        )
 
     def _disabled_geometry_result(self) -> GeometryResult:
         return GeometryResult(camera_fov=0.0, camera_pitch=0.0, camera_roll=0.0, confidence=1.0)

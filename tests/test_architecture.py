@@ -27,6 +27,7 @@ class ArchitectureTests(unittest.TestCase):
             self.assertFalse(any(item.startswith("PIL") for item in imports), path)
             self.assertFalse(any(item.startswith("fastapi") for item in imports), path)
             self.assertFalse(any(item.startswith("pydantic") for item in imports), path)
+            self.assertFalse(any(item.startswith("shadowgen_ml_service.application") for item in imports), path)
             self.assertFalse(any(item.startswith("shadowgen_ml_service.interfaces") for item in imports), path)
             self.assertFalse(any(item.startswith("shadowgen_ml_service.infrastructure.backends.triton") for item in imports), path)
 
@@ -36,6 +37,21 @@ class ArchitectureTests(unittest.TestCase):
             self.assertFalse(any(item.startswith("shadowgen_ml_service.interfaces.http") for item in imports), path)
             self.assertFalse(any(item.startswith("shadowgen_ml_service.infrastructure.stages.") for item in imports), path)
             self.assertFalse(any(item.startswith("shadowgen_ml_service.infrastructure.backends.triton") for item in imports), path)
+
+    def test_infrastructure_does_not_import_application_or_interfaces(self) -> None:
+        for path in (SRC_ROOT / "infrastructure").rglob("*.py"):
+            imports = module_imports(path)
+            self.assertFalse(any(item.startswith("shadowgen_ml_service.application") for item in imports), path)
+            self.assertFalse(any(item.startswith("shadowgen_ml_service.interfaces") for item in imports), path)
+
+    def test_interface_modules_do_not_import_compatibility_pipeline(self) -> None:
+        for path in (SRC_ROOT / "interfaces").rglob("*.py"):
+            imports = module_imports(path)
+            self.assertFalse(any(item.startswith("shadowgen_ml_service.pipeline") for item in imports), path)
+
+    def test_legacy_image_facade_does_not_import_opencv_globally(self) -> None:
+        imports = module_imports(SRC_ROOT / "utils" / "images.py")
+        self.assertFalse(any(item == "cv2" or item.startswith("cv2.") for item in imports))
 
     def test_stage_implementations_do_not_import_other_stage_packages(self) -> None:
         stages_root = SRC_ROOT / "infrastructure" / "stages"

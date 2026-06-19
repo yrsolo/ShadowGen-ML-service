@@ -5,7 +5,7 @@ from typing import Callable, Generic, TypeVar
 
 from shadowgen_ml_service.application.models import ExecutionSelection, PipelineContext, StageExecution
 from shadowgen_ml_service.application.services.stage_catalog import get_stage_definition
-from shadowgen_ml_service.core.errors import ProcessingFailedServiceError, ServiceError, TimeoutServiceError
+from shadowgen_ml_service.core.errors import BackendFault, ProcessingFailedServiceError, ServiceError, StageFaultKind, TimeoutServiceError
 
 
 T = TypeVar("T")
@@ -114,45 +114,61 @@ class StageRunner(Generic[T]):
         if isinstance(exc, ServiceError):
             return exc
         details = {"stage_key": stage_key}
-        error_name = exc.__class__.__name__
-        if error_name == "TritonTimeoutError":
+        if isinstance(exc, BackendFault):
+            details.update(exc.details)
+            return self._normalize_backend_fault(stage_key=stage_key, context=context, fault=exc, details=details)
+        return ProcessingFailedServiceError(
+            f"{stage_key} execution failed: {exc}",
+            request_id=context.command.request_id,
+            details={**details, "kind": StageFaultKind.BACKEND_RUNTIME_ERROR.value},
+        )
+
+    def _normalize_backend_fault(
+        self,
+        *,
+        stage_key: str,
+        context: PipelineContext,
+        fault: BackendFault,
+        details: dict[str, str],
+    ) -> ServiceError:
+        if fault.kind == StageFaultKind.TRITON_TIMEOUT:
             return TimeoutServiceError(
                 f"{stage_key} timed out while waiting for Triton inference",
                 request_id=context.command.request_id,
                 details=details,
             )
-        if error_name == "TritonEndpointUnavailableError":
+        if fault.kind == StageFaultKind.TRITON_ENDPOINT_UNAVAILABLE:
             return ProcessingFailedServiceError(
                 f"{stage_key} could not reach the Triton endpoint",
                 request_id=context.command.request_id,
-                details={**details, "kind": "triton_endpoint_unavailable"},
+                details={**details, "kind": fault.kind.value},
             )
-        if error_name == "TritonModelUnavailableError":
+        if fault.kind == StageFaultKind.TRITON_MODEL_UNAVAILABLE:
             return ProcessingFailedServiceError(
                 f"{stage_key} Triton model is unavailable",
                 request_id=context.command.request_id,
-                details={**details, "kind": "triton_model_unavailable"},
+                details={**details, "kind": fault.kind.value},
             )
-        if error_name == "TritonSchemaMismatchError":
+        if fault.kind == StageFaultKind.TRITON_SCHEMA_MISMATCH:
             return ProcessingFailedServiceError(
                 f"{stage_key} received an incompatible Triton tensor schema",
                 request_id=context.command.request_id,
-                details={**details, "kind": "triton_schema_mismatch"},
+                details={**details, "kind": fault.kind.value},
             )
-        if error_name == "TritonInvalidResponseError":
+        if fault.kind == StageFaultKind.TRITON_INVALID_RESPONSE:
             return ProcessingFailedServiceError(
                 f"{stage_key} received an invalid Triton response",
                 request_id=context.command.request_id,
-                details={**details, "kind": "triton_invalid_response"},
+                details={**details, "kind": fault.kind.value},
             )
-        if error_name.startswith("Triton"):
+        if fault.kind == StageFaultKind.TRITON_BACKEND_ERROR:
             return ProcessingFailedServiceError(
-                f"{stage_key} Triton backend error: {exc}",
+                f"{stage_key} Triton backend error: {fault}",
                 request_id=context.command.request_id,
-                details={**details, "kind": "triton_backend_error"},
+                details={**details, "kind": fault.kind.value},
             )
         return ProcessingFailedServiceError(
-            f"{stage_key} execution failed: {exc}",
+            f"{stage_key} execution failed: {fault}",
             request_id=context.command.request_id,
-            details={**details, "kind": "backend_runtime_error"},
+            details={**details, "kind": fault.kind.value},
         )

@@ -26,7 +26,7 @@ def _schedule_process_shutdown() -> dict[str, object]:
     }
 
 
-def build_dev_router(debug_use_case) -> APIRouter:
+def build_dev_router(render_service, *, shutdown_enabled: bool) -> APIRouter:
     router = APIRouter()
 
     @router.get("/", include_in_schema=False)
@@ -46,18 +46,19 @@ def build_dev_router(debug_use_case) -> APIRouter:
         return HTMLResponse(render_playground_html())
 
     @router.post("/v1/dev/pipeline/run-all")
-    async def run_all_pipeline(payload: PipelineDebugRequest, request: Request):
-        return request.app.state.render_service.run_debug_pipeline(payload)
+    async def run_all_pipeline(payload: PipelineDebugRequest):
+        return render_service.run_debug_pipeline(payload)
 
     @router.post("/v1/dev/pipeline/run-stage/{stage_key}")
-    async def run_stage_pipeline(stage_key: str, payload: PipelineDebugRequest, request: Request):
-        return request.app.state.render_service.run_debug_pipeline(payload, stop_after=stage_key)
+    async def run_stage_pipeline(stage_key: str, payload: PipelineDebugRequest):
+        return render_service.run_debug_pipeline(payload, stop_after=stage_key)
 
-    @router.post("/v1/dev/service/shutdown")
-    async def shutdown_service(request: Request):
-        handler = getattr(request.app.state, "dev_shutdown_handler", None)
-        if handler is not None:
-            return handler()
-        return _schedule_process_shutdown()
+    if shutdown_enabled:
+        @router.post("/v1/dev/service/shutdown")
+        async def shutdown_service(request: Request):
+            handler = getattr(request.app.state, "dev_shutdown_handler", None)
+            if handler is not None:
+                return handler()
+            return _schedule_process_shutdown()
 
     return router

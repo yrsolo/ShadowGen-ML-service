@@ -56,27 +56,100 @@ Healthy result:
 
 ## Start the Service
 
-The normal local workflow now has two root `.cmd` entrypoints.
+There are two supported local workflows:
 
-Rebuild Triton after changing files under `ops/triton/model_repository`:
+- recommended production replacement container: ML-service only, local backends
+- Triton/debug Docker stack: Triton container plus ML-service container
+- advanced split debug mode: Triton container plus FastAPI running directly in the Windows console
+
+### Recommended: production replacement service container
+
+Rebuild the service image when service code or Python dependencies change:
+
+```cmd
+rebuild-service-container.cmd
+```
+
+Start only the ML-service container:
+
+```cmd
+start-service-container.cmd
+```
+
+Stop it:
+
+```cmd
+stop-service-container.cmd
+```
+
+This mode starts:
+
+- `shadowgen-ml-service` on host port `8000`
+- local ML backends only
+- dev API disabled by default
+- selected host GPU exposed as `cuda:0` inside the container
+
+Use `SERVICE_GPU_DEVICE=<host_gpu_index>` in `.env` to choose the video card. On the current workstation `SERVICE_GPU_DEVICE=1` targets the RTX 4090. Keep `SHADOWGEN_TARGET_DEVICE=cuda:0`, because Docker remaps the selected host GPU to container GPU `0`.
+
+Runtime files are mounted rather than baked into images:
+
+- `.env`
+- `.models/`
+- `.cache/`
+- `artifacts/`
+- `var/`
+
+### Triton/debug: two-container Docker stack
+
+Rebuild images when their code changes:
 
 ```cmd
 rebuild-triton.cmd
+rebuild-service-container.cmd
 ```
 
-Start Triton when testing Triton-backed stages:
+Start both containers:
 
 ```cmd
+start-docker-stack.cmd
+```
+
+Stop both containers:
+
+```cmd
+stop-docker-stack.cmd
+```
+
+This mode starts:
+
+- `shadowgen-triton-segmenter` on host ports `8010`, `8011`, `8012`
+- `shadowgen-ml-service` on host port `8000`
+
+The service container waits for the Triton container healthcheck before starting, then calls Triton through Docker DNS at `http://triton:8000`.
+
+Runtime files are mounted rather than baked into images:
+
+- `.env`
+- `.models/`
+- `.cache/`
+- `artifacts/`
+- `var/`
+
+The Docker service container enables the dev playground, but keeps `SHADOWGEN_DEV_SHUTDOWN_ENABLED=0`. Stop it with `stop-docker-stack.cmd` or Docker Desktop, not the playground shutdown button.
+
+### Advanced: split host FastAPI and Triton
+
+Use this when you need FastAPI in a visible Windows console:
+
+```cmd
+rebuild-triton.cmd
 start-triton.cmd
-```
-
-Start the FastAPI service:
-
-```cmd
 start-service.cmd
 ```
 
-`start-triton.cmd` owns only the Triton Docker container. `start-service.cmd` owns only FastAPI and keeps it in the current visible console with `RELOAD=0` by default. That makes the `/playground` shutdown button stop the actual FastAPI process instead of having `uvicorn --reload` immediately spawn it again.
+`start-triton.cmd` owns only the Triton Docker container. `start-service.cmd` owns only FastAPI, enables `SHADOWGEN_DEV_API_ENABLED=1` and `SHADOWGEN_DEV_SHUTDOWN_ENABLED=1` for local playground use, and keeps FastAPI in the current visible console with `RELOAD=0` by default. That makes the `/playground` shutdown button stop the actual FastAPI process instead of having `uvicorn --reload` immediately spawn it again.
+
+When running outside the local workstation workflow, leave `SHADOWGEN_DEV_API_ENABLED=0` and `SHADOWGEN_DEV_SHUTDOWN_ENABLED=0` unless the debug playground is intentionally exposed.
 
 Open:
 
@@ -219,7 +292,12 @@ Tracked repository scaffold:
 - [ops/triton/model_repository/shadowgen_detector/config.pbtxt](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/ops/triton/model_repository/shadowgen_detector/config.pbtxt)
 - [ops/triton/model_repository/shadowgen_detector/1/model.py](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/ops/triton/model_repository/shadowgen_detector/1/model.py)
 - [ops/triton/Dockerfile.segmenter-python](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/ops/triton/Dockerfile.segmenter-python)
+- [Dockerfile.service](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/Dockerfile.service)
+- [docker-compose.yml](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docker-compose.yml)
 - [rebuild-triton.cmd](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/rebuild-triton.cmd)
+- [rebuild-service-container.cmd](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/rebuild-service-container.cmd)
+- [start-docker-stack.cmd](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/start-docker-stack.cmd)
+- [stop-docker-stack.cmd](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/stop-docker-stack.cmd)
 - [start-triton.cmd](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/start-triton.cmd)
 - [start-service.cmd](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/start-service.cmd)
 
@@ -501,11 +579,11 @@ The container is built locally from:
 
 - [ops/triton/Dockerfile.segmenter-python](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/ops/triton/Dockerfile.segmenter-python)
 
-The model repository copied into the Triton image is:
+The model repository mounted into the Triton container is:
 
 - [ops/triton/model_repository](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/ops/triton/model_repository)
 
-The helper bakes the model repository into `/models` by default. This avoids Windows bind-mount problems for workspaces on drives such as `N:\`. Use `-BindModelRepository` only when Docker Desktop can reliably mount the workspace path.
+Current launchers bind-mount this repository into `/models` so generated ONNX files and Python backend edits are visible without rebuilding the image every time. If Docker Desktop cannot mount the workspace path reliably, move the repository/cache to a Docker-visible path or change the launcher to bake the model repository into the image.
 
 Triton uses standard ports inside the container, but the helper maps them to offset host ports so FastAPI can keep using `8000` locally.
 

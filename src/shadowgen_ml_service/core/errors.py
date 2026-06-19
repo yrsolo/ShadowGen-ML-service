@@ -1,5 +1,33 @@
 from __future__ import annotations
 
+from enum import Enum
+
+
+class StageFaultKind(str, Enum):
+    BACKEND_RUNTIME_ERROR = "backend_runtime_error"
+    TRITON_BACKEND_ERROR = "triton_backend_error"
+    TRITON_ENDPOINT_UNAVAILABLE = "triton_endpoint_unavailable"
+    TRITON_INVALID_RESPONSE = "triton_invalid_response"
+    TRITON_MODEL_UNAVAILABLE = "triton_model_unavailable"
+    TRITON_SCHEMA_MISMATCH = "triton_schema_mismatch"
+    TRITON_TIMEOUT = "triton_timeout"
+
+
+class BackendFault(RuntimeError):
+    kind: StageFaultKind = StageFaultKind.BACKEND_RUNTIME_ERROR
+
+    def __init__(
+        self,
+        message: str = "",
+        *,
+        kind: StageFaultKind | None = None,
+        details: dict[str, str] | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.message = message
+        self.kind = kind or self.kind
+        self.details = details or {}
+
 
 class ServiceError(Exception):
     code = "internal_error"

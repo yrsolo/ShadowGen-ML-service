@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from shadowgen_ml_service.application.models import AsyncRenderJobRecord, CapabilitiesOutcome, DebugPipelineOutcome, HealthOutcome, RenderOutcome
+from shadowgen_ml_service.application.models import CapabilitiesOutcome, DebugPipelineOutcome, HealthOutcome
 from shadowgen_ml_service.core.commands import BackgroundSpec, DebugPipelineCommand, OutputSpec, RenderCommand, ShadowSpec, SourceImage
 from shadowgen_ml_service.core.errors import ServiceError
+from shadowgen_ml_service.core.models import AsyncRenderJobRecord, RenderOutcome
 from shadowgen_ml_service.interfaces.http.dev_schemas import PipelineDebugRequest, PipelineDebugResponse, StageExecutionResponse, StageModesPayload, StagePreviewResponse
 from shadowgen_ml_service.interfaces.http.public_schemas import (
     ArtifactResponse,

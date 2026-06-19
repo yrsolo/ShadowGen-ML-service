@@ -331,6 +331,24 @@ The active docs now provide:
 - `.venv\Scripts\python.exe tools\smoke_triton_segmenter.py --variant rmbg-2.0 --base-url http://127.0.0.1:8010 --image C:\Users\solofarm\Pictures\Screenshots\1.jpg --direct-only --timeout-ms 300000 --output-dir artifacts\triton-rmbg2-gpu1-smoke` passed after GPU pinning
 - Default local and Triton-Python segmenter model id changed from `ZhengPeng7/BiRefNet-matting` to `ZhengPeng7/BiRefNet` after visual comparison on the project examples
 - RMBG-2.0 Triton adapter keeps feeding the current ONNX model at `1024x1024`; a `512x512` smoke failed on an internal ONNXRuntime `Reshape`, so the model metadata is dynamic but this export is not practically resolution-flexible
+- `docker compose config --no-interpolate` passed after adding the two-container local Docker stack
+- `cmd /c rebuild-service-container.cmd` passed and built `shadowgen-ml-service:local`
+- `cmd /c start-docker-stack.cmd` passed and started `shadowgen-triton-segmenter` plus `shadowgen-ml-service`
+- `GET http://127.0.0.1:8000/health` returned `status=ok`, `async_enabled=true`, `accepting_jobs=true`, and `preferred_submit_mode=async` from the service container
+- `GET http://127.0.0.1:8010/v2/health/ready` returned HTTP 200 from the Triton container
+- `start-docker-stack.cmd` was corrected to avoid implicit rebuilds and now waits for the Triton healthcheck before starting the service container
+- service-container `GET /v1/capabilities` reported Triton detector variants `grounding-dino` / `grounding-dino-onnx` and segmenter variants `birefnet` / `rmbg-2.0` as `available=True` via `http://triton:8000`
+- documentation was updated to make the two-container Docker stack the recommended local workflow and keep `start-triton.cmd` + `start-service.cmd` as advanced split debug mode
+- `docker compose config --no-interpolate` passed after the documentation refresh
+- `git diff --check` passed for the updated docs and tracking files
+- `Dockerfile.service` now defaults to production-safe `SHADOWGEN_DEV_API_ENABLED=0` and `SHADOWGEN_DEV_SHUTDOWN_ENABLED=0`
+- `docker-compose.service.yml` was added for service-only production replacement with local backends and GPU selection via `SERVICE_GPU_DEVICE`
+- `start-service-container.cmd help` and `rebuild-service-container.cmd help` passed
+- `docker compose -f docker-compose.service.yml config --no-interpolate` passed
+- full Docker image rebuild was not rerun because Docker Desktop daemon was unavailable in this session
+- `start-service-container.cmd` now reads only `SERVICE_GPU_DEVICE` from `.env` before applying the default and does not print other environment values
+- `.env.example` documents `SERVICE_GPU_DEVICE=1` and `SHADOWGEN_TARGET_DEVICE=cuda:0` without containing secrets
+- the ignored local `.env` was configured with host GPU `1`, mapped to `cuda:0` inside the service container
 
 ## Remaining Bootstrap Gaps
 

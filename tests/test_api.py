@@ -52,9 +52,13 @@ def make_request(image_format: str = "PNG") -> dict:
     }
 
 
+def make_test_settings(**overrides) -> Settings:
+    return Settings(dev_api_enabled=True, dev_shutdown_enabled=True, **overrides)
+
+
 class ApiTests(unittest.TestCase):
     def setUp(self) -> None:
-        app = create_app(Settings(shadow_v2_diff_bundle_path=Path("missing-test-v2-diff-bundle")))
+        app = create_app(make_test_settings(shadow_v2_diff_bundle_path=Path("missing-test-v2-diff-bundle")))
         self.client = TestClient(app)
 
     def test_health(self) -> None:
@@ -82,7 +86,7 @@ class ApiTests(unittest.TestCase):
 
         with patch("shadowgen_ml_service.bootstrap.container.TritonInferenceClient.ping", return_value=True):
             with patch("shadowgen_ml_service.bootstrap.container.TritonInferenceClient.probe_binding", side_effect=fake_probe_binding):
-                app = create_app(Settings(triton_url="http://triton.local", segmenter_backend_kind="triton"))
+                app = create_app(make_test_settings(triton_url="http://triton.local", segmenter_backend_kind="triton"))
                 client = TestClient(app)
                 response = client.get("/v1/capabilities")
 
@@ -105,6 +109,18 @@ class ApiTests(unittest.TestCase):
         self.assertIn("shutdownServiceBtn", response.text)
         self.assertIn("grounding-dino-onnx", response.text)
         self.assertIn("rmbg-2.0", response.text)
+
+    def test_dev_api_is_disabled_by_default(self) -> None:
+        client = TestClient(create_app(Settings()))
+
+        self.assertEqual(client.get("/playground").status_code, 404)
+        self.assertEqual(client.post("/v1/dev/pipeline/run-all", json={"render_request": make_request()}).status_code, 404)
+
+    def test_dev_shutdown_endpoint_requires_separate_flag(self) -> None:
+        client = TestClient(create_app(Settings(dev_api_enabled=True)))
+
+        self.assertEqual(client.get("/playground").status_code, 200)
+        self.assertEqual(client.post("/v1/dev/service/shutdown").status_code, 404)
 
     def test_dev_shutdown_endpoint_uses_injected_handler(self) -> None:
         calls: list[bool] = []
@@ -147,7 +163,7 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(first.json()["job_id"], second.json()["job_id"])
 
     def test_async_queue_full_returns_429(self) -> None:
-        app = create_app(Settings(job_max_running=1, job_max_pending=1))
+        app = create_app(make_test_settings(job_max_running=1, job_max_pending=1))
         entered = threading.Event()
         release = threading.Event()
         original_execute = app.state.render_use_case.execute
@@ -181,7 +197,7 @@ class ApiTests(unittest.TestCase):
         release.set()
 
     def test_sync_render_respects_capacity_limit(self) -> None:
-        app = create_app(Settings(job_max_running=1))
+        app = create_app(make_test_settings(job_max_running=1))
         client = TestClient(app)
 
         entered = threading.Event()
@@ -427,7 +443,7 @@ class ApiTests(unittest.TestCase):
         self.assertFalse(geometry["details"]["enabled"])
 
     def test_debug_pipeline_detector_mock_uses_mock_adapter_even_when_real_is_available(self) -> None:
-        app = create_app(Settings())
+        app = create_app(make_test_settings())
 
         class BombDetector:
             def detect(self, stage_input):
@@ -453,7 +469,7 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(detector["details"]["prompt"], "mock")
 
     def test_debug_pipeline_geometry_mock_uses_mock_adapter_even_when_real_is_available(self) -> None:
-        app = create_app(Settings(geometry_enabled=True))
+        app = create_app(make_test_settings(geometry_enabled=True))
 
         class BombGeometry:
             def estimate(self, image):
@@ -479,7 +495,7 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(geometry["details"]["backend"], "mock")
 
     def test_debug_pipeline_segmenter_mock_uses_mock_adapter_even_when_real_is_available(self) -> None:
-        app = create_app(Settings())
+        app = create_app(make_test_settings())
 
         class BombSegmenter:
             def segment(self, stage_input):
@@ -513,7 +529,7 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(segmenter["details"]["backend"], "mock")
 
     def test_debug_pipeline_depth_mock_uses_mock_adapter_even_when_real_is_available(self) -> None:
-        app = create_app(Settings())
+        app = create_app(make_test_settings())
 
         class BombDepthEstimator:
             def estimate(self, stage_input):
@@ -533,7 +549,7 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(depth["details"]["backend"], "mock")
 
     def test_debug_pipeline_normals_mock_uses_mock_adapter_even_when_real_is_available(self) -> None:
-        app = create_app(Settings())
+        app = create_app(make_test_settings())
 
         class BombNormalsEstimator:
             def estimate(self, stage_input):
@@ -553,7 +569,7 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(normals["details"]["backend"], "mock")
 
     def test_debug_pipeline_shadow_mock_uses_mock_adapter_even_when_real_is_available(self) -> None:
-        app = create_app(Settings())
+        app = create_app(make_test_settings())
 
         class BombShadowGenerator:
             def generate(self, stage_input):
@@ -573,7 +589,7 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(shadow["details"]["backend"], "mock")
 
     def test_debug_pipeline_foreground_refiner_mock_uses_mock_adapter_even_when_real_is_available(self) -> None:
-        app = create_app(Settings())
+        app = create_app(make_test_settings())
 
         class BombForegroundRefiner:
             def refine(self, image, alpha):
@@ -602,7 +618,7 @@ class ApiTests(unittest.TestCase):
     def test_segmentation_runs_after_crop_and_resize(self) -> None:
         temp_dir = Path("var/cache/test-preprocess") / uuid4().hex
         try:
-            app = create_app(Settings(preprocess_cache_dir=temp_dir))
+            app = create_app(make_test_settings(preprocess_cache_dir=temp_dir))
             service = app.state.render_service
 
             class RecordingSegmenter:
@@ -651,7 +667,7 @@ class ApiTests(unittest.TestCase):
         with patch("shadowgen_ml_service.bootstrap.container.TritonInferenceClient.ping", return_value=True):
             with patch("shadowgen_ml_service.bootstrap.container.TritonInferenceClient.probe_binding", side_effect=fake_probe_binding):
                 with patch("shadowgen_ml_service.infrastructure.backends.triton.client.TritonInferenceClient.infer", side_effect=fake_infer):
-                    app = create_app(Settings(triton_url="http://triton.local", segmenter_backend_kind="triton"))
+                    app = create_app(make_test_settings(triton_url="http://triton.local", segmenter_backend_kind="triton"))
                     client = TestClient(app)
                     response = client.post(
                         "/v1/dev/pipeline/run-stage/segmenter",
@@ -686,7 +702,7 @@ class ApiTests(unittest.TestCase):
         with patch("shadowgen_ml_service.bootstrap.container.TritonInferenceClient.ping", return_value=True):
             with patch("shadowgen_ml_service.bootstrap.container.TritonInferenceClient.probe_binding", side_effect=fake_probe_binding):
                 with patch("shadowgen_ml_service.infrastructure.backends.triton.client.TritonInferenceClient.infer", side_effect=fake_infer):
-                    app = create_app(Settings(triton_url="http://triton.local", segmenter_backend_kind="triton"))
+                    app = create_app(make_test_settings(triton_url="http://triton.local", segmenter_backend_kind="triton"))
                     client = TestClient(app)
                     render_response = client.post("/v1/render", json=make_request())
                     async_response = client.post("/v1/render/jobs", json=make_request())
@@ -704,18 +720,12 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(render_response.status_code, 200)
 
     def test_timeout_error_mapping(self) -> None:
-        class FakeService:
-            def health(self):
-                return {"status": "ok"}
+        class FakeRenderUseCase:
+            def execute(self, command):
+                raise TimeoutServiceError("forced timeout", request_id=command.request_id)
 
-            def capabilities(self):
-                return {"service_version": "0.1.0"}
-
-            def render(self, payload):
-                raise TimeoutServiceError("forced timeout", request_id=payload.request_id)
-
-        app = create_app(Settings())
-        app.state.render_service = FakeService()
+        app = create_app(make_test_settings())
+        app.state.render_service._render_use_case = FakeRenderUseCase()
         client = TestClient(app)
         response = client.post("/v1/render", json=make_request())
         self.assertEqual(response.status_code, 504)

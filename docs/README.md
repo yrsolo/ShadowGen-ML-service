@@ -13,9 +13,10 @@ This folder is split into two kinds of material:
 4. [worker-core-contract.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/worker-core-contract.md)
 5. [frontend-shadow-model-contract.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/frontend-shadow-model-contract.md)
 6. [shadow-v2-model-contract.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/shadow-v2-model-contract.md)
-7. [runbook-local.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/runbook-local.md)
-8. [api.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/api.md)
-9. [workflow.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/workflow.md)
+7. [docker-local.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/docker-local.md)
+8. [runbook-local.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/runbook-local.md)
+9. [api.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/api.md)
+10. [workflow.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/workflow.md)
 
 ## Active Docs
 
@@ -27,6 +28,9 @@ This folder is split into two kinds of material:
 
 - [runbook-local.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/runbook-local.md)
   Local setup, GPU environment, startup commands, backend-kind settings, Triton settings, and troubleshooting.
+
+- [docker-local.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/docker-local.md)
+  Production service-only container workflow plus Triton/debug two-container workflow.
 
 - [worker-core-contract.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/worker-core-contract.md)
   Integration contract for `ShadowGen-v2` worker authors, including sync vs async modes, capability handshake, and batching boundaries.

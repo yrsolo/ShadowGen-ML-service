@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from shadowgen_ml_service.application.models import AsyncRenderJobRecord
 from shadowgen_ml_service.core.errors import ValidationServiceError
 from shadowgen_ml_service.core.job_contracts import JobQueue, JobRepository
+from shadowgen_ml_service.core.models import AsyncRenderJobRecord
 
 
 class CancelRenderJobUseCase:

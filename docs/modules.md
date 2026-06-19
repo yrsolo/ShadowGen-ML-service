@@ -7,10 +7,43 @@ This document is the practical map of the repository: where things live, what th
 ```text
 agent/         runtime contract for AI agents
 docs/          active docs + historical bootstrap material
+ops/           Triton model repository and Triton image build context
 src/           service code
 tests/         automated tests
 work/          local tracking and roadmap notes
 ```
+
+Top-level runtime files:
+
+- [Dockerfile.service](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/Dockerfile.service)
+  Docker image for the FastAPI control-plane service with local ML dependencies.
+
+- [docker-compose.yml](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docker-compose.yml)
+  Two-container local stack: Triton execution plane plus ML-service control plane.
+
+- [docker-compose.service.yml](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docker-compose.service.yml)
+  Production replacement stack with only the ML-service container and local backends.
+
+- [rebuild-triton.cmd](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/rebuild-triton.cmd)
+  Rebuilds the Triton image after Triton backend/model repository code changes.
+
+- [rebuild-service-container.cmd](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/rebuild-service-container.cmd)
+  Rebuilds the ML-service image after service code or dependency changes.
+
+- [start-docker-stack.cmd](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/start-docker-stack.cmd)
+  Starts both containers without forcing image rebuilds.
+
+- [stop-docker-stack.cmd](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/stop-docker-stack.cmd)
+  Stops the Docker stack and removes stale named containers.
+
+- [start-service-container.cmd](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/start-service-container.cmd)
+  Starts only the ML-service container and waits for `/health`.
+
+- [stop-service-container.cmd](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/stop-service-container.cmd)
+  Stops only the ML-service container.
+
+- [start-triton.cmd](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/start-triton.cmd) and [start-service.cmd](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/start-service.cmd)
+  Advanced split debug workflow with Triton in Docker and FastAPI on the host `.venv`.
 
 ## `src/shadowgen_ml_service/`
 

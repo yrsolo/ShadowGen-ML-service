@@ -2,7 +2,18 @@
 
 ## Active
 
+- [x] Implement architecture audit remediation:
+  - [x] gate dev API and shutdown endpoint behind explicit settings
+  - [x] restore dependency inversion around async job DTOs
+  - [x] move HTTP orchestration out of compatibility shims
+  - [x] extract backend fallback policy and cover it with tests
+  - [x] share stage invocation between public and debug pipelines
+  - [x] normalize backend faults through core errors
+  - [x] make settings read env at instantiation time
+  - [x] split imaging utilities into focused modules
+- [ ] Hatch a Codex-compatible animated pet package (`Null Sprout`) under the local Codex pets directory
 - [x] Add a Russian GitHub Pages style academic project page with product, service, dataset, and training repository links
+- [x] Add generated architecture illustrations and interactive media tabs to the project page
 - [x] Bootstrap the service repository, API, workflow, and tracking
 - [x] Build the layered architecture (`core/application/bootstrap/infrastructure/interfaces`)
 - [x] Add browser playground for stage-by-stage testing
@@ -42,12 +53,36 @@
   - [x] add Triton model repository scaffold for `shadowgen_segmenter`
   - [x] add BiRefNet ONNX export tool
   - [x] switch segmenter Triton adapter to live mask-first postprocess flow
-
 - [x] Bring up live Triton detector path for `detector`:
   - [x] add `shadowgen_detector` Triton Python backend scaffold
   - [x] wire local launcher to request detector through Triton
   - [x] add direct detector Triton smoke helper
   - [x] rebuild image and validate live detector inference
+- [ ] Improve Triton performance path:
+  - [x] add official Triton client native binary tensor transport with JSON fallback
+  - [x] add per-stage local/triton benchmark helper
+  - [x] add RMBG-2.0 ONNX segmenter variant scaffold and gated-model preparation tool
+  - [x] add experimental GroundingDINO model-only ONNX export pipeline
+  - [x] wire `grounding-dino-onnx` as a Triton detector variant with ML-core postprocess
+  - [x] split Triton rebuild, Triton container start, and FastAPI service start into explicit scripts
+  - [x] verify RMBG-2.0 live serving after Hugging Face gated access is visible in the shell
+- [x] Containerize the local ML service next to Triton:
+  - [x] add service Dockerfile with ML dependencies
+  - [x] add two-container Docker Compose stack
+  - [x] add explicit build/start/stop Windows scripts
+  - [x] keep `.env`, model weights, caches, and artifacts as runtime mounts
+- [x] Update docs for the two-container local Docker workflow:
+  - [x] make Docker stack the recommended local path
+  - [x] keep split Triton/FastAPI mode documented as advanced debugging
+  - [x] document service-container shutdown semantics
+- [x] Add production replacement container mode for ML-service:
+  - [x] add service-only Docker Compose file without Triton dependency
+  - [x] add start/stop scripts for the service container
+  - [x] make GPU selectable through `SERVICE_GPU_DEVICE`
+  - [x] load `SERVICE_GPU_DEVICE` from `.env` without exposing other values
+  - [x] add tracked `.env.example` with safe GPU defaults
+  - [x] default service image to production-safe dev API settings
+
 ## Next Likely
 
 - [x] Switch `segmenter` to a temporary Triton Python backend while BiRefNet ONNX export remains blocked
@@ -77,10 +112,12 @@
 - [ ] Continue replacing compatibility shims with direct imports from the layered structure
 - [x] Extend the temporary Triton segmenter bridge with a verified custom image smoke run
 - [x] Add visible Windows FastAPI launchers and a Playground shutdown control for the current ML-service process
-- [x] Simplify local operations to two root launch scripts:
+- [x] Simplify local operations to explicit root launch scripts:
   - [x] `rebuild-triton.cmd`
+  - [x] `start-triton.cmd`
   - [x] `start-service.cmd`
 - [x] Switch the local Triton segmenter launch path to GPU-first defaults and verify CUDA serving
+- [x] Export and locally validate GroundingDINO ONNX with CUDAExecutionProvider
 
 ## Notes
 

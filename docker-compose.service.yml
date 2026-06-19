@@ -1,0 +1,57 @@
+services:
+  service:
+    image: ${SERVICE_IMAGE:-shadowgen-ml-service:local}
+    container_name: ${SERVICE_CONTAINER:-shadowgen-ml-service}
+    env_file:
+      - path: .env
+        required: false
+    ports:
+      - "${SERVICE_HTTP_PORT:-8000}:8000"
+    environment:
+      HF_HOME: /app/.cache/huggingface
+      HUGGINGFACE_HUB_CACHE: /app/.cache/huggingface/hub
+      NVIDIA_VISIBLE_DEVICES: ${SERVICE_GPU_DEVICE:-1}
+      SHADOWGEN_TARGET_DEVICE: ${SHADOWGEN_TARGET_DEVICE:-cuda:0}
+      SHADOWGEN_DEV_API_ENABLED: ${SHADOWGEN_DEV_API_ENABLED:-0}
+      SHADOWGEN_DEV_SHUTDOWN_ENABLED: ${SHADOWGEN_DEV_SHUTDOWN_ENABLED:-0}
+      SHADOWGEN_DETECTOR_BACKEND_KIND: ${SHADOWGEN_DETECTOR_BACKEND_KIND:-local}
+      SHADOWGEN_SEGMENTER_BACKEND_KIND: ${SHADOWGEN_SEGMENTER_BACKEND_KIND:-local}
+      SHADOWGEN_DEPTH_BACKEND_KIND: ${SHADOWGEN_DEPTH_BACKEND_KIND:-local}
+      SHADOWGEN_NORMALS_BACKEND_KIND: ${SHADOWGEN_NORMALS_BACKEND_KIND:-local}
+      SHADOWGEN_SHADOW_BACKEND_KIND: ${SHADOWGEN_SHADOW_BACKEND_KIND:-local}
+      SHADOWGEN_SHADOW_MODEL_VARIANT: ${SHADOWGEN_SHADOW_MODEL_VARIANT:-v2-diff}
+      SHADOWGEN_TRITON_TRANSPORT: ${SHADOWGEN_TRITON_TRANSPORT:-native}
+      SHADOWGEN_TRITON_URL: ${SHADOWGEN_TRITON_URL:-}
+    volumes:
+      - type: bind
+        source: ${SERVICE_MODELS_DIR:-./.models}
+        target: /app/.models
+      - type: bind
+        source: ${SERVICE_CACHE_DIR:-./.cache}
+        target: /app/.cache
+      - type: bind
+        source: ${SERVICE_ARTIFACTS_DIR:-./artifacts}
+        target: /app/artifacts
+      - type: bind
+        source: ${SERVICE_VAR_DIR:-./var}
+        target: /app/var
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids:
+                - "${SERVICE_GPU_DEVICE:-1}"
+              capabilities:
+                - gpu
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5)\"",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
