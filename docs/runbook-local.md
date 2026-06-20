@@ -196,7 +196,11 @@ The playground and capability responses expose:
 
 ## Playground Use
 
-The playground supports:
+Install CUDA-enabled torch explicitly before ML extras:
+
+```powershell
+.venv\Scripts\python.exe -m pip install --index-url https://download.pytorch.org/whl/cu126 torch torchvision
+```
 
 - image upload
 - contract parameter control
