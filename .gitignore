@@ -30,6 +30,10 @@ var/pytest-cache-files-*/
 weights/
 checkpoints/
 hf_cache/
+ops/triton/model_repository/**/1/*.onnx
+ops/triton/model_repository/**/1/_hf_download/
+ops/triton/model_repository/shadowgen_detector_onnx/
+ops/triton/model_repository/shadowgen_segmenter_rmbg2/
 
 # Generated images and artifacts
 data/input/

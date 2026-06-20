@@ -1,0 +1,65 @@
+name: "shadowgen_detector"
+backend: "python"
+max_batch_size: 4
+input [
+  {
+    name: "image"
+    data_type: TYPE_FP32
+    dims: [ 3, -1, -1 ]
+  },
+  {
+    name: "padding_px"
+    data_type: TYPE_INT32
+    dims: [ 1 ]
+  }
+]
+output [
+  {
+    name: "bbox"
+    data_type: TYPE_FP32
+    dims: [ 4 ]
+  },
+  {
+    name: "confidence"
+    data_type: TYPE_FP32
+    dims: [ 1 ]
+  }
+]
+dynamic_batching {
+  preferred_batch_size: [ 2, 4 ]
+  max_queue_delay_microseconds: 15000
+}
+instance_group [
+  {
+    kind: KIND_CPU
+    count: 1
+  }
+]
+parameters {
+  key: "model_id"
+  value { string_value: "IDEA-Research/grounding-dino-base" }
+}
+parameters {
+  key: "prompt"
+  value { string_value: "object." }
+}
+parameters {
+  key: "box_threshold"
+  value { string_value: "0.25" }
+}
+parameters {
+  key: "text_threshold"
+  value { string_value: "0.25" }
+}
+parameters {
+  key: "device"
+  value { string_value: "cuda" }
+}
+parameters {
+  key: "matmul_precision"
+  value { string_value: "high" }
+}
+parameters {
+  key: "local_files_only"
+  value { string_value: "false" }
+}

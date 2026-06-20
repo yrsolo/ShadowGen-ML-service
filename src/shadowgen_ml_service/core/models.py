@@ -1,0 +1,203 @@
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Literal
+
+from shadowgen_ml_service.core.assets import RasterAsset
+
+
+BBox = tuple[int, int, int, int]
+BackendKind = Literal["mock", "local", "triton", "internal"]
+
+
+@dataclass(frozen=True)
+class DetectionResult:
+    bbox: BBox
+    confidence: float
+
+
+@dataclass(frozen=True)
+class GeometryResult:
+    camera_fov: float
+    camera_pitch: float
+    camera_roll: float
+    confidence: float
+
+
+@dataclass(frozen=True)
+class SegmentationResult:
+    bbox: BBox
+    mask: RasterAsset
+    cutout_rgba: RasterAsset
+    crop_rgba: RasterAsset
+
+
+@dataclass(frozen=True)
+class ForegroundRefinementResult:
+    cutout_rgba: RasterAsset
+
+
+@dataclass(frozen=True)
+class DepthResult:
+    depth_map: RasterAsset
+
+
+@dataclass(frozen=True)
+class NormalResult:
+    normal_map: RasterAsset
+
+
+@dataclass(frozen=True)
+class ShadowResult:
+    shadow_image: RasterAsset
+
+
+@dataclass(frozen=True)
+class CompositionResult:
+    final_image: RasterAsset
+
+
+@dataclass(frozen=True)
+class EncodedArtifact:
+    name: str
+    kind: str
+    mime_type: str
+    image_base64: str
+
+
+@dataclass
+class RenderOutcome:
+    request_id: str | None
+    artifacts: list[EncodedArtifact]
+    metrics: dict[str, int]
+    warnings: list[str]
+    service_version: str
+    model_version: str
+
+
+@dataclass(frozen=True)
+class StageBackendId:
+    stage_key: str
+    backend_kind: BackendKind
+    model_variant: str
+
+
+@dataclass(frozen=True)
+class StageBackendDescriptor:
+    backend_id: StageBackendId
+    model_name: str
+    model_version: str
+    available: bool
+    detail: str | None = None
+    device: str = "cpu"
+    endpoint: str | None = None
+    supports_batching: bool = False
+    supports_async: bool = False
+    is_default: bool = False
+
+    @property
+    def stage_key(self) -> str:
+        return self.backend_id.stage_key
+
+    @property
+    def backend_kind(self) -> BackendKind:
+        return self.backend_id.backend_kind
+
+    @property
+    def model_variant(self) -> str:
+        return self.backend_id.model_variant
+
+
+@dataclass(frozen=True)
+class ComponentStatus:
+    name: str
+    implementation: str
+    model_name: str
+    model_version: str
+    available: bool
+    using_mock: bool
+    detail: str | None = None
+    backend_kind: BackendKind = "mock"
+    model_variant: str = "default"
+    device: str = "cpu"
+    endpoint: str | None = None
+    supports_batching: bool = False
+    supports_async: bool = False
+    fallback_reason: str | None = None
+    backends: list[StageBackendDescriptor] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class RuntimeDescriptor:
+    mode: str
+    degraded: bool
+    components: list[ComponentStatus]
+    model_version: str
+    execution_default_backend: BackendKind = "local"
+    async_enabled: bool = False
+
+
+@dataclass(frozen=True)
+class JobExecutionInfo:
+    queue_backend: str
+    accepting_jobs: bool
+    max_running_jobs: int
+    max_pending_jobs: int
+    running_jobs: int
+    pending_jobs: int
+    cancel_mode: str = "pending_only"
+    idempotency_supported: bool = True
+
+
+@dataclass(frozen=True)
+class AsyncRenderJobRecord:
+    job_id: str
+    request_id: str | None
+    status: str
+    created_at: str
+    updated_at: str
+    submit_mode: str = "async"
+    error: str | None = None
+    capacity_snapshot: JobExecutionInfo | None = None
+    render_outcome: RenderOutcome | None = None
+
+
+@dataclass
+class PreprocessSnapshot:
+    detection: DetectionResult
+    geometry: GeometryResult
+    segmentation: SegmentationResult
+    depth: DepthResult
+    normals: NormalResult
+    foreground_refinement: ForegroundRefinementResult | None = None
+    cache_path: Path | None = None
+
+
+@dataclass(frozen=True)
+class HealthStatus:
+    status: str
+    service_version: str
+    active_backend_mode: str
+    async_enabled: bool = False
+    accepting_jobs: bool = True
+    preferred_submit_mode: str = "sync"
+
+
+@dataclass
+class CapabilitiesInfo:
+    service_version: str
+    model_version: str
+    supported_input_mime_types: tuple[str, ...]
+    supported_output_formats: tuple[str, ...]
+    supports_debug_artifacts: bool
+    max_image_bytes: int
+    active_backend_mode: str
+    degraded: bool
+    execution_default_backend: BackendKind = "local"
+    async_enabled: bool = False
+    supported_submit_modes: tuple[str, ...] = ("sync",)
+    preferred_submit_mode: str = "sync"
+    batching_strategy: str = "none"
+    job_execution: JobExecutionInfo | None = None
+    components: list[ComponentStatus] = field(default_factory=list)

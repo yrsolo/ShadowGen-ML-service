@@ -1,0 +1,5 @@
+model_repository/**/1/*.onnx
+model_repository/**/1/_hf_download/
+model_repository/**/__pycache__/
+model_repository/shadowgen_detector_onnx/
+model_repository/shadowgen_segmenter_rmbg2/

@@ -2,110 +2,163 @@
 
 ## Purpose
 
-`ShadowGen ML Service` is a local-first synchronous ML service that takes a source image, analyzes the foreground object and scene cues, generates a shadow layer, and returns a final composited artifact.
+`ShadowGen ML Service` is a hybrid orchestrator for foreground extraction, scene analysis, shadow generation, and final composition.
 
-The service is designed to be:
+The architectural goal is:
 
-- stateless at the HTTP boundary
-- explicit about runtime backend selection
-- easy to test with deterministic mock stages
-- ready for iterative model replacement without rewriting the whole service
+- stable control plane
+- replaceable execution plane
+- unchanged debug UX while heavy stages move between `mock`, `local`, and `triton`
 
-## High-Level Flow
+## Architectural Split
 
-Pipeline order:
+### Control Plane
 
-1. Decode and validate request payload
-2. Estimate scene geometry on the full source image
-3. Detect the primary foreground object
-4. Crop, pad, and fit the object into the working canvas
-5. Segment the object on the prepared working crop
-6. Refine semi-transparent foreground colours
-7. Estimate depth
-8. Estimate normals
-9. Generate shadow
-10. Compose object and shadow on the background
-11. Encode output artifacts and metrics
+Lives in this service and owns:
 
-Important processing rules:
+- FastAPI public API
+- FastAPI dev API
+- web playground
+- synchronous render orchestration
+- asynchronous job orchestration
+- job admission control and bounded job concurrency
+- crop / pad / resize preprocessing
+- preview generation
+- preprocess cache
+- backend selection and fallback policy
+- capabilities and health reporting
+
+### Execution Plane
+
+Provides stage executors:
+
+- `mock`
+- `local`
+- `triton`
+
+Application code does not depend on a specific transport or executor type. It only works with stage ports and execution metadata.
+
+For Triton-backed stages, transport normalization happens below the application layer. The control plane builds canonical stage inputs, while Triton adapters translate them into the standard Triton tensor infer schema with explicit input and output tensors.
+
+### Local Docker Topology
+
+The recommended local deployment shape is now two containers:
+
+- `shadowgen-ml-service`
+  - FastAPI control plane
+  - playground
+  - local backends
+  - async job dispatcher
+  - cache and artifact coordination
+- `shadowgen-triton-segmenter`
+  - Triton execution plane
+  - Python backend models
+  - experimental ONNX backend models
+
+The service container listens on and publishes `SERVICE_HTTP_PORT` from `.env` (default `9001`) and calls Triton through Docker DNS at `http://triton:8000`. Triton exposes host ports `8010` HTTP, `8011` gRPC, and `8012` metrics for direct smoke tests and observability.
+
+This keeps the same architectural split in local development that we want later in production: FastAPI orchestrates, Triton serves heavy inference.
+
+## Pipeline Flow
+
+Current stage order:
+
+1. decode and validate request payload
+2. estimate geometry on the full image
+3. detect the primary object on the full image
+4. crop, pad, and fit into the canonical working canvas
+5. segment on the prepared working crop
+6. refine semi-transparent foreground colours
+7. estimate depth
+8. estimate normals
+9. generate shadow
+10. compose cutout and shadow
+11. encode output artifacts
+
+Processing rules:
 
 - geometry and detection run on the original image
 - segmentation runs after crop / pad / resize
-- foreground refinement is a standalone stage, not hidden inside segmentation
-- depth and normals run on the refined foreground result
-- shadow is its own stage with named model variants
+- foreground refinement is a standalone stage
+- heavy downstream stages consume canonical working-canvas inputs
+- shadow consumes canonical `img`, `mask`, `depth`, `normal`, `angle`, `elevation`, `softness`, `reflection`
+- heavy-stage orchestration passes typed `stage_io` inputs into ports instead of backend-specific argument lists
 
 ## Layered Structure
 
-The service follows a clean layered split.
-
 ### `core/`
 
-Contains:
+Contains stage-independent contracts and typed models:
 
-- commands
-- typed models
-- pipeline contracts
-- service errors
+- command models
+- runtime metadata
+- stage result models
+- canonical stage I/O contracts
+- async job contracts
+- error types
 
 Rules:
 
 - no FastAPI
 - no Pydantic
-- no UI logic
-- no model-specific imports
+- no Triton transport code
+- no HTML/UI logic
 
 ### `application/`
 
-Contains:
+Contains orchestration and execution policy:
 
-- use cases
+- sync render use case
+- sync debug use case
+- async job use cases
+- backend selector
+- stage runner
 - pipeline context
 - metrics collection
-- backend selection
-- stage catalog
-- stage runner
+- registry-aware runtime access
 
 Rules:
 
-- orchestrates the pipeline
 - depends on `core`
-- does not know about concrete HTTP schema classes
+- may depend on generic stage ports
+- must not depend on concrete `local` or `triton` backend classes
 
 ### `bootstrap/`
 
-Contains:
+Contains runtime assembly:
 
-- runtime probes
-- dependency composition
-- runtime descriptor assembly
+- probes
+- backend registration
+- default backend policy
+- runtime descriptors for capabilities and health
 
-Purpose:
+Responsibilities:
 
-- decide which backends are active
-- wire mock, fallback, and real implementations
-- expose machine-readable runtime status to API/UI
+- register all known backends per stage
+- decide active defaults per stage
+- expose machine-readable execution metadata
 
 ### `infrastructure/`
 
-Contains:
+Contains technical implementations:
 
-- model backends
+- stage backends
+- Triton client subsystem
+- cache repository
+- artifact encoder
 - preview builders
-- cache persistence
-- artifact encoding
+- async job backend
 
-This is where stage-specific implementation code lives.
+This is the only layer that should know transport details, model-loading details, and persistence details.
 
 ### `interfaces/http/`
 
 Contains:
 
-- FastAPI app factory
-- public routes
-- dev routes
-- request and response schemas
+- route handlers
+- request/response schemas
 - HTTP mappers
+- app factory
 
 ### `interfaces/dev/`
 
@@ -113,201 +166,352 @@ Contains:
 
 - browser playground UI
 
-## Runtime Philosophy
+## Execution Model
 
-Each stage should ideally support:
+The old `mock|real` model is no longer sufficient.
 
-- deterministic mock backend
-- real backend
-- predictable fallback behavior
+Each stage execution is described by:
 
-This is already implemented for multiple stages and is especially important for:
+- `backend_kind`: `mock`, `local`, `triton`, or `internal`
+- `model_variant`
+- `model_name`
+- `model_version`
+- `device`
+- `endpoint`
+- `supports_batching`
+- `supports_async`
+- `fallback_reason`
 
-- development without GPU
-- debugging broken model initialization
-- preserving a stable UI and API while model backends change
+Compatibility fields such as `requested_mode` and `actual_mode` still exist in dev responses, but they are now derived from the execution-aware model.
 
-## Stage-by-Stage Overview
+This derivation is now strict:
 
-### Geometry
+- variant fallback within the same backend kind still counts as fallback
+- `actual_mode` is compatibility-only and no longer acts as source of truth
+- the source of truth is `actual_backend_kind + actual_variant + fallback_reason`
+
+## Registry-Based Runtime
+
+The runtime is now registry-based rather than field-based.
+
+Instead of storing fixed slots like:
+
+- `real_detector`
+- `mock_detector`
+- `shadow_v1_gan`
+
+the runtime keeps a backend registry keyed by:
+
+- `stage_key`
+- `backend_kind`
+- `model_variant`
+
+This enables:
+
+- explicit per-stage backend selection
+- clean fallback rules
+- local and Triton coexistence
+- async job reuse of the same runtime
+
+## Stage Ports and Canonical I/O
+
+Heavy stage execution is normalized through canonical inputs:
+
+- `DetectionInput`
+- `SegmentationInput`
+- `DepthInput`
+- `NormalsInput`
+- `ShadowInput`
+
+This matters because Triton adapters should not leak transport details into orchestration code.
+
+The orchestrator works in terms of semantic stage inputs and outputs. Serialization to tensors or bytes happens inside adapters or Triton serializers.
+
+For heavy stages, the canonical payload is now a neutral `RasterAsset` value object. `PIL` remains inside local adapters, preview generation, and image utilities, but it is no longer the contract type carried through `core/stage_io`.
+
+## Triton Subsystem
+
+Triton integration is a first-class subsystem under `infrastructure/backends/triton/`.
+
+Main responsibilities:
+
+- endpoint configuration
+- health probing
+- model registry
+- request serialization
+- response deserialization
+- transport-level timeout and mismatch handling
+- batching capability metadata
+- tensor schema validation for dtype, rank, and channel/layout sanity
+
+If a stage faults at runtime:
+
+- public sync execution raises normalized service errors
+- debug/dev execution returns a structured failed stage with execution metadata and error text
+
+Stage-specific Triton adapters live under the relevant stage package and depend on this subsystem.
+
+Current Triton-ready stage families:
+
+- `detector`
+- `segmenter`
+- `depth_estimator`
+- `normal_estimator`
+- `shadow_generator` for `V2-DIFF`
+
+Current live-first Triton targets:
+
+- `detector` via temporary Triton `python` backend
+- `segmenter` via temporary Triton `python` backend
+- `detector` via experimental `grounding-dino-onnx` ONNX variant with ML-core postprocess
+- `segmenter` via experimental `rmbg-2.0` ONNX variant
+
+Notes:
+
+- the first long-term production Triton model format remains `ONNX`
+- `TensorRT` is intentionally deferred as phase 2 optimization
+- ML-core uses native Triton HTTP binary tensor transport by default and keeps JSON transport as a debug fallback
+- the Triton `detector` contract currently returns minimal `bbox` and `confidence` tensors
+- the Triton `segmenter` contract currently returns a minimal `mask` tensor
+- the next ONNX segmenter candidate is `RMBG-2.0` as variant `rmbg-2.0`; BiRefNet remains the quality fallback
+- GroundingDINO ONNX export is currently model-only (`logits`, `pred_boxes`) until postprocess is moved into a dedicated adapter or Triton ensemble
+- `cutout`, `crop`, and compatibility `bbox` are reconstructed inside the ML core postprocess path
+- current BiRefNet export blocker in this environment is `torchvision::deform_conv2d`, so the live stage currently runs through a temporary Triton Python backend
+- `torch.compile` and matmul precision tuning are exposed as opt-in Torch-side acceleration knobs while the model stays on the Python runtime path
+
+## Sync and Async Flows
+
+### Sync
+
+Used by:
+
+- `POST /v1/render`
+- dev pipeline endpoints
+- browser playground
+
+Characteristics:
+
+- immediate response
+- detailed previews
+- easier debugging
+
+### Async
+
+Used by:
+
+- `POST /v1/render/jobs`
+- `GET /v1/render/jobs/{job_id}`
+- `DELETE /v1/render/jobs/{job_id}`
+
+Characteristics:
+
+- production-oriented path
+- job state externalized through API
+- reuses the same backend registry and stage runner
+- now runs through a bounded concurrent dispatcher by default
+
+Current async backend is in-process, bounded, concurrency-aware, and replaceable by design.
+
+## Admission and Capacity
+
+The ML core now exposes worker-facing readiness and capacity semantics:
+
+- `GET /health` acts as both liveness and readiness
+- `GET /v1/capabilities` is the feature-discovery handshake for workers
+- async submission is protected by bounded queue admission
+- sync submission is also capacity-aware and can return overload errors instead of silently blocking
+
+The intended split is:
+
+- worker owns job-level in-flight concurrency
+- ML core owns stage-level concurrency and batching
+
+## Stage-Level Micro-Batching
+
+Heavy-stage batching is now an internal optimization layer of the ML core.
+
+Current rules:
+
+- batching is enabled only for `triton` heavy stages
+- batching happens after canonical crop / pad / resize
+- the worker never submits tensor batches directly
+
+First-wave batchable stages:
+
+- `segmenter`
+- `depth_estimator`
+- `normal_estimator`
+- `shadow_generator`
+
+## Stage Overview
+
+### Local-Only Phase-1 Stages
+
+#### Geometry
 
 - Stage key: `geometry_estimator`
-- Runs on: full source image
-- Primary backend: GeoCalib
-- Outputs:
-  - `camera_fov`
-  - `camera_pitch`
-  - `camera_roll`
-  - `confidence`
+- Backends: `mock`, `local`
+- Local backend: GeoCalib
+- Runs on the full image
+- Disabled by default with `SHADOWGEN_GEOMETRY_ENABLED=false`
+- The current shadow pipeline does not consume geometry output, so the stage is kept as an opt-in diagnostic stage until it becomes useful again
 
-### Detection
-
-- Stage key: `detector`
-- Runs on: full source image
-- Primary backend: GroundingDINO
-- Purpose:
-  - locate main object
-  - produce crop bbox
-  - prepare downstream working crop
-
-### Segmentation
-
-- Stage key: `segmenter`
-- Runs on: prepared working crop
-- Primary backend: BiRefNet
-- Outputs:
-  - binary mask
-  - RGBA cutout
-  - crop metadata
-
-### Foreground Refinement
+#### Foreground Refinement
 
 - Stage key: `foreground_refiner`
-- Runs on: segmented crop plus alpha
-- Primary backend: Fast Foreground Colour Estimation
-- Purpose:
-  - fix semi-transparent RGB contamination
-  - improve downstream depth/shadow/composition quality
+- Backends: `mock`, `local`
+- Local backend: Fast Foreground Colour Estimation
 
-### Depth
-
-- Stage key: `depth_estimator`
-- Runs on: refined cutout
-- Primary backend: Depth Anything V2 Small
-- Output:
-  - normalized single-channel depth map
-
-### Normals
-
-- Stage key: `normal_estimator`
-- Primary backend: StableNormal
-- Fallback backend: `from-depth`
-- Mock backend: flat neutral normal map
-
-Important:
-
-- normals are no longer treated as “just depth postprocessing”
-- the stage now has its own model identity and explicit fallback path
-
-### Shadow
-
-- Stage key: `shadow_generator`
-- Current variants:
-  - `mock`
-  - `V1-GAN`
-  - `V2-DIFF`
-
-#### `mock`
-
-- deterministic analytical shadow stub
-- keeps the coarse softness blur behavior
-- used for fast fallback and predictable tests
-
-#### `V1-GAN`
-
-- current real shadow model
-- migrated from the legacy pix2pix ShadowGEN code
-- only minimal inference code and one generator checkpoint were imported
-
-Inputs:
-
-- `img`
-- `mask`
-- `depth`
-- `normal`
-- `angle`
-- `elevation`
-- `softness`
-- `reflection`
-
-Important:
-
-- `softness` is treated as model input
-- no post-blur is applied after the real model output
-
-#### `V2-DIFF`
-
-- reserved runtime slot for the next shadow model family
-- recommended class scaffold already exists
-- inference backend intentionally not implemented yet
-
-This means the service is already prepared for a controlled transition:
-
-- `V1-GAN` can remain active
-- `V2-DIFF` can be integrated without changing the external debug UX
-
-### Composition
+#### Composition
 
 - Stage key: `composer`
-- Current backend: Python compositor
-- Purpose:
-  - place cutout and shadow on target background
-  - return final render image
+- Backend kind: `local`
+- Local backend: Python compositor
 
-## Cache and Artifacts
+#### Artifact Encoding
 
-The service keeps a preprocess cache for expensive intermediate results.
+- Stage key: `artifact_encoder`
+- Backend kind: `internal`
 
-Cached data can include:
+### Heavy Triton-Ready Stages
 
-- detection
-- geometry
-- segmentation
-- foreground refinement
-- depth
-- normals
+#### Detection
 
-Cache key includes:
+- Stage key: `detector`
+- Backends: `mock`, `local`, `triton`
+- Local backend: GroundingDINO
+- Triton variant: `grounding-dino`
+- First live Triton packaging target: `shadowgen_detector` (`python`)
+- Current Triton tensor contract:
+  - input `image`: `FP32`, batched `NCHW`, normalized `0..1`
+  - input `padding_px`: `INT32`, compatibility scalar
+  - output `bbox`: `FP32`, `[N, 4]`
+  - output `confidence`: `FP32`, `[N, 1]`
 
-- input bytes hash
-- runtime signature
-- padding
-- working size
+#### Segmentation
 
-This lets the service invalidate stale cached results when model variants or implementations change.
+- Stage key: `segmenter`
+- Backends: `mock`, `local`, `triton`
+- Local backend: BiRefNet
+- Triton variant: `birefnet`
+- First live Triton packaging target: `shadowgen_segmenter` (`python`)
+- Current Triton tensor contract:
+  - input `image`: `FP32`, batched `NCHW`, normalized `0..1`
+  - output `mask`: `FP32`, batched `NCHW`
 
-## Public vs Dev Interfaces
+#### Depth
 
-Public endpoints:
+- Stage key: `depth_estimator`
+- Backends: `mock`, `local`, `triton`
+- Local backend: Depth Anything V2 Small
+- Triton variant: `depth-anything-v2-small`
 
-- `GET /health`
-- `GET /v1/capabilities`
-- `POST /v1/render`
+#### Normals
 
-Dev interface:
+- Stage key: `normal_estimator`
+- Backends:
+  - `mock`
+  - `local stable-normal`
+  - `local from-depth-v2`
+  - `triton stable-normal`
 
-- `GET /playground`
-- `POST /v1/dev/pipeline/run-all`
-- `POST /v1/dev/pipeline/run-stage/{stage_key}`
+Important:
 
-The dev interface is intentionally richer than the public one and exposes:
+- normals are a first-class stage
+- `from-depth-v2` is the default local variant for now
+- `stable-normal` remains available as an opt-in neural backend when its local model setup is healthy
 
-- per-stage timing
-- requested vs actual backend mode
-- device info
-- debug previews
-- stage-local details
+#### Shadow
 
-## Compatibility Shims
+- Stage key: `shadow_generator`
+- Backends:
+  - `mock`
+  - `local v1-gan`
+  - `triton v2-diff`
 
-The repository still contains compatibility modules such as:
+Important:
+
+- `V1-GAN` remains the current controllable local rot/top-view shadow model
+- `V2-DIFF` now exists as the preferred Triton-ready slot
+- current `V2-DIFF` is control-free and consumes only `img` and `mask`
+- future controlled `V2-DIFF` may consume `depth`, `normal`, `angle`, `elevation`, `softness`, and `reflection`
+- coarse post-blur remains only in the mock backend
+- the training/export/serving contract for `V2-DIFF` is documented in [shadow-v2-model-contract.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/shadow-v2-model-contract.md)
+
+## Cache and Metadata
+
+The preprocess cache stores expensive intermediate artifacts.
+
+Cache signature includes runtime identity so cached data can be invalidated when:
+
+- backend kind changes
+- model variant changes
+- model version changes
+- runtime defaults change
+
+Dev execution metadata now surfaces:
+
+- requested backend kind
+- actual backend kind
+- model variant
+- model name and version
+- device
+- Triton endpoint
+- cache status
+- fallback reason
+
+## Web UI Role
+
+The web playground remains in this service.
+
+That is intentional:
+
+- Triton should execute heavy inference
+- the control plane should keep rich debug UX
+
+The playground now selects:
+
+- execution backend kind per stage
+- model variant where relevant, especially for shadow
+
+It does not know or care whether a stage is backed by a Python model instance or a remote Triton model.
+
+## Compatibility Layer
+
+The repository still includes compatibility shims such as:
 
 - `pipeline/`
 - `adapters/`
-- some root-level exports like `app.py`
+- root exports like `app.py`
 
-These are not the architectural center anymore.
-New logic should go into the layered structure, not into the shims.
+These preserve older import paths but are not the architectural center.
+
+New logic belongs in:
+
+- `core/`
+- `application/`
+- `bootstrap/`
+- `infrastructure/`
+- `interfaces/`
 
 ## Design Intent
 
-This repo is optimized for long-lived model iteration.
+This architecture is optimized for:
 
-That means:
+- replacing local backends with Triton without rewriting orchestration
+- preserving the debug web UI
+- supporting sync and async execution side by side
+- keeping stage ownership explicit and testable
 
-- model upgrades should mostly touch `infrastructure/stages/...`
-- runtime selection should mostly touch `bootstrap/`
-- orchestration should stay stable in `application/`
-- public API should remain stable in `interfaces/http/`
+## Worker Integration Boundary
 
-That separation is the main architectural goal of the project.
+The intended upstream integration boundary is:
+
+- product queue and business retries stay outside this repository
+- an upstream worker talks to the ML core only through HTTP
+- the worker owns job-level concurrency
+- the ML core owns stage-level batching decisions
+
+The formal worker-facing contract is documented in:
+
+- [worker-core-contract.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/worker-core-contract.md)

@@ -10,26 +10,46 @@ This folder is split into two kinds of material:
 1. [README.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/README.md)
 2. [architecture.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/architecture.md)
 3. [modules.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/modules.md)
-4. [runbook-local.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/runbook-local.md)
-5. [api.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/api.md)
-6. [workflow.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/workflow.md)
+4. [service-contract.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/service-contract.md)
+5. [worker-core-contract.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/worker-core-contract.md)
+6. [frontend-shadow-model-contract.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/frontend-shadow-model-contract.md)
+7. [shadow-v2-model-contract.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/shadow-v2-model-contract.md)
+8. [docker-local.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/docker-local.md)
+9. [runbook-local.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/runbook-local.md)
+10. [api.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/api.md)
+11. [workflow.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/workflow.md)
 
 ## Active Docs
 
+- [service-contract.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/service-contract.md)
+  Authoritative frontend/backend/worker handoff: topology, endpoints, request/response types, model controls, async lifecycle, errors, and migration checklist.
+
 - [architecture.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/architecture.md)
-  System design, layered structure, pipeline flow, and current runtime responsibilities.
+  Control plane vs execution plane, layered structure, sync and async flows, Triton-ready stage boundaries.
 
 - [modules.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/modules.md)
-  Folder-by-folder explanation of the codebase with pointers for where to edit what.
+  Folder-by-folder explanation of the codebase, including the Triton subsystem and async job backend.
 
 - [runbook-local.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/runbook-local.md)
-  Local setup, GPU environment, startup commands, model bring-up notes, and troubleshooting.
+  Local setup, GPU environment, startup commands, backend-kind settings, Triton settings, and troubleshooting.
+
+- [docker-local.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/docker-local.md)
+  Production service-only container workflow plus Triton/debug two-container workflow.
+
+- [worker-core-contract.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/worker-core-contract.md)
+  Integration contract for `ShadowGen-v2` worker authors, including sync vs async modes, capability handshake, and batching boundaries.
+
+- [frontend-shadow-model-contract.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/frontend-shadow-model-contract.md)
+  Frontend-facing contract for choosing `V1-GAN` vs `V2-DIFF`, including UI copy, request examples, and control availability.
+
+- [shadow-v2-model-contract.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/shadow-v2-model-contract.md)
+  Training, export, serving, and acceptance contract for the future `shadow_generator` `v2-diff` model.
 
 - [api.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/api.md)
-  Public API and debug/playground response summary.
+  Public API, async jobs API, dev/playground request model, and execution metadata semantics.
 
 - [workflow.md](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/docs/workflow.md)
-  Repository workflow, tracking expectations, and structure discipline.
+  Repository workflow, tracking expectations, and architectural placement rules.
 
 ## Historical Source Material
 
