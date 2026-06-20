@@ -276,7 +276,7 @@ function buildRenderRequest(input: RenderRequestInput) {
 
 ```ts
 async function renderShadow(input: RenderRequestInput) {
-  const response = await fetch("http://localhost:8000/v1/render", {
+  const response = await fetch("http://localhost:9001/v1/render", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -315,7 +315,7 @@ Example:
 
 ```ts
 async function submitRenderJob(input: RenderRequestInput) {
-  const response = await fetch("http://localhost:8000/v1/render/jobs", {
+  const response = await fetch("http://localhost:9001/v1/render/jobs", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

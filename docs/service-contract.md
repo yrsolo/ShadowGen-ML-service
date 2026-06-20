@@ -25,14 +25,16 @@ Browser frontend -> ShadowGen-v2 backend/worker -> ShadowGen ML Service
 Base URL задаётся конфигурацией worker/backend, например:
 
 ```text
-http://ml-core:8000
+http://ml-core:9001
 ```
 
 Для локального Docker-запуска:
 
 ```text
-http://127.0.0.1:8000
+http://127.0.0.1:9001
 ```
+
+Порт задаётся в `.env` через `SERVICE_HTTP_PORT`; default — `9001`. Это значение одновременно задаёт порт Uvicorn внутри контейнера и опубликованный host port.
 
 ## 2. Публичные endpoints
 

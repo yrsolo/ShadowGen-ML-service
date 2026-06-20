@@ -8,7 +8,10 @@ if /I "%~1"=="help" goto help
 
 if "%SERVICE_IMAGE%"=="" set "SERVICE_IMAGE=shadowgen-ml-service:local"
 if "%SERVICE_CONTAINER%"=="" set "SERVICE_CONTAINER=shadowgen-ml-service"
-if "%SERVICE_HTTP_PORT%"=="" set "SERVICE_HTTP_PORT=8000"
+if "%SERVICE_HTTP_PORT%"=="" if exist ".env" (
+  for /f "tokens=1,* delims==" %%A in ('findstr /B /I "SERVICE_HTTP_PORT=" ".env"') do set "SERVICE_HTTP_PORT=%%B"
+)
+if "%SERVICE_HTTP_PORT%"=="" set "SERVICE_HTTP_PORT=9001"
 if "%SERVICE_GPU_DEVICE%"=="" if exist ".env" (
   for /f "tokens=1,* delims==" %%A in ('findstr /B /I "SERVICE_GPU_DEVICE=" ".env"') do set "SERVICE_GPU_DEVICE=%%B"
 )
@@ -70,14 +73,16 @@ echo   rebuild-service-container.cmd
 echo.
 echo Useful environment variables:
 echo   SERVICE_GPU_DEVICE=1  ^(normally configured in .env^)
-echo   SERVICE_HTTP_PORT=8000
+echo   SERVICE_HTTP_PORT=9001  ^(normally configured in .env^)
 echo   SERVICE_IMAGE=shadowgen-ml-service:local
 echo   SERVICE_CONTAINER=shadowgen-ml-service
 echo   SHADOWGEN_TARGET_DEVICE=cuda:0
 echo   SHADOWGEN_SHADOW_MODEL_VARIANT=v2-diff
 echo   SHADOWGEN_DEV_API_ENABLED=0
 echo.
-echo Example:
-echo   echo SERVICE_GPU_DEVICE=1^>^>.env
+echo Configure these values in .env:
+echo   SERVICE_GPU_DEVICE=1
+echo   SERVICE_HTTP_PORT=9001
+echo Then run:
 echo   start-service-container.cmd
 exit /b 0

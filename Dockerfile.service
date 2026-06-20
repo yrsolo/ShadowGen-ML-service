@@ -8,7 +8,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     SHADOWGEN_DEV_API_ENABLED=0 \
     SHADOWGEN_DEV_SHUTDOWN_ENABLED=0 \
     SHADOWGEN_TRITON_TRANSPORT=native \
-    SHADOWGEN_TARGET_DEVICE=cuda:0
+    SHADOWGEN_TARGET_DEVICE=cuda:0 \
+    SERVICE_HTTP_PORT=9001
 
 WORKDIR /app
 
@@ -30,6 +31,6 @@ RUN python -m pip install --upgrade pip setuptools wheel \
 
 RUN mkdir -p /app/.cache /app/.models /app/artifacts /app/var/cache
 
-EXPOSE 8000
+EXPOSE 9001
 
-CMD ["python", "-m", "uvicorn", "shadowgen_ml_service.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "exec python -m uvicorn shadowgen_ml_service.main:app --host 0.0.0.0 --port ${SERVICE_HTTP_PORT:-9001}"]

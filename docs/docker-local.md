@@ -39,11 +39,12 @@ Configure the GPU in `.env` before startup:
 ```dotenv
 SERVICE_GPU_DEVICE=1
 SHADOWGEN_TARGET_DEVICE=cuda:0
+SERVICE_HTTP_PORT=9001
 ```
 
 Default URL:
 
-- ML service API: `http://127.0.0.1:8000`
+- ML service API: `http://127.0.0.1:9001`
 
 The container runs with:
 
@@ -67,9 +68,10 @@ Example for host GPU `1`:
 ```dotenv
 SERVICE_GPU_DEVICE=1
 SHADOWGEN_TARGET_DEVICE=cuda:0
+SERVICE_HTTP_PORT=9001
 ```
 
-Inside the container the selected GPU is exposed as `cuda:0`, so `SHADOWGEN_TARGET_DEVICE` should normally remain `cuda:0` regardless of the host GPU index.
+Inside the container the selected GPU is exposed as `cuda:0`, so `SHADOWGEN_TARGET_DEVICE` should normally remain `cuda:0` regardless of the host GPU index. Compose also sets `CUDA_VISIBLE_DEVICES=0` so PyTorch sees only that remapped device.
 
 The tracked [.env.example](/n:/PROJECTS/ML/ShadowGen-ML-core/ShadowGen-ML-service/.env.example) contains safe defaults. Do not replace an existing `.env` if it already contains credentials; add or update only the GPU keys.
 
@@ -127,8 +129,8 @@ Startup ordering:
 
 Default URLs:
 
-- Playground: `http://127.0.0.1:8000/playground`
-- ML service API: `http://127.0.0.1:8000`
+- Playground: `http://127.0.0.1:9001/playground`
+- ML service API: `http://127.0.0.1:9001`
 - Triton HTTP: `http://127.0.0.1:8010`
 - Triton gRPC: `127.0.0.1:8011`
 - Triton metrics: `http://127.0.0.1:8012`
@@ -143,9 +145,13 @@ stop-docker-stack.cmd
 
 By default both containers expose GPU `1`, which is expected to be the RTX 4090 on the current workstation. Override if needed:
 
+```dotenv
+TRITON_GPU_DEVICE=1
+SERVICE_GPU_DEVICE=1
+SERVICE_HTTP_PORT=9001
+```
+
 ```cmd
-set TRITON_GPU_DEVICE=1
-set SERVICE_GPU_DEVICE=1
 start-docker-stack.cmd
 ```
 

@@ -80,6 +80,7 @@
   - [x] add start/stop scripts for the service container
   - [x] make GPU selectable through `SERVICE_GPU_DEVICE`
   - [x] load `SERVICE_GPU_DEVICE` from `.env` without exposing other values
+  - [x] load `SERVICE_HTTP_PORT` from `.env` and use it inside and outside the container
   - [x] add tracked `.env.example` with safe GPU defaults
   - [x] default service image to production-safe dev API settings
 - [x] Publish an authoritative service integration contract:

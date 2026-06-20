@@ -84,12 +84,12 @@ stop-service-container.cmd
 
 This mode starts:
 
-- `shadowgen-ml-service` on host port `8000`
+- `shadowgen-ml-service` on `SERVICE_HTTP_PORT` from `.env` (default `9001`) inside and outside the container
 - local ML backends only
 - dev API disabled by default
 - selected host GPU exposed as `cuda:0` inside the container
 
-Use `SERVICE_GPU_DEVICE=<host_gpu_index>` in `.env` to choose the video card. On the current workstation `SERVICE_GPU_DEVICE=1` targets the RTX 4090. Keep `SHADOWGEN_TARGET_DEVICE=cuda:0`, because Docker remaps the selected host GPU to container GPU `0`.
+Use `SERVICE_GPU_DEVICE=<host_gpu_index>` in `.env` to choose the video card. On the current workstation `SERVICE_GPU_DEVICE=1` targets the RTX 4090. Keep `SHADOWGEN_TARGET_DEVICE=cuda:0`, because Docker remaps the selected host GPU to container GPU `0`; Compose sets `CUDA_VISIBLE_DEVICES=0` so PyTorch sees only that remapped device. `SERVICE_HTTP_PORT=9001` configures both Uvicorn inside the container and the published host port.
 
 Runtime files are mounted rather than baked into images:
 
@@ -123,7 +123,7 @@ stop-docker-stack.cmd
 This mode starts:
 
 - `shadowgen-triton-segmenter` on host ports `8010`, `8011`, `8012`
-- `shadowgen-ml-service` on host port `8000`
+- `shadowgen-ml-service` on `SERVICE_HTTP_PORT` (default `9001`)
 
 The service container waits for the Triton container healthcheck before starting, then calls Triton through Docker DNS at `http://triton:8000`.
 
@@ -153,8 +153,9 @@ When running outside the local workstation workflow, leave `SHADOWGEN_DEV_API_EN
 
 Open:
 
-- `http://127.0.0.1:8000/`
-- `http://127.0.0.1:8000/playground`
+- container API: `http://127.0.0.1:9001/`
+- split host-debug API: `http://127.0.0.1:8000/`
+- split host-debug playground: `http://127.0.0.1:8000/playground`
 
 ## Execution Model
 
@@ -515,13 +516,13 @@ Use them for:
 ### Service health
 
 ```powershell
-curl http://127.0.0.1:8000/health
+curl http://127.0.0.1:9001/health
 ```
 
 ### Runtime capabilities
 
 ```powershell
-curl http://127.0.0.1:8000/v1/capabilities
+curl http://127.0.0.1:9001/v1/capabilities
 ```
 
 Check:

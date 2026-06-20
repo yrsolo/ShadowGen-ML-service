@@ -55,7 +55,7 @@ The recommended local deployment shape is now two containers:
   - Python backend models
   - experimental ONNX backend models
 
-The service container exposes `8000` on the host and calls Triton through Docker DNS at `http://triton:8000`. Triton exposes host ports `8010` HTTP, `8011` gRPC, and `8012` metrics for direct smoke tests and observability.
+The service container listens on and publishes `SERVICE_HTTP_PORT` from `.env` (default `9001`) and calls Triton through Docker DNS at `http://triton:8000`. Triton exposes host ports `8010` HTTP, `8011` gRPC, and `8012` metrics for direct smoke tests and observability.
 
 This keeps the same architectural split in local development that we want later in production: FastAPI orchestrates, Triton serves heavy inference.
 

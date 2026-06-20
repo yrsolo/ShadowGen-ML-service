@@ -349,6 +349,12 @@ The active docs now provide:
 - `start-service-container.cmd` now reads only `SERVICE_GPU_DEVICE` from `.env` before applying the default and does not print other environment values
 - `.env.example` documents `SERVICE_GPU_DEVICE=1` and `SHADOWGEN_TARGET_DEVICE=cuda:0` without containing secrets
 - the ignored local `.env` was configured with host GPU `1`, mapped to `cuda:0` inside the service container
+- the ignored local `.env` was configured with `SERVICE_HTTP_PORT=9001`
+- service container Uvicorn, Docker port publication, healthcheck, and launch scripts now share `SERVICE_HTTP_PORT` with default `9001`
+- `cmd /c rebuild-service-container.cmd` passed and rebuilt `shadowgen-ml-service:local` with container port `9001`
+- `cmd /c start-service-container.cmd` passed; `/health` returned `status=ok` at `http://127.0.0.1:9001`
+- `docker port shadowgen-ml-service` confirmed `9001/tcp -> 0.0.0.0:9001`
+- runtime GPU probe confirmed `SERVICE_HTTP_PORT=9001`, `torch.cuda.device_count()=1`, and `cuda:0=NVIDIA GeForce RTX 4090`
 - `docs/service-contract.md` now captures the public topology, health/capabilities handshake, render schema, sync/async responses, idempotency, errors, model controls, and frontend migration checklist
 - the frontend shadow supplement was corrected: current `V2-DIFF` may use `elevation_deg` for a coarse prompt/view bucket and does not apply `opacity`
 

@@ -151,11 +151,12 @@ Select the host GPU in `.env`:
 ```dotenv
 SERVICE_GPU_DEVICE=1
 SHADOWGEN_TARGET_DEVICE=cuda:0
+SERVICE_HTTP_PORT=9001
 ```
 
 Open:
 
-- `http://127.0.0.1:8000/`
+- `http://127.0.0.1:9001/`
 
 Stop the service container:
 
@@ -165,7 +166,7 @@ stop-service-container.cmd
 
 This starts one container:
 
-- `shadowgen-ml-service`: FastAPI control plane and local ML backends on host port `8000`
+- `shadowgen-ml-service`: FastAPI control plane and local ML backends on `SERVICE_HTTP_PORT` (default `9001`)
 
 The selected host GPU is controlled by `SERVICE_GPU_DEVICE`. Inside the container the selected card is addressed as `cuda:0`, so `SHADOWGEN_TARGET_DEVICE=cuda:0` is the normal setting.
 
@@ -182,7 +183,7 @@ start-docker-stack.cmd
 This starts two containers:
 
 - `shadowgen-triton-segmenter`: Triton execution plane on host ports `8010`/`8011`/`8012`
-- `shadowgen-ml-service`: FastAPI control plane and playground on host port `8000`
+- `shadowgen-ml-service`: FastAPI control plane and playground on `SERVICE_HTTP_PORT` (default `9001`)
 
 The service container talks to Triton through the Docker network at `http://triton:8000`. Models, caches, outputs, and `.env` remain runtime mounts and are not baked into the service image.
 

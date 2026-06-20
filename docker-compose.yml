@@ -47,11 +47,13 @@ services:
       - path: .env
         required: false
     ports:
-      - "${SERVICE_HTTP_PORT:-8000}:8000"
+      - "${SERVICE_HTTP_PORT:-9001}:${SERVICE_HTTP_PORT:-9001}"
     environment:
+      SERVICE_HTTP_PORT: ${SERVICE_HTTP_PORT:-9001}
       HF_HOME: /app/.cache/huggingface
       HUGGINGFACE_HUB_CACHE: /app/.cache/huggingface/hub
       NVIDIA_VISIBLE_DEVICES: ${SERVICE_GPU_DEVICE:-1}
+      CUDA_VISIBLE_DEVICES: "0"
       SHADOWGEN_TARGET_DEVICE: ${SHADOWGEN_TARGET_DEVICE:-cuda:0}
       SHADOWGEN_TRITON_URL: http://triton:8000
       SHADOWGEN_TRITON_TRANSPORT: native
