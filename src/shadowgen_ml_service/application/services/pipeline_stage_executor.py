@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from shadowgen_ml_service.application.models import PipelineContext
 from shadowgen_ml_service.config import Settings
-from shadowgen_ml_service.core.models import SegmentationResult
+from shadowgen_ml_service.core.models import DetectionResult, SegmentationResult
 from shadowgen_ml_service.core.stage_io import DepthInput, DetectionInput, NormalsInput, SegmentationInput, ShadowInput
 from shadowgen_ml_service.utils.images import alpha_asset, ensure_asset, prepare_working_crop
 
@@ -27,7 +27,7 @@ class PipelineStageExecutor:
 
     def invoke(self, stage_key: str, backend, context: PipelineContext):
         if stage_key == "detector":
-            return backend.detect(self._build_detection_input(context))
+            return self._invoke_detector(backend, context)
         if stage_key == "geometry_estimator":
             return backend.estimate(ensure_asset(context.source_rgba))
         if stage_key == "segmenter":
@@ -152,6 +152,33 @@ class PipelineStageExecutor:
 
     def _build_detection_input(self, context: PipelineContext) -> DetectionInput:
         return DetectionInput(image=ensure_asset(context.source_rgba), padding_px=context.command.padding_px)
+
+    def _invoke_detector(self, backend, context: PipelineContext) -> DetectionResult:
+        stage_input = self._build_detection_input(context)
+        try:
+            return backend.detect(stage_input)
+        except Exception as exc:
+            if not self._is_empty_detection_error(exc):
+                raise
+            image = ensure_asset(context.source_rgba)
+            full_frame = (0, 0, image.width, image.height)
+            warning = "detector_empty_full_frame_fallback"
+            if warning not in context.warnings:
+                context.warnings.append(warning)
+            return DetectionResult(bbox=full_frame, confidence=0.0)
+
+    def _is_empty_detection_error(self, exc: Exception) -> bool:
+        message = str(exc).lower()
+        return any(
+            marker in message
+            for marker in (
+                "no detection candidates",
+                "no detection result",
+                "returned no detection",
+                "no object",
+                "object not found",
+            )
+        )
 
     def _build_segmentation_input(self, context: PipelineContext) -> SegmentationInput:
         return SegmentationInput(image=ensure_asset(self._prepare_working_crop(context)))

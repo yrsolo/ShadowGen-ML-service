@@ -89,6 +89,11 @@
   - [x] document current `V1-GAN` and `V2-DIFF` control behavior
   - [x] add frontend/backend migration checklist and TypeScript examples
   - [x] correct stale `V2-DIFF` statements in the frontend shadow supplement
+- [x] Make empty detector output non-fatal:
+  - [x] fallback to full-frame bbox when detector reports no object candidates
+  - [x] continue segmentation and downstream stages after the fallback
+  - [x] expose `detector_empty_full_frame_fallback` as a render warning
+  - [x] document the warning in the service/API contract
 
 ## Next Likely
 

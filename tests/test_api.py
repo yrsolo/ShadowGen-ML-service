@@ -647,6 +647,46 @@ class ApiTests(unittest.TestCase):
         finally:
             shutil.rmtree(temp_dir, ignore_errors=True)
 
+    def test_empty_detection_falls_back_to_full_frame_before_segmentation(self) -> None:
+        temp_dir = Path("var/cache/test-empty-detection") / uuid4().hex
+        try:
+            app = create_app(make_test_settings(preprocess_cache_dir=temp_dir))
+            service = app.state.render_service
+
+            class EmptyDetector:
+                def detect(self, stage_input):
+                    raise ValueError("no detection candidates available")
+
+            class RecordingSegmenter:
+                def __init__(self) -> None:
+                    self.seen_size = None
+
+                def segment(self, stage_input):
+                    image = asset_to_pil(stage_input.image)
+                    self.seen_size = image.size
+                    mask = Image.new("L", image.size, 255)
+                    cutout = image.copy()
+                    cutout.putalpha(mask)
+                    return SegmentationResult(
+                        bbox=(0, 0, image.width, image.height),
+                        mask=pil_to_asset(mask),
+                        cutout_rgba=pil_to_asset(cutout),
+                        crop_rgba=pil_to_asset(image),
+                    )
+
+            recorder = RecordingSegmenter()
+            service.runtime.detector = EmptyDetector()
+            service.runtime.segmenter = recorder
+            client = TestClient(app)
+
+            response = client.post("/v1/render", json=make_request())
+
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(recorder.seen_size, (service.settings.working_size, service.settings.working_size))
+            self.assertIn("detector_empty_full_frame_fallback", response.json()["warnings"])
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
     def test_debug_pipeline_segmenter_triton_runs_with_live_mask_output(self) -> None:
         def fake_probe_binding(*args, **_kwargs):
             binding = args[-1]

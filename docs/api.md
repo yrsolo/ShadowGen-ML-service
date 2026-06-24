@@ -361,6 +361,7 @@ Operational note:
 
 - when `actual_backend_kind = triton`, the current live contract is a GroundingDINO Triton Python backend returning `bbox` and `confidence`
 - detection overlay and crop preview are still reconstructed inside ML-core postprocess
+- if the detector returns no object candidates, ML-core uses the full source frame as the detection bbox, continues with segmentation, and returns warning `detector_empty_full_frame_fallback`
 
 ### `segmenter`
 

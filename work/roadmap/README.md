@@ -26,6 +26,7 @@
   - production container GPU selection is configured through `.env` with `SERVICE_GPU_DEVICE`; the selected host GPU is exposed as `cuda:0` inside the container
   - production container HTTP port is configured through `.env` with `SERVICE_HTTP_PORT`; default is `9001`
   - `docs/service-contract.md` is the authoritative frontend/backend/worker integration handoff
+  - empty detector output is now non-fatal: the service falls back to a full-frame bbox and emits `detector_empty_full_frame_fallback`
   - optional Triton/debug launch is a two-container Docker stack through `rebuild-triton.cmd`, `rebuild-service-container.cmd`, `start-docker-stack.cmd`, and `stop-docker-stack.cmd`
   - advanced split debug launch remains available through `start-triton.cmd` and `start-service.cmd`
   - playground uses horizontal stage navigation with per-card vertical scroll

@@ -243,6 +243,11 @@ type RenderResponse = {
 
 Клиент должен искать final artifact по `kind === "final"` или `name === "final"`, а не полагаться на позицию элемента в массиве.
 
+Known non-fatal warnings:
+
+- `detector_empty_full_frame_fallback`: detector did not find a confident object, so ML-core used the full source frame as the object bbox and continued with segmentation.
+- `main_object_low_confidence`: detector confidence is below the service threshold; the render result is still valid, but product UI may show a soft quality warning.
+
 Для отображения:
 
 ```ts
