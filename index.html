@@ -172,51 +172,20 @@
       display: block;
     }
 
-    .media-panel img {
+    .media-panel img,
+    .media-panel video {
       width: 100%;
       height: 100%;
       display: block;
+    }
+
+    .media-panel img {
       object-fit: cover;
     }
 
-    .video-panel {
-      aspect-ratio: 16 / 9;
-      display: grid;
-      place-items: center;
-      padding: 24px;
-      color: #edf3f5;
-      text-align: center;
-      font-family: "Segoe UI", Arial, sans-serif;
-      background:
-        linear-gradient(120deg, rgba(47, 111, 136, 0.25), rgba(156, 90, 64, 0.22)),
-        radial-gradient(circle at 30% 24%, rgba(255, 255, 255, 0.16), transparent 26%),
-        #111820;
-    }
-
-    .play-mark {
-      width: 74px;
-      height: 74px;
-      margin: 0 auto 16px;
-      border: 2px solid rgba(255, 255, 255, 0.76);
-      border-radius: 50%;
-      display: grid;
-      place-items: center;
-    }
-
-    .play-mark::before {
-      content: "";
-      width: 0;
-      height: 0;
-      margin-left: 6px;
-      border-top: 15px solid transparent;
-      border-bottom: 15px solid transparent;
-      border-left: 23px solid #fff;
-    }
-
-    .video-panel strong {
-      display: block;
-      margin-bottom: 6px;
-      font-size: 18px;
+    .demo-video {
+      background: #111820;
+      object-fit: contain;
     }
 
     .caption {
@@ -484,13 +453,10 @@
     </div>
     <div id="video" class="media">
       <div id="panel-video" class="media-panel active" role="tabpanel" data-media-panel="video">
-        <div class="video-panel">
-          <div>
-            <div class="play-mark" aria-hidden="true"></div>
-            <strong>Демонстрация в разработке</strong>
-            <div>Короткий ролик с прохождением изображения через систему и примерами результата.</div>
-          </div>
-        </div>
+        <video class="demo-video" controls playsinline preload="metadata">
+          <source src="assets/demo_lo.mp4" type="video/mp4" />
+          Ваш браузер не поддерживает воспроизведение MP4-видео.
+        </video>
       </div>
       <div id="panel-product" class="media-panel" role="tabpanel" data-media-panel="product" hidden>
         <img src="assets/product-runtime.png" alt="Схема продуктового runtime: web, API, очередь, worker, ML-сервис и возврат результата" />
@@ -506,7 +472,7 @@
       </div>
     </div>
     <p class="caption" id="media-caption">
-      Входное изображение проходит через выделение объекта, оценку сцены, генерацию тени и финальную композицию.
+      Демонстрация работы сервиса: исходная фотография проходит через выделение объекта, генерацию тени и финальную композицию.
     </p>
   </div>
 
@@ -653,7 +619,7 @@
   </footer>
   <script>
     const mediaCaptions = {
-      video: "Входное изображение проходит через выделение объекта, оценку сцены, генерацию тени и финальную композицию.",
+      video: "Демонстрация работы сервиса: исходная фотография проходит через выделение объекта, генерацию тени и финальную композицию.",
       product: "Пользователь фотографирует объект на телефоне. Задача попадает в облачную очередь, откуда ее забирает worker на локальном компьютере и передает локальному GPU-серверу.",
       service: "ML-сервис выделяет объект из фотографии с произвольным фоном, оценивает depth и normals, генерирует тень и собирает итоговую композицию.",
       dataset: "Датасет собирается из отфильтрованных 3D-объектов: Blender-рендеринг формирует RGB, depth, normals, mask и metadata для каждой сцены.",
