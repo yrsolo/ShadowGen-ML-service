@@ -19,6 +19,7 @@
 - Method/process section.
 - Results section и BibTeX.
 
+Тексты мини-статьи сохранены в `ARTICLE_TEXT.md`.
 Промпты генерации схем сохранены в `IMAGE_PROMPTS.md`.
 
 ## Локальный просмотр

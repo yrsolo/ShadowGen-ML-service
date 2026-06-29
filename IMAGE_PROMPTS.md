@@ -73,3 +73,71 @@ Color palette: warm white, charcoal, muted steel blue, restrained terracotta, su
 Materials/textures: matte paper modules, dark brushed metal GPUs, translucent data layers
 Constraints: no words, no labels, no letters, no numbers, no logos, no watermark; no decorative blobs; show iteration and evaluation visually using arrows and comparison panels; readable at website hero size
 ```
+
+## Dataset passes
+
+Файл: `assets/dataset-passes.png`
+
+```text
+Use case: infographic-diagram
+Asset type: wide companion illustration for a Russian ML project article, 16:9 landscape
+Primary request: illustrate the ShadowGen dataset itself, not the infrastructure
+Scene/backdrop: warm off-white editorial background with subtle technical grid and generous margins
+Subject: a clean Blender-style studio render setup producing a dataset of everyday objects on a white background with soft directed shadows; show rows of rendered sample cards: RGB object on white background with shadow, object mask, normalized depth pass, surface normal pass, and metadata manifest represented visually without text; include hints of ObjaverseXL source 3D models as small varied objects entering the rendering setup
+Style/medium: premium scientific editorial infographic, refined isometric 3D, visually consistent with previous ShadowGen diagrams
+Composition/framing: left side source 3D models, center Blender studio/camera/lights, right side paired sample passes and masks; make it look like a serious dataset production process
+Lighting/mood: soft studio lighting, precise, calm
+Color palette: warm white, charcoal, muted steel blue, restrained terracotta, normal-map colors only in normals pass
+Constraints: no words, no labels, no letters, no numbers, no logos, no watermark; no decorative blobs; readable on a website; 16:9 landscape
+```
+
+## Model training directions
+
+Файл: `assets/model-training-directions.png`
+
+```text
+Use case: infographic-diagram
+Asset type: wide companion illustration for a Russian ML project article, 16:9 landscape
+Primary request: illustrate two ShadowGen model training directions: PatchGAN and Stable Diffusion based shadow generation
+Scene/backdrop: warm off-white editorial background with subtle grid, same visual language as existing ShadowGen diagrams
+Subject: left half shows PatchGAN training for top-down shadow generation: object mask and top-view object representation enter a compact GAN training loop, output shadow map can rotate around the object; right half shows Stable Diffusion 1.5 adaptation with LoRA, ControlNet-style conditioning and LCM acceleration: real-view object image, control passes, diffusion core, lightweight adaptation branches, faster inference path; outputs show soft shadows from arbitrary perspective with angle and blur controls represented visually as knobs/sliders without text
+Style/medium: premium scientific editorial infographic, precise isometric 3D modules, serious ML research figure, not marketing clipart
+Composition/framing: split composition with two balanced model tracks, shared dataset inputs at bottom, outputs on the far sides; use arrows and compact modules
+Lighting/mood: calm, technical, rigorous
+Color palette: warm white, charcoal, muted steel blue, restrained terracotta, subtle violet for diffusion internals
+Constraints: no words, no labels, no letters, no numbers, no logos, no watermark; no decorative blobs; make PatchGAN and diffusion tracks visually different; readable on a website; 16:9 landscape
+```
+
+## ML service conveyor
+
+Файл: `assets/ml-service-conveyor.png`
+
+```text
+Use case: infographic-diagram
+Asset type: wide companion illustration for a Russian ML project article, 16:9 landscape
+Primary request: illustrate the ShadowGen ML service processing conveyor from a real photo to final composition
+Scene/backdrop: warm off-white editorial background, subtle grid, consistent with existing ShadowGen diagrams
+Subject: a busy real smartphone photo of an object on a cluttered desk enters a conveyor of ML stages: detection bounding box, matting/foreground extraction with fine alpha edges, depth map, surface normal map, shadow generation, and compositing; show local GPU server as the compute engine below the conveyor; show final output as object on clean background with soft shadow
+Style/medium: premium technical editorial infographic, precise isometric panels and image processing cards
+Composition/framing: horizontal pipeline with large image cards across the top and GPU server under the middle; final composition emphasized on the right
+Lighting/mood: focused, clean, technically credible
+Color palette: warm white, charcoal, muted steel blue, restrained terracotta, technical normal-map RGB only where appropriate
+Constraints: no words, no labels, no letters, no numbers, no logos, no watermark; source image must be a real cluttered background, not a studio background; no decorative blobs; readable on a website; 16:9 landscape
+```
+
+## Apps infrastructure
+
+Файл: `assets/apps-infrastructure.png`
+
+```text
+Use case: infographic-diagram
+Asset type: wide companion illustration for a Russian ML project article, 16:9 landscape
+Primary request: illustrate ShadowGen applications and execution architecture: web app, Telegram app, Yandex Cloud backend, queue, local worker, local GPU ML server
+Scene/backdrop: warm off-white editorial background with subtle grid and generous margins
+Subject: left side shows user entry points: a browser web app on a laptop and a Telegram-style chat app on a smartphone, both submitting product photos; center top shows Yandex-cloud-like backend components without logos: serverless API, object storage, shared state, and task queue; center bottom shows a local workstation worker pulling tasks from the cloud queue; right side shows a separate local GPU ML server receiving jobs from the worker and returning artifacts; final result appears back in both web and chat interfaces
+Style/medium: premium technical editorial infographic, precise isometric modules, serious project architecture figure
+Composition/framing: two input apps on the left, cloud backend across the top center, local worker and GPU server separated below, result loop back to apps; clear grouping and arrows
+Lighting/mood: calm, operational, technically credible
+Color palette: warm white, charcoal, muted steel blue, restrained terracotta
+Constraints: no words, no labels, no letters, no numbers, no logos, no watermark; do not use Telegram or Yandex logos; do not place worker inside cloud; do not merge local worker and GPU server; no decorative blobs; readable on a website; 16:9 landscape
+```

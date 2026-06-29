@@ -234,6 +234,100 @@
 
     .abstract p { margin: 0; }
 
+    .story-section {
+      display: grid;
+      gap: 22px;
+    }
+
+    .story-head {
+      max-width: 860px;
+      margin: 0 auto;
+      text-align: center;
+    }
+
+    .story-kicker {
+      margin: 0 0 8px;
+      color: var(--accent-warm);
+      font-family: "Segoe UI", Arial, sans-serif;
+      font-size: 13px;
+      font-weight: 750;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .story-body {
+      max-width: 860px;
+      margin: 0 auto;
+      color: var(--muted);
+      font-size: 18px;
+    }
+
+    .story-body p { margin: 0 0 14px; }
+    .story-body p:last-child { margin-bottom: 0; }
+
+    .story-link {
+      display: inline-flex;
+      margin-top: 4px;
+      font-family: "Segoe UI", Arial, sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .model-list {
+      display: grid;
+      gap: 14px;
+      margin: 18px 0 0;
+    }
+
+    .model-item {
+      padding: 16px 18px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+    }
+
+    .model-item h3 {
+      margin: 0 0 6px;
+      font-family: "Segoe UI", Arial, sans-serif;
+      font-size: 17px;
+    }
+
+    .model-item p {
+      margin: 0;
+      font-size: 16px;
+    }
+
+    .figure-pair {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 6px;
+    }
+
+    .image-figure {
+      margin: 0;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: 0 10px 28px rgba(32, 39, 45, 0.06);
+    }
+
+    .image-figure img {
+      width: 100%;
+      display: block;
+      aspect-ratio: 16 / 9;
+      object-fit: cover;
+    }
+
+    .image-figure figcaption {
+      margin: 0;
+      padding: 12px 14px;
+      color: var(--muted);
+      font-family: "Segoe UI", Arial, sans-serif;
+      font-size: 13px;
+    }
+
     .grid {
       margin-top: 28px;
       display: grid;
@@ -412,7 +506,8 @@
       .grid,
       .repo-grid,
       .results,
-      .pipeline {
+      .pipeline,
+      .figure-pair {
         grid-template-columns: 1fr;
       }
     }
@@ -424,11 +519,11 @@
       <a class="brand" href="#top">ShadowGen</a>
       <div class="links">
         <a href="#abstract">Аннотация</a>
-        <a href="#repos">Репозитории</a>
-        <a href="#method">Метод</a>
-        <a href="#results">Результаты</a>
-      <a href="#data">Датасет</a>
-      <a href="#citation">BibTeX</a>
+        <a href="#dataset">Датасет</a>
+        <a href="#training">Обучение</a>
+        <a href="#ml-service">ML-сервис</a>
+        <a href="#apps">Приложения</a>
+        <a href="#citation">BibTeX</a>
       </div>
     </nav>
   </header>
@@ -493,7 +588,122 @@
       </div>
     </section>
 
-    <section id="repos">
+    <section id="dataset" class="story-section">
+      <div class="story-head">
+        <p class="story-kicker">01 / Данные</p>
+        <h2>Датасет</h2>
+        <p class="section-lead">Синтетическая предметная сцена, где для каждого объекта известны не только RGB-рендер, но и служебные пассы.</p>
+      </div>
+      <div class="story-body">
+        <p>
+          Датасет собирается на основе 3D-моделей из ObjaverseXL. Модели фильтруются, проходят ручной banlist/QC, после чего рендерятся в Blender в студийной сцене: предмет стоит на белом фоне, рядом с ним формируется мягкая направленная тень.
+        </p>
+        <p>
+          Вместе с финальным изображением сохраняются служебные данные: маска объекта, depth, normals и метаданные сцены. Эти пассы нужны не для витрины, а для обучения и проверки моделей: можно явно контролировать, что модель видит объект, геометрию и область тени.
+        </p>
+        <a class="story-link" href="https://github.com/yrsolo/ShadowGen-ML-dataset" rel="noreferrer">github.com/yrsolo/ShadowGen-ML-dataset</a>
+      </div>
+      <div class="figure-pair">
+        <figure class="image-figure">
+          <img src="assets/dataset-pipeline.png" alt="Схема pipeline подготовки датасета в Blender" />
+          <figcaption>Фильтрация 3D-моделей, студийная сцена Blender и набор выходных pass-ов.</figcaption>
+        </figure>
+        <figure class="image-figure">
+          <img src="assets/dataset-passes.png" alt="Примеры RGB, mask, depth и normals для синтетического датасета" />
+          <figcaption>Предметы на белом фоне с тенью и связанные служебные представления.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section id="training" class="story-section">
+      <div class="story-head">
+        <p class="story-kicker">02 / Модели</p>
+        <h2>Обучение моделей</h2>
+        <p class="section-lead">В проекте проверяются два направления генерации тени: управляемая простая модель и diffusion-подход для более общего вида.</p>
+      </div>
+      <div class="story-body">
+        <p>
+          Репозиторий обучения отделен от serving-кода. В нем лежат проверки датасета, конфиги экспериментов, runbook-и и код, который должен довести модель до формата, совместимого с ML-сервисом.
+        </p>
+        <div class="model-list">
+          <article class="model-item">
+            <h3>I. PatchGAN</h3>
+            <p>Первое направление генерирует тень для вида сверху. Такой вариант проще контролировать: тень можно вращать вокруг объекта и использовать как быстрый базовый режим для понятной геометрии.</p>
+          </article>
+          <article class="model-item">
+            <h3>II. Stable Diffusion 1.5, LoRA, ControlNet, LCM-ускорение</h3>
+            <p>Второе направление рассчитано на генерацию тени для произвольного вида. Цель — использовать conditioning и ускоренное inference, чтобы получать тень с настройками угла и размытия; сами пользовательские настройки пока не реализованы в полном виде.</p>
+          </article>
+        </div>
+        <a class="story-link" href="https://github.com/yrsolo/ShadowGen-ML-training" rel="noreferrer">github.com/yrsolo/ShadowGen-ML-training</a>
+      </div>
+      <div class="figure-pair">
+        <figure class="image-figure">
+          <img src="assets/training-workflow.png" alt="Схема обучения, оценки и экспорта shadow-модели" />
+          <figcaption>Версии датасета, конфигурации экспериментов, GPU-обучение, оценка и экспорт.</figcaption>
+        </figure>
+        <figure class="image-figure">
+          <img src="assets/model-training-directions.png" alt="Два направления обучения: PatchGAN и diffusion-модель" />
+          <figcaption>PatchGAN для управляемого вида сверху и diffusion-направление для произвольной перспективы.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section id="ml-service" class="story-section">
+      <div class="story-head">
+        <p class="story-kicker">03 / Inference</p>
+        <h2>ML-сервис</h2>
+        <p class="section-lead">Отдельный FastAPI-сервис принимает изображение и прогоняет его через последовательный ML-конвейер.</p>
+      </div>
+      <div class="story-body">
+        <p>
+          ML-сервис отвечает за практическую сборку результата. На вход приходит фотография с обычным фоном, после чего pipeline выполняет детекцию объекта, matting/выделение foreground, построение карт глубины и нормалей, генерацию тени и финальный композ.
+        </p>
+        <p>
+          Внутри сервис разделен на стадии с явными входами и выходами. Это позволяет запускать отдельные шаги, смотреть промежуточные артефакты и менять backend выполнения: локальный режим, mock-режим или Triton/GPU-serving для тяжелых моделей.
+        </p>
+        <a class="story-link" href="https://github.com/yrsolo/ShadowGen-ML-service" rel="noreferrer">github.com/yrsolo/ShadowGen-ML-service</a>
+      </div>
+      <div class="figure-pair">
+        <figure class="image-figure">
+          <img src="assets/ml-service.png" alt="Схема стадий ML-сервиса от исходного фото до финальной композиции" />
+          <figcaption>Detection, matting, depth, normals, shadow generation и composition как единый pipeline.</figcaption>
+        </figure>
+        <figure class="image-figure">
+          <img src="assets/ml-service-conveyor.png" alt="Детальная схема ML-конвейера с локальным GPU-сервером" />
+          <figcaption>Фотография с произвольным фоном проходит через ML-стадии и локальный GPU-сервер.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section id="apps" class="story-section">
+      <div class="story-head">
+        <p class="story-kicker">04 / Product runtime</p>
+        <h2>Веб-приложение, Telegram-приложение и инфраструктура</h2>
+        <p class="section-lead">Пользовательский слой отделен от локального GPU: облако принимает задачи, а тяжелая ML-часть выполняется на локальной машине.</p>
+      </div>
+      <div class="story-body">
+        <p>
+          Продуктовый репозиторий содержит web-интерфейс, API, worker и общие контракты. Пользователь может отправить фотографию через веб-приложение или Telegram-сценарий; backend в Yandex Cloud сохраняет входные данные и кладет задачу в очередь.
+        </p>
+        <p>
+          Worker на локальном компьютере забирает задачи из очереди и передает их на локальный ML-сервер с GPU. Такой разрез позволяет держать публичный API и интерфейсы в облаке, а тяжелое inference-выполнение оставить на машине, где доступны нужные модели и видеокарта.
+        </p>
+        <a class="story-link" href="https://github.com/yrsolo/ShadowGen-v2" rel="noreferrer">github.com/yrsolo/ShadowGen-v2</a>
+      </div>
+      <div class="figure-pair">
+        <figure class="image-figure">
+          <img src="assets/product-runtime.png" alt="Схема web/API/queue/worker/local GPU runtime" />
+          <figcaption>Телефон пользователя, облачная очередь, локальный worker и отдельный GPU-сервер.</figcaption>
+        </figure>
+        <figure class="image-figure">
+          <img src="assets/apps-infrastructure.png" alt="Схема web и Telegram приложений с Yandex Cloud backend и локальным worker" />
+          <figcaption>Web и Telegram входы, backend в облаке, очередь задач и локальное выполнение ML.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section id="repos-legacy" hidden>
       <h2>Репозитории проекта</h2>
       <p class="section-lead">
         Репозитории соответствуют основным зонам ответственности: продуктовый runtime, ML-serving,
@@ -543,7 +753,7 @@
       </div>
     </section>
 
-    <section id="highlights">
+    <section id="highlights-legacy" hidden>
       <h2>Система</h2>
       <p class="section-lead">
         ShadowGen состоит из пользовательского runtime, ML-serving слоя, датасетного
@@ -565,7 +775,7 @@
       </div>
     </section>
 
-    <section id="method">
+    <section id="method-legacy" hidden>
       <h2>Метод</h2>
       <p class="section-lead">
         Базовый процесс устроен как последовательность независимых стадий, у каждой
@@ -580,7 +790,7 @@
       </div>
     </section>
 
-    <section id="results">
+    <section id="results-legacy" hidden>
       <h2>Результаты</h2>
       <p class="section-lead">
         Типовой результат включает исходный объект, промежуточную карту тени и итоговую
